@@ -7,6 +7,7 @@ load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
 SCRIPT="$BATS_TEST_DIRNAME/../src/changes.sh"
+OG_DIR="$(pwd)"
 
 setup() {
   # stub out external commands so parse_args doesn't actually exec them
@@ -18,18 +19,21 @@ setup() {
   command_ollama() { return 0; }
   alias ollama='command_ollama'
 
+
+  # source the script under test
+  source "$SCRIPT"
+
+  TEST_DIR=$(mktemp -d)
+  cd "$TEST_DIR" || exit 1
   # make a dummy config file
   echo "GIV_API_KEY=XYZ" > tmp.cfg
   echo "GIV_API_URL=TEST_URL" >> tmp.cfg
   echo "GIV_API_MODEL=TEST_MODEL" >> tmp.cfg
   chmod +r tmp.cfg
-
-  # source the script under test
-  source "$SCRIPT"
 }
 teardown() {
-  rm -rf .git
-  rm -f tmp.cfg
+  cd "$OG_DIR" || exit 1
+  rm -rf "$TEST_DIR"
 }
 
 # setup valid git range v1..v2

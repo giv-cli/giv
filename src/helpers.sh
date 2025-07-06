@@ -131,8 +131,8 @@ run_local() {
 }
 
 generate_response() {
-    [ -n "${debug}" ] && printf 'Debug: Generating response using %s model...\n' "${model_provider}" >&2
-    case ${model_provider} in
+    [ -n "${debug}" ] && printf 'Debug: Generating response using %s model...\n' "${model_mode}" >&2
+    case ${model_mode} in
     remote) generate_remote "$1" ;;
     none) cat "$1" ;;
     *) run_local "$1" ;;
