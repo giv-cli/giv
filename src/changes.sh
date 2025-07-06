@@ -7,7 +7,6 @@ set -eu
 IFS='
 '
 
-
 # -------------------------------------------------------------------
 # Paths & Defaults
 # -------------------------------------------------------------------
@@ -17,8 +16,8 @@ get_script_dir() {
     # $1: path to script (may be $0 or ${BASH_SOURCE[0]})
     script="$1"
     case "$script" in
-        /*) dir=$(dirname "$script") ;;
-        *) dir=$(cd "$(dirname "$script")" 2>/dev/null && pwd) ;;
+    /*) dir=$(dirname "$script") ;;
+    *) dir=$(cd "$(dirname "$script")" 2>/dev/null && pwd) ;;
     esac
     printf '%s\n' "$dir"
 }
@@ -44,7 +43,6 @@ PROMPT_DIR="${SCRIPT_DIR}/../prompts"
 # shellcheck source=helpers.sh
 . "${SCRIPT_DIR}/helpers.sh"
 
-
 REVISION=""
 PATHSPEC=""
 
@@ -56,7 +54,6 @@ template_dir="$PROMPT_DIR"
 output_file=''
 todo_pattern=''
 todo_files="*todo*"
-
 
 # Subcommand & templates
 subcmd=''
@@ -181,7 +178,7 @@ parse_args() {
                 if git rev-list "$1" >/dev/null 2>&1; then
                     REVISION="$1"
                     # If it's a valid commit ID, shift it
-                    [ -n "$debug" ] &&  printf 'Debug: Valid commit range: %s\n' "$1"
+                    [ -n "$debug" ] && printf 'Debug: Valid commit range: %s\n' "$1"
                     shift
                 else
                     printf 'Error: Invalid commit range: %s\n' "$1" >&2
@@ -190,7 +187,7 @@ parse_args() {
             elif git rev-parse --verify "$1" >/dev/null 2>&1; then
                 REVISION="$1"
                 # If it's a valid commit ID, shift it
-                [ -n "$debug" ] &&  printf 'Debug: Valid commit ID: %s\n' "$1"
+                [ -n "$debug" ] && printf 'Debug: Valid commit ID: %s\n' "$1"
                 shift
             else
                 printf 'Error: Invalid target: %s\n' "$1" >&2
@@ -203,7 +200,7 @@ parse_args() {
 
     if [ -z "$REVISION" ]; then
         # If no target specified, default to current working tree
-        [ -n "$debug" ] &&  printf 'Debug: No target specified, defaulting to current working tree.\n'
+        [ -n "$debug" ] && printf 'Debug: No target specified, defaulting to current working tree.\n'
         REVISION="--current"
     fi
     # 3. Collect all non-option args as pattern (until first option or end)
@@ -353,7 +350,7 @@ parse_args() {
         echo "  Output Mode: $output_mode"
         echo "  Output Version: $output_version"
         echo "  Prompt File: $prompt_file"
-    fi       
+    fi
 }
 # -------------------------------------------------------------------
 # Helper Functions
@@ -452,44 +449,42 @@ EOF
 # # -------------------------------------------------------------------
 
 cmd_message() {
-    commit_id="${1:-"--current"}"
+    commit_id="${1:---current}"
     [ -n "$debug" ] && printf 'Generating commit message for %s...\n' "${commit_id}"
 
-    # If the target is not the working tree or staged changes, return the message for the commit
-    if [ -z "${commit_id}" ]; then
-        printf 'Error: No commit ID or range specified for message generation.\n' >&2
-        exit 1
-    elif [ "$commit_id" != "--current" ] && [ "$commit_id" != "--cached" ]; then
-        # Handle commit ranges (e.g., HEAD~3..HEAD)
-
-        if echo "$commit_id" | grep -q '\.\.'; then
-            [ -n "$debug" ] && printf 'Processing commit range: %s\n' "$commit_id"
-            if ! git rev-list "$commit_id" >/dev/null 2>&1; then
-                printf 'Error: Invalid commit range: %s\n' "$commit_id" >&2
-                exit 1
-            fi
-            git log --reverse --pretty=%B "$commit_id"
-            exit 0
-        else
-        [ -n "$debug" ] && printf 'Processing single commit: %s\n' "$commit_id"
-            if ! git rev-parse --verify "$commit_id" >/dev/null 2>&1; then
-                printf 'Error: Invalid commit ID: %s\n' "$commit_id" >&2
-                exit 1
-            fi
-            git log -1 --pretty=%B "$commit_id" | sed '${/^$/d;}'
-            exit 0
-        fi
+    # Handle both --current and --cached, as argument parsing may set either value.
+    # This duplication ensures correct behavior regardless of which is set.
+    if [ "$commit_id" = "--current" ] || [ "$commit_id" = "--cached" ]; then
+        hist=$(portable_mktemp)
+        build_history "$hist" "$commit_id" "$todo_pattern" "$PATHSPEC"
+        [ -n "$debug" ] && printf 'Debug: Generated history file %s\n' "$hist"
+        pr=$(portable_mktemp)
+        printf '%s' "$(build_prompt "${PROMPT_DIR}/commit_message_prompt.md" "$hist")" >"$pr"
+        [ -n "$debug" ] && printf 'Debug: Generated prompt file %s\n' "$pr"
+        res=$(generate_response "$pr")
+        rm -f "$hist" "$pr"
+        printf '%s\n' "$res"
+        return
     fi
-    hist=$(portable_mktemp)
-    build_history "$hist" "$commit_id" "$todo_pattern" "$PATHSPEC"
-    [ -n "$debug" ] && printf 'Debug: Generated history file %s\n' "$hist"
-    pr=$(portable_mktemp)
-    printf '%s' "$(build_prompt "${PROMPT_DIR}/commit_message_prompt.md" "$hist")" >"$pr"
-    [ -n "$debug" ] && printf 'Debug: Generated prompt file %s\n' "$pr"
-    res=$(generate_response "$pr")
-    rm -f "$hist" "$pr"
-   
-    printf '%s\n' "$res";
+
+    # Handle commit ranges (e.g., HEAD~3..HEAD)
+    if echo "$commit_id" | grep -q '\.\.'; then
+        [ -n "$debug" ] && printf 'Processing commit range: %s\n' "$commit_id"
+        if ! git --no-pager log --reverse --pretty=%B "$commit_id" >/dev/null 2>&1; then
+            printf 'Error: Invalid commit range: %s\n' "$commit_id" >&2
+            exit 1
+        fi
+        git --no-pager log --reverse --pretty=%B "$commit_id" | sed '${/^$/d;}'
+        return
+    fi
+
+    [ -n "$debug" ] && printf 'Processing single commit: %s\n' "$commit_id"
+    if ! git rev-parse --verify "$commit_id" >/dev/null 2>&1; then
+        printf 'Error: Invalid commit ID: %s\n' "$commit_id" >&2
+        exit 1
+    fi
+    git --no-pager log -1 --pretty=%B "$commit_id" | sed '${/^$/d;}'
+    return
 }
 
 cmd_summary() {
@@ -511,9 +506,12 @@ cmd_summary() {
 cmd_release_notes() {
     summaries_file=$(portable_mktemp)
     summarize_target "${REVISION}" "${summaries_file}"
+    printf 'Error: No summaries generated for release notes.\n' >&2
+
     prompt_file_name="${PROMPT_DIR}/release_notes_prompt.md"
     tmp_prompt_file=$(portable_mktemp)
-    build_prompt "${prompt_file_name}" "${summaries_file}" > "${tmp_prompt_file}"
+    build_prompt "${prompt_file_name}" "${summaries_file}" >"${tmp_prompt_file}"
+    printf 'Debug: Generated prompt file %s\n' "${tmp_prompt_file}"
     generate_from_prompt "${tmp_prompt_file}" "${output_file:-${release_notes_file}}"
     rm -f "${summaries_file}"
     rm -f "${tmp_prompt_file}"
@@ -525,7 +523,7 @@ cmd_announcement() {
     cat "${summaries_file}"
     prompt_file_name="${PROMPT_DIR}/announcement_prompt.md"
     tmp_prompt_file=$(portable_mktemp)
-    build_prompt "${prompt_file_name}" "${summaries_file}" > "${tmp_prompt_file}"
+    build_prompt "${prompt_file_name}" "${summaries_file}" >"${tmp_prompt_file}"
     generate_from_prompt "${tmp_prompt_file}" "${output_file:-${announce_file}}"
     rm -f "${summaries_file}"
     rm -f "${tmp_prompt_file}"
@@ -544,14 +542,13 @@ cmd_changelog() {
 
     prompt_file_name="${PROMPT_DIR}/changelog_prompt.md"
     tmp_prompt_file=$(portable_mktemp)
-    build_prompt "${prompt_file_name}" "${summaries_file}" > "${tmp_prompt_file}"
+    build_prompt "${prompt_file_name}" "${summaries_file}" >"${tmp_prompt_file}"
 
     # TODO: add support for --update-mode
     generate_from_prompt "${tmp_prompt_file}" "${output_file:-${changelog_file}}"
     rm -f "${summaries_file}"
     rm -f "${tmp_prompt_file}"
 }
-
 
 if [ "${_is_sourced}" -eq 0 ]; then
     parse_args "$@"

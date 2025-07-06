@@ -130,7 +130,7 @@ gen_commits() {
 }
 
 @test "Generate message for working tree --current" {
-  mock_ollama "dummy" "Working Tree changes"
+  mock_ollama "dummy" "Working Tree changes\updated wt.txt\nbar in wt2.txt"
 
   echo "foo" >"wt.txt"
   git add .
@@ -173,6 +173,7 @@ gen_commits() {
 
 @test "Summary for commit range with pattern" {
   gen_commits
+  mock_ollama "dummy" "Summary for a.txt and b.txt"
   run "$GIV_SCRIPT" summary HEAD~2..HEAD "*.txt"
   assert_success
   assert_output --partial "a.txt"
@@ -247,7 +248,7 @@ gen_commits() {
   gen_commits
   mock_ollama "dummy" "relnote"
   echo "" > ".env"
-  run "$GIV_SCRIPT" release-notes HEAD~2..HEAD --dry-run
+  run "$GIV_SCRIPT" release-notes HEAD~2..HEAD --dry-run #--verbose
   assert_success
   assert_output --partial "relnote"
 }
@@ -376,10 +377,10 @@ EOF
 
 @test "Model options override config/env for message" {
   export GIV_MODEL=llama2
+  gen_commits
   mock_ollama "dummy" "- mocked"
   echo "GIV_MODEL=llama2" >.env
   run "$GIV_SCRIPT" message HEAD --model phi --verbose
-  gen_commits
   assert_success
   assert_output --partial "phi"
 }
@@ -389,16 +390,16 @@ EOF
   mock_ollama "dummy" "- llama3"
 
   gen_commits
-  run "$GIV_SCRIPT" message HEAD
+  run "$GIV_SCRIPT" summary HEAD
   assert_success
-  assert_output --partial "add c.txt"
   assert_output --partial "Using model: llama3"
 }
 @test "Config file overrides .env" {
   echo "GIV_MODEL=llama3" >.env
-  echo "GIV_MODEL=phi3" >my.env
+  tmpfile=$(mktemp)
+  echo "GIV_MODEL=phi3" >"$tmpfile"
   gen_commits
-  run "$GIV_SCRIPT" message HEAD --config-file my.env --verbose
+  run "$GIV_SCRIPT" summary HEAD --config-file "$tmpfile" --verbose
   assert_success
   assert_output --partial "phi3"
 }

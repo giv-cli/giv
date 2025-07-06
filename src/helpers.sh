@@ -337,11 +337,13 @@ build_history() {
 
     # diff
     diff_out=$(build_diff "$commit" "$diff_pattern" "$debug")
+    # shellcheck disable=SC2016
     printf '```diff\n%s\n```\n' "$diff_out" >>"$hist"
 
     # TODO diff
     td=$(extract_todo_changes "$commit" "$todo_pattern")
     [ -n "$debug" ] && printf 'Debug: TODO changes: %s\n' "$td" >&2
+    # shellcheck disable=SC2016
     [ -n "$td" ] && printf '\n### TODO Changes\n```diff\n%s\n```\n' "$td" >>"$hist"
 
     return 0
@@ -350,7 +352,7 @@ build_history() {
 summarize_target() {
     target="$1"
     summaries_file="$2"
-    [ -n "$debug" ] && echo "DEBUG: summaries_file='$summaries_file', target='$target'"
+    [ -n "$debug" ] && echo "DEBUG: summaries_file='$summaries_file', target='$target'" >&2
 
     # If no target is specified, summarize the current commit or staged changes
     if [ "$target" = "--current" ] || [ "$target" = "--cached" ] || [ -z "$target" ]; then
@@ -380,8 +382,8 @@ summarize_target() {
                 continue
             fi
             summarize_commit "${commit}" >>"${summaries_file}"
-            printf '\n\n' >>"${summaries_file}"
             [ -n "$debug" ] && printf 'DEBUG: Processed commit %s\n' "$commit" >&2
+            printf '\n\n' >>"$summaries_file"
         done
     fi
 }
@@ -393,7 +395,7 @@ summarize_commit() {
     [ -n "$debug" ] && printf "DEBUG: summarize_commit commit='%s', hist='%s', prompt file='%s'\n" "$commit" "$hist" "$pr" >&2
     build_history "$hist" "$commit" "$todo_pattern" "$PATHSPEC"
     summary_template=$(build_prompt "${PROMPT_DIR}/summary_prompt.md" "$hist")
-    [ -n "$debug" ] && printf 'DEBUG: Using summary prompt: %s\n' "$summary_template"
+    [ -n "$debug" ] &&  printf 'DEBUG: Using summary prompt: %s\n' "$summary_template" >&2
     printf '%s\n' "$summary_template" >"$pr"
     res=$(generate_response "$pr")
     rm -f "$hist" "$pr"

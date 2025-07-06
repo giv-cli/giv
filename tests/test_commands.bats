@@ -130,9 +130,11 @@ EOF
 # cmd_message
 #----------------------------------------
 @test "cmd_message with no id errors" {
+  echo "some working changes" >"$REPO/file.txt"
+  mock_ollama "dummy" "some working changes"
   run cmd_message ""
   assert_success
-  assert_output --partial "Error: No commit ID"
+  assert_output --partial "some working changes"
 }
 @test "cmd_message --current prints message" {
   echo "change" >"$REPO/file.txt"
@@ -156,10 +158,16 @@ EOF
 }
 
 @test "cmd_message range prints both messages" {
-
+  # ensure HEAD~2 exists
+  run git -C "$REPO" rev-parse HEAD~2
+  echo "first commit" >"$REPO/file.txt"
+  git add file.txt
+  git commit -m "first commit"
+  echo "second commit" >>"$REPO/file.txt"
+  git commit -am "second commit"  
   run cmd_message HEAD~2..HEAD
   assert_success
-  assert_output $'first commit\nsecond commit'
+  assert_output $'first commit\n\nsecond commit'
 }
 
 #----------------------------------------
