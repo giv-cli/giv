@@ -1,0 +1,9 @@
+.prompt
+git_history.md
+prompt.md
+.env
+history.md
+.test-logs
+tests/.logs
+bashdb-5.0-1.1.2
+test_helper

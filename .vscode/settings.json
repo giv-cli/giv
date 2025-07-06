@@ -1,0 +1,24 @@
+{
+    "cSpell.words": [
+        "giv",
+        "changesish"
+    ],
+    "[bats]": {
+
+    },
+    
+    "todo-tree.general.tags": [
+        "BUG",
+        "HACK",
+        "FIXME",
+        "TODO",
+        "XXX",
+        "[ ]",
+        "[x]",
+        "ENHANCEMENT",
+        "CHORE"
+    ],
+    "shellcheck.customArgs": [
+        "-x"
+    ]
+}
