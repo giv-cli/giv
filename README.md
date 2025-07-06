@@ -1,15 +1,25 @@
-**giv** (pronounced “give”) is a POSIX-pure CLI that turns raw Git history into polished commit messages, summaries, changelogs, release notes, and announcements.  It follows the \[Keep a Changelog] spec and Semantic Versioning rules, and it works equally well with local Ollama models or any OpenAI-compatible endpoint—no Python, Node, or Docker required. ([keepachangelog.com][1], [semver.org][2], [github.com][3], [platform.openai.com][4])
+**giv** (pronounced “give”) is a POSIX-pure CLI that turns raw Git history into polished commit messages, summaries, changelogs, release notes, and announcements.  It follows the \[Keep a Changelog] spec and Semantic Versioning rules, and it works equally well with local Ollama models or any OpenAI-compatible endpoint—no Python, Node, or Docker required. ([keepachangelog.com][1], [semver.org][2])
 
 ---
 
 ## Key Features
 
-* **Subcommand workflow** – `message`, `summary`, `changelog`, `release-notes`, `announcement`, plus `update` & `available-releases` helpers. ([git-scm.com][5])
-* **Flexible AI engine** – Offline with Ollama or remote via Chat-Completions API, switchable through `--model-mode`. ([github.com][6], [platform.openai.com][4])
+* **Subcommand workflow** – `message`, `summary`, `changelog`, `release-notes`, `announcement`, plus `update` & `available-releases` helpers.
+* **Flexible AI engine** – Offline with Ollama or remote via Chat-Completions API, switchable through `--model-mode`.
 * **Native Git targeting** – Accepts any revision specifier or range defined in *gitrevisions*, and any pathspec (including `:(exclude)` and `!*.md`). ([git-scm.com][7], [git-scm.com][5], [git-scm.com][8])
-* **Version & TODO intelligence** – Detects SemVer bumps and scans only the files you specify for TODOs using regex patterns. ([semver.org][2], [git-scm.com][9])
-* **Zero-dependency, cross-platform** – Runs in Bash, Zsh, Dash, or Ash on Linux, macOS, and Windows (WSL / Git Bash). ([platform.openai.com][10])
-* **One-line install & self-update** – Secure `curl | sh` installer; rerun `giv --update` anytime for the newest release. ([curl.se][11])
+* **Version & TODO intelligence** – Detects SemVer bumps and scans only the files you specify for TODOs using regex patterns. ([semver.org][2])
+* **Zero-dependency, cross-platform** – Runs in Bash, Zsh, Dash, or Ash on Linux, macOS, and Windows (WSL / Git Bash).
+* **One-line install & self-update** – Secure `curl | sh` installer; rerun `giv --update` anytime for the newest release.
+
+---
+
+## How it Works
+
+1. **Collect Git data** – revisions, diffs, and optional TODO context. ([git-scm.com][7], [git-scm.com][8])
+2. **Detect versions** – matches SemVer strings in files indicated by `--version-file` or via `--version-pattern`. ([semver.org][2])
+3. **Build prompt** – merges data with your `--prompt-file`, following Keep-a-Changelog guidelines. ([keepachangelog.com][1])
+4. **Call the model** – local Ollama or any OpenAI-style endpoint.
+5. **Write output** – inserts or updates according to `--output-mode`.
 
 ---
 
@@ -19,7 +29,7 @@
 curl -fsSL https://raw.githubusercontent.com/itlackey/giv/main/install.sh | sh
 ```
 
-The script downloads the latest binary, confirms before writing to `$PATH`, and prints a quick-start cheat-sheet. ([curl.se][11])
+The script downloads the latest binary links it in `$PATH`
 
 ---
 
@@ -131,21 +141,11 @@ giv release-notes v1.2.0..HEAD \
 
 ---
 
-## How it Works
-
-1. **Collect Git data** – revisions, diffs, and optional TODO context. ([git-scm.com][7], [git-scm.com][8])
-2. **Detect versions** – matches SemVer strings in files indicated by `--version-file` or via `--version-pattern`. ([semver.org][2])
-3. **Build prompt** – merges data with your `--prompt-file`, following Keep-a-Changelog guidelines. ([keepachangelog.com][1])
-4. **Call the model** – local Ollama or any OpenAI-style endpoint. ([github.com][6], [platform.openai.com][4])
-5. **Write output** – inserts or updates according to `--output-mode`.
-
----
-
 ## Requirements
 
 * Git ≥ 2.25 ([git-scm.com][5])
 * curl
-* POSIX-compliant shell (Bash, Zsh, Dash, Ash) ([platform.openai.com][10])
+* POSIX-compliant shell (Bash, Zsh, Dash, Ash)
 * *(Optional)* Ollama for offline LLMs ([github.com][6])
 
 ---
@@ -154,15 +154,11 @@ giv release-notes v1.2.0..HEAD \
 
 CC-BY. If **giv** helps you *give* better releases, please ⭐ the repo and spread the word!
 
-[1]: https://keepachangelog.com/en/1.1.0/?utm_source=chatgpt.com "Keep a Changelog"
-[2]: https://semver.org/?utm_source=chatgpt.com "Semantic Versioning 2.0.0 | Semantic Versioning"
-[3]: https://github.com/taketwo/llm-ollama?utm_source=chatgpt.com "LLM plugin providing access to models running on an Ollama server"
-[4]: https://platform.openai.com/?utm_source=chatgpt.com "OpenAI Platform"
-[5]: https://git-scm.com/docs/gitrevisions?utm_source=chatgpt.com "gitrevisions Documentation - Git"
-[6]: https://github.com/ollama/ollama?utm_source=chatgpt.com "ollama/ollama: Get up and running with Llama 3.3, DeepSeek-R1 ..."
-[7]: https://git-scm.com/book/en/v2/Git-Tools-Revision-Selection?utm_source=chatgpt.com "7.1 Git Tools - Revision Selection"
-[8]: https://git-scm.com/docs/gitglossary?utm_source=chatgpt.com "gitglossary Documentation - Git"
-[9]: https://git-scm.com/docs/gitignore?utm_source=chatgpt.com "gitignore Documentation - Git"
-[10]: https://platform.openai.com/docs/api-reference/chat?utm_source=chatgpt.com "com/docs/api-reference/chat - OpenAI Platform"
-[11]: https://curl.se/docs/httpscripting.html?utm_source=chatgpt.com "The Art Of Scripting HTTP Requests Using Curl"
-[12]: https://git-scm.com/docs/git-add/2.37.3?utm_source=chatgpt.com "git add - pathspec-from-file=<file>"
+[1]: https://keepachangelog.com/en/1.1.0/ "Keep a Changelog"
+[2]: https://semver.org/ "Semantic Versioning 2.0.0 | Semantic Versioning"
+[5]: https://git-scm.com/docs/gitrevisions "gitrevisions Documentation - Git"
+[6]: https://github.com/ollama/ollama "ollama"
+[7]: https://git-scm.com/book/en/v2/Git-Tools-Revision-Selection "7.1 Git Tools - Revision Selection"
+[8]: https://git-scm.com/docs/gitglossary "gitglossary Documentation - Git"
+[9]: https://git-scm.com/docs/gitignore "gitignore Documentation - Git"
+[12]: https://git-scm.com/docs/git-add/2.37.3 "git add - pathspec-from-file=<file>"
