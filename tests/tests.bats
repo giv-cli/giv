@@ -98,6 +98,7 @@ gen_commits() {
 @test "SCRIPT runs successfully with specified options" {
 
   export CONFIG_FILE="$BATS_TEST_DIRNAME/../.env"
+  export GIV_MODEL_MODE="remote"
   # Run the script with the specified options
   run "$GIV_SCRIPT" "message" --config-file "${CONFIG_FILE}" --verbose
 
@@ -108,18 +109,19 @@ gen_commits() {
   # Validate the parsed options
   assert_output --partial "Debug: true"
   assert_output --partial "Subcommand: message"
-  assert_output --partial "Target: --current"
+  assert_output --partial "Revision: --current"
   assert_output -e "Template Directory.*/prompts"
-  assert_output --partial "Config File: ../.env"
+  assert_output -e "Config File.*/\.env"
   assert_output --partial "Config Loaded: true"
-  assert_output --partial "TODO Pattern: *todo*"
+  assert_output --partial "TODO Files: *todo*"
   assert_output --partial "Model: qwen2.5-coder"
-  assert_output --partial "Model Provider: remote"
-  assert_output --partial "API Model: gpt-4o-mini"
-  assert_output --partial "API URL: https://i2db-chat-sandboxaizehuif2whye3c.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-04-01-preview"
-  assert_output --partial "Update Mode: auto"
-  assert_output --partial "Section Name: auto"
+  assert_output --partial "Model Mode: remote"
+  assert_output --partial "API Model: compound-beta"
+  assert_output --partial "API URL: https://api.groq.com/openai/v1/chat/completions"
+  assert_output --partial "Output Mode: auto"
+  assert_output --partial "Output Version: auto"
 }
+
 @test "Generate message for HEAD (default)" {
   echo "msg" >m.txt && git add m.txt && git commit -m "commit for message"
   run "$GIV_SCRIPT" message HEAD
@@ -219,13 +221,13 @@ gen_commits() {
   grep -q "z.md" CHANGELOG.md
 }
 
-@test "Changelog with update-mode and section-name" {
+@test "Changelog with output mode prepend and version" {
   echo "# Changelog" >CHANGELOG.md
   echo "## v1.0.0" >>CHANGELOG.md
   echo "- old" >>CHANGELOG.md
   echo "new" >n.txt && git add n.txt && git commit -m "new commit"
   mock_ollama "dummy" "- new change"
-  run "$GIV_SCRIPT" changelog HEAD --update-mode prepend --section-name "v1.0.0"
+  run "$GIV_SCRIPT" changelog HEAD --output-mode prepend --output-version "v1.0.0"
   assert_success
   grep -q "new change" CHANGELOG.md
   grep -q "v1.0.0" CHANGELOG.md

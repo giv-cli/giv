@@ -1,4 +1,4 @@
-**giv** (pronounced “give”) is a POSIX-pure CLI that turns raw Git history into polished commit messages, summaries, changelogs, release notes, and announcements.  It follows the \[Keep a Changelog] spec and Semantic Versioning rules, and it works equally well with local Ollama models or any OpenAI-compatible endpoint—no Python, Node, or Docker required. ([keepachangelog.com][1], [semver.org][2])
+**giv** (pronounced “give”) is a POSIX-pure CLI that turns raw Git history into polished commit messages, summaries, changelogs, release notes, and announcements.  It follows the [Keep a Changelog][1] spec and [Semantic Versioning][2] rules, and it works equally well with local Ollama models or any OpenAI-compatible endpoint—no Python, Node, or Docker required. 
 
 ---
 
@@ -6,7 +6,7 @@
 
 * **Subcommand workflow** – `message`, `summary`, `changelog`, `release-notes`, `announcement`, plus `update` & `available-releases` helpers.
 * **Flexible AI engine** – Offline with Ollama or remote via Chat-Completions API, switchable through `--model-mode`.
-* **Native Git targeting** – Accepts any revision specifier or range defined in *gitrevisions*, and any pathspec (including `:(exclude)` and `!*.md`). ([git-scm.com][7], [git-scm.com][5], [git-scm.com][8])
+* **Native Git targeting** – Accepts any revision specifier or range defined in *gitrevisions*, and any pathspec (including `:(exclude)` and `!*.md`). ([revision selection][7], [git revisions][5], [gitglossary][8])
 * **Version & TODO intelligence** – Detects SemVer bumps and scans only the files you specify for TODOs using regex patterns. ([semver.org][2])
 * **Zero-dependency, cross-platform** – Runs in Bash, Zsh, Dash, or Ash on Linux, macOS, and Windows (WSL / Git Bash).
 * **One-line install & self-update** – Secure `curl | sh` installer; rerun `giv --update` anytime for the newest release.
@@ -15,11 +15,29 @@
 
 ## How it Works
 
-1. **Collect Git data** – revisions, diffs, and optional TODO context. ([git-scm.com][7], [git-scm.com][8])
+1. **Collect Git data** – revisions, diffs, and optional TODO context. ([git revisions][7], [gitglossary][8])
 2. **Detect versions** – matches SemVer strings in files indicated by `--version-file` or via `--version-pattern`. ([semver.org][2])
 3. **Build prompt** – merges data with your `--prompt-file`, following Keep-a-Changelog guidelines. ([keepachangelog.com][1])
 4. **Call the model** – local Ollama or any OpenAI-style endpoint.
 5. **Write output** – inserts or updates according to `--output-mode`.
+
+---
+
+## Examples
+
+```bash
+# Commit message for working tree
+giv message
+
+# Create/update a changelog, scanning TODOs in *.ts files only
+giv changelog --todo-files '*.ts' --todo-pattern 'TODO\\(\\w+\\):'
+
+# Create release notes for changes from v1.2.0 to HEAD with a remote endpoint
+giv release-notes v1.2.0..HEAD \
+    --model-mode remote \
+    --api-model some-new-model \
+    --api-url https://api.example.com/v1/chat/completions
+```
 
 ---
 
@@ -41,8 +59,8 @@ giv <subcommand> [revision] [pathspec] [OPTIONS]
 
 | Element        | Meaning                                                                                                                                                                  |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **`revision`** | Any Git *revision* or *revision-range* (`HEAD`, `v1.2.3`, `abc123`, `HEAD~2..HEAD`, `origin/main...HEAD`, `--cached`, `--current`). ([git-scm.com][7], [git-scm.com][5]) |
-| **`pathspec`** | Standard Git *pathspec* to narrow scope—supports magic prefixes, negation (`!` or `:(exclude)`), and case-insensitive `:(icase)`. ([git-scm.com][8], [git-scm.com][12])  |
+| **`revision`** | Any Git *revision* or *revision-range* (`HEAD`, `v1.2.3`, `abc123`, `HEAD~2..HEAD`, `origin/main...HEAD`, `--cached`, `--current`). ([revision selection][7], [git revisions][5]) |
+| **`pathspec`** | Standard Git *pathspec* to narrow scope—supports magic prefixes, negation (`!` or `:(exclude)`), and case-insensitive `:(icase)`. ([git pathspec][12], [gitglossary][8])  |
 
 ---
 
@@ -123,27 +141,10 @@ giv <subcommand> [revision] [pathspec] [OPTIONS]
 
 ---
 
-## Examples
-
-```bash
-# Commit message for last 3 commits affecting only src/
-giv message HEAD~3..HEAD src/
-
-# Summary plus changelog, scanning TODOs in *.ts files only
-giv changelog --todo-files '*.ts' --todo-pattern 'TODO\\(\\w+\\):'
-
-# Release notes from v1.2.0 to HEAD with a remote endpoint
-giv release-notes v1.2.0..HEAD \
-    --model-mode remote \
-    --api-model gpt-4o \
-    --api-url https://api.example.com/v1/chat/completions
-```
-
----
 
 ## Requirements
 
-* Git ≥ 2.25 ([git-scm.com][5])
+* Git ≥ 2.25 ([git-scm.com][3])
 * curl
 * POSIX-compliant shell (Bash, Zsh, Dash, Ash)
 * *(Optional)* Ollama for offline LLMs ([github.com][6])
@@ -156,6 +157,7 @@ CC-BY. If **giv** helps you *give* better releases, please ⭐ the repo and spre
 
 [1]: https://keepachangelog.com/en/1.1.0/ "Keep a Changelog"
 [2]: https://semver.org/ "Semantic Versioning 2.0.0 | Semantic Versioning"
+[3]: https://git-scm.com/downloads "Git Downloads"
 [5]: https://git-scm.com/docs/gitrevisions "gitrevisions Documentation - Git"
 [6]: https://github.com/ollama/ollama "ollama"
 [7]: https://git-scm.com/book/en/v2/Git-Tools-Revision-Selection "7.1 Git Tools - Revision Selection"

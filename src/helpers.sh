@@ -20,7 +20,11 @@ build_prompt() {
     diff_file="$2"
 
     # Concatenate the prompt template and diff file content
-    result="$(cat "${prompt_file}"; echo; cat "${diff_file}")"
+    result="$(
+        cat "${prompt_file}"
+        echo
+        cat "${diff_file}"
+    )"
     printf "%s\n" "${result}"
 }
 
@@ -350,18 +354,26 @@ summarize_target() {
 
     # If no target is specified, summarize the current commit or staged changes
     if [ "$target" = "--current" ] || [ "$target" = "--cached" ] || [ -z "$target" ]; then
-         [ -n "$debug" ] && printf 'Processing target: %s\n' "$target" >&2
+        [ -n "$debug" ] && printf 'Processing target: %s\n' "$target" >&2
         summarize_commit "$target" >>"$summaries_file"
         printf '\n\n' >>"$summaries_file"
     # Single commit
     elif ! echo "$target" | grep -q "\.\." && git rev-parse --verify "$target" >/dev/null 2>&1; then
-        [ -n "$debug" ] &&  printf 'Summarizing commit: %s\n' "$target" >&2
+        [ -n "$debug" ] && printf 'Summarizing commit: %s\n' "$target" >&2
         summarize_commit "$target" >>"$summaries_file"
         printf '\n\n' >>"$summaries_file"
+    # Handle commit rangs with a single commit
+    elif [ "$(git rev-list --count "$target")" -eq 1 ]; then
+        commit=$(git rev-list --reverse "$target" | head -n1)
+        [ -n "$debug" ] && printf 'Summarizing single commit: %s\n' "$commit" >&2
+        summarize_commit "$commit" >>"$summaries_file"
+        [ -n "$debug" ] && printf 'Summaried single commit: %s in %s\n' "$commit" "$summaries_file" >&2
+        printf '\n\n' >>"$summaries_file"
+
     else
-        # Handle commit ranges
+        # Handle commit ranges        
         git rev-list --reverse "$target" | while IFS= read -r commit; do
-           [ -n "$debug" ] &&  printf 'Processing commit: %s\n' "$commit" >&2
+            [ -n "$debug" ] && printf 'Processing commit: %s\n' "$commit" >&2
             # Verify the commit is valid
             if ! git rev-parse --verify "$commit" >/dev/null 2>&1; then
                 printf 'Error: Invalid commit ID or range: %s\n' "$commit" >&2

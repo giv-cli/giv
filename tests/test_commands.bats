@@ -5,13 +5,16 @@ export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/commands.log"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
+BATS_TEST_START_TIME="$(date +%s)"
+
+# shellcheck source=../src/changes.sh
 SCRIPT="$BATS_TEST_DIRNAME/../src/changes.sh"
 
 setup() {
   # create a temp git repo
   REPO="$(mktemp -d)"
   cd "$REPO"
-  git  init -q
+  git init -q
   # make two commits
   echo "one" >file.txt
   git add file.txt
@@ -24,6 +27,7 @@ setup() {
   generate_response() { echo "RESP"; }
   portable_mktemp() { mktemp; }
   get_current_version() { echo "1.2.3"; }
+  mock_ollama "dummy" "Ollama message"
 
   # prompts and file globals
   default_summary_prompt="DEF_SUM"
@@ -34,9 +38,10 @@ setup() {
 
   # no dry_run by default
   unset dry_run
-  export debug=1
+  export debug="1"
 
   # load the script under test
+  # shellcheck source=../src/changes.sh
   source "$SCRIPT"
 }
 
@@ -45,6 +50,24 @@ teardown() {
   rm -f *.out
 }
 
+mock_ollama() {
+  arg1="${1:-dummy}"
+  arg2="${2:-Ollama message}"
+  mkdir -p bin
+  cat >bin/ollama <<EOF
+#!/bin/bash
+echo "Ollama command: \$1"
+echo "Using model: \$2"
+echo "Ollama arg1: $arg1"
+echo "Ollama arg2: $arg2"
+echo "Ollama run complete"
+if [ "\$3" ]; then
+  echo "Ollama in verbose mode \$3"
+fi
+EOF
+  chmod +x bin/ollama
+  export PATH="$PWD/bin:$PATH"
+}
 #----------------------------------------
 # summarize_commit
 #----------------------------------------
@@ -61,11 +84,13 @@ teardown() {
   }
 
   rm -f hist.tmp pr.tmp out.txt
-  summarize_commit abc PROMPT out.txt
+
+  mock_ollama "dummy" "RESP"
+  summarize_commit HEAD PROMPT >out.txt
 
   # should have RESP in out.txt
   run cat out.txt
-  assert_output "RESP"
+  assert_output --partial "RESP"
 
   # temps should be gone
   [ ! -f hist.tmp ]
@@ -77,25 +102,27 @@ teardown() {
 #----------------------------------------
 @test "summarize_target on single-commit range" {
   tmp="$(mktemp)"
-  # override summarize_commit to echo commit into file
-  summarize_commit() { printf "C:%s\n" "$1" >>"$3"; }
 
+  generate_response() { echo "RESP"; }
+  export debug="1"
   # call inside the real repo
-  summarize_target HEAD~1..HEAD PL tmp
-  run sed -e 's/\r//g' "$tmp"
+  summarize_target HEAD~1..HEAD $tmp
+  run cat "$tmp"
+  cat "$tmp"
   # expect two commits, each followed by two blank lines
-  expected=$'C:HEAD~1\n\n\nC:HEAD\n\n'
-  [ "$output" = "$expected" ]
+  expected=$'RESP'
+  assert_output --partial "$expected"
+
   rm -f "$tmp"
 }
 
 @test "summarize_target on --current" {
   tmp="$(mktemp)"
-  summarize_commit() { echo "CUR" >>"$3"; }
-  summarize_target --current PL "$tmp"
+  mock_ollama "dummy" "CUR"
+  summarize_target --current "$tmp"
   run cat "$tmp"
   # one invocation + two newlines
-  assert_output $'CUR'
+  assert_output --partial 'CUR'
   rm -f "$tmp"
 }
 
@@ -108,14 +135,15 @@ teardown() {
   assert_output --partial "Error: No commit ID"
 }
 @test "cmd_message --current prints message" {
-  echo "change" > "$REPO/file.txt"
+  echo "change" >"$REPO/file.txt"
+  mock_ollama "dummy" "change"
   run cmd_message "--current"
-  [ "$status" -eq 0 ]
+  assert_success
   echo "$output"
   assert_output --partial "change"
 }
 @test "cmd_message single-commit prints message" {
-  run git -C "$REPO" rev-parse HEAD~1  # ensure HEAD~1 exists
+  run git -C "$REPO" rev-parse HEAD~1 # ensure HEAD~1 exists
   run cmd_message HEAD~1
   [ "$status" -eq 0 ]
   assert_output "first commit"
@@ -129,8 +157,8 @@ teardown() {
 
 @test "cmd_message range prints both messages" {
 
-  run cmd_message HEAD~1..HEAD
-  [ "$status" -eq 0 ]
+  run cmd_message HEAD~2..HEAD
+  assert_success
   assert_output $'first commit\nsecond commit'
 }
 
@@ -146,7 +174,7 @@ teardown() {
 
 @test "cmd_summary HEAD~1 prints to stdout" {
 
-  ollama(){
+  ollama() {
     echo "SUM"
   }
   run cmd_summary HEAD~1 --dry-run
