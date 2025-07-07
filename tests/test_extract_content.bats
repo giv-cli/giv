@@ -30,39 +30,39 @@ setup() {
 @test "extracts content containing escaped quotes" {
     json='{"message":{"content":"He said: \"Hi there\""}}'
     run extract_content "$json"
-    [ "$status" -eq 0 ]
-    [ "$output" = 'He said: "Hi there"' ]
+    assert_success
+    assert_output 'He said: "Hi there"'
 }
 
 @test "extracts content with backslashes" {
-    json='{"message":{"content":"Path C:\\\\Windows\\\\System32"}}'
+    json='{"message":{"content":"Path C:\\Windows\\System32"}}'
     run extract_content "$json"
-    [ "$status" -eq 0 ]
-    [ "$output" = 'Path C:\Windows\System32' ]
+    assert_success
+    assert_output 'Path C:\Windows\System32'
 }
 
 @test "returns empty string when content key is missing" {
     json='{"foo":"bar"}'
     run extract_content "$json"
-    [ "$status" -eq 0 ]
+    assert_success
     [ -z "$output" ]
 }
 
 @test "extracts content when other keys present" {
     json='{"choices":[{"foo":123,"message":{"content":"# Announcement\nUpdate complete."},"other":true}]}'
     run extract_content "$json"
-    [ "$status" -eq 0 ]
+    assert_success
     expected=$'# Announcement\nUpdate complete.'
-    [ "$output" = "$expected" ]
+    assert_output "$expected"
 }
 
 @test "extracts content from example_response.json file" {
     json=$(cat "$BATS_TEST_DIRNAME/assets/example_response.json")
     tmp_output=$(mktemp)
-    response=$(extract_content "${json}")
-    $response > "$tmp_output"  
+    response="$(extract_content "${json}")"
+    echo $response >"$tmp_output"
     output=$(cat "$tmp_output")
-    [ -n "$output" ]    
+    [ -n "$output" ]
     assert_output --partial '### Announcement: Version 0.2.0'
     assert_output --partial 'We are pleased to announce the release of **Version 0.2.0** of our project.'
 }

@@ -1,7 +1,7 @@
 #!/bin/sh
 # giv - A POSIX-compliant script to generate commit messages, summaries,
 # changelogs, release notes, and announcements from Git history using AI
-__VERSION="0.2.0"
+__VERSION="0.3.0-beta"
 
 set -eu
 IFS='
@@ -39,6 +39,7 @@ fi
 
 SCRIPT_DIR="$(get_script_dir "$_SCRIPT_PATH")"
 PROMPT_DIR="${SCRIPT_DIR}/../prompts"
+GIV_TMPDIR=""
 
 # shellcheck source=helpers.sh
 . "${SCRIPT_DIR}/helpers.sh"
@@ -327,8 +328,14 @@ parse_args() {
     fi
 
     [ "${model_mode}" = "none" ] && printf 'Warning: Model provider set to "none", no model will be used.\n' >&2
-
+    portable_mktemp_dir
     if [ -n "$debug" ]; then
+        printf 'Environment variables:\n'
+        printf '  GIV_TMPDIR: %s\n' "${GIV_TMPDIR:-}"
+        printf '  GIV_MODEL_MODE: %s\n' "${GIV_MODEL_MODE:-}"
+        printf '  GIV_MODEL: %s\n' "${GIV_MODEL:-}"
+        printf '  GIV_API_MODEL: %s\n' "${GIV_API_MODEL:-}"
+        printf '  GIV_API_URL: %s\n' "${GIV_API_URL:-}"
         echo "Parsed options:"
         echo "  Debug: $debug"
         echo "  Dry Run: $dry_run"
@@ -455,15 +462,16 @@ cmd_message() {
     # Handle both --current and --cached, as argument parsing may set either value.
     # This duplication ensures correct behavior regardless of which is set.
     if [ "$commit_id" = "--current" ] || [ "$commit_id" = "--cached" ]; then
-        hist=$(portable_mktemp)
+        hist=$(portable_mktemp "commit_history_XXXXXX.md")
         build_history "$hist" "$commit_id" "$todo_pattern" "$PATHSPEC"
         [ -n "$debug" ] && printf 'Debug: Generated history file %s\n' "$hist"
-        pr=$(portable_mktemp)
+        pr=$(portable_mktemp "commit_message_prompt_XXXXXX.md")
+        res_msg=$(portable_mktemp "commit_message_response_XXXXXX.md")
         printf '%s' "$(build_prompt "${PROMPT_DIR}/commit_message_prompt.md" "$hist")" >"$pr"
         [ -n "$debug" ] && printf 'Debug: Generated prompt file %s\n' "$pr"
-        res=$(generate_response "$pr")
-        rm -f "$hist" "$pr"
+        res=$(generate_response "$pr" "{$model_mode}")
         printf '%s\n' "$res"
+        printf '%s' "$res" >"$res_msg"        
         return
     fi
 
@@ -488,8 +496,9 @@ cmd_message() {
 }
 
 cmd_summary() {
-    summaries_file=$(portable_mktemp)
-    summarize_target "${REVISION}" "${summaries_file}"
+    summaries_file=$(portable_mktemp "summary_summaries_XXXXXX.md")
+    
+    summarize_target "${REVISION}" "${summaries_file}" "${model_mode}"
     if [ -n "${output_file}" ]; then
         if [ "${dry_run}" != "true" ]; then
             cp "${summaries_file}" "${output_file}"
@@ -500,39 +509,40 @@ cmd_summary() {
     else
         cat "${summaries_file}"
     fi
-    rm -f "${summaries_file}"
 }
 
 cmd_release_notes() {
-    summaries_file=$(portable_mktemp)
-    summarize_target "${REVISION}" "${summaries_file}"
+    summaries_file=$(portable_mktemp "release_notes_summaries_XXXXXX.md")
+    summarize_target "${REVISION}" "${summaries_file}" "${model_mode}"
     printf 'Error: No summaries generated for release notes.\n' >&2
 
     prompt_file_name="${PROMPT_DIR}/release_notes_prompt.md"
-    tmp_prompt_file=$(portable_mktemp)
+    tmp_prompt_file=$(portable_mktemp "release_notes_prompt_XXXXXX.md")
     build_prompt "${prompt_file_name}" "${summaries_file}" >"${tmp_prompt_file}"
     printf 'Debug: Generated prompt file %s\n' "${tmp_prompt_file}"
-    generate_from_prompt "${tmp_prompt_file}" "${output_file:-${release_notes_file}}"
-    rm -f "${summaries_file}"
-    rm -f "${tmp_prompt_file}"
+
+    generate_from_prompt "${tmp_prompt_file}" \
+        "${output_file:-${release_notes_file}}" "${model_mode}"
 }
 
 cmd_announcement() {
-    summaries_file=$(portable_mktemp)
-    summarize_target "${REVISION}" "${summaries_file}"
+    summaries_file=$(portable_mktemp "announcement_summaries_XXXXXX.md")
+    summarize_target "${REVISION}" "${summaries_file}" "${model_mode}"
     cat "${summaries_file}"
     prompt_file_name="${PROMPT_DIR}/announcement_prompt.md"
-    tmp_prompt_file=$(portable_mktemp)
+    tmp_prompt_file=$(portable_mktemp "announcement_prompt_XXXXXX.md")
     build_prompt "${prompt_file_name}" "${summaries_file}" >"${tmp_prompt_file}"
-    generate_from_prompt "${tmp_prompt_file}" "${output_file:-${announce_file}}"
-    rm -f "${summaries_file}"
-    rm -f "${tmp_prompt_file}"
+
+    generate_from_prompt "${tmp_prompt_file}" \
+        "${output_file:-${announce_file}}" "${model_mode}"
 }
 
 cmd_changelog() {
     # prompt="Write a changelog for version $version based on these summaries:"
-    summaries_file=$(portable_mktemp)
-    summarize_target "$REVISION" "${summaries_file}"
+    output_file="${output_file:-${changelog_file}}"
+    [ -n "${debug}" ] && printf 'Debug: Using file: %s\n' "${output_file}"
+    summaries_file=$(portable_mktemp "changelog_summaries_XXXXXX")
+    summarize_target "$REVISION" "${summaries_file}" "${model_mode}"
 
     #if summaries_file is empty, exit early
     if [ ! -s "${summaries_file}" ]; then
@@ -541,23 +551,47 @@ cmd_changelog() {
     fi
 
     prompt_file_name="${PROMPT_DIR}/changelog_prompt.md"
-    tmp_prompt_file=$(portable_mktemp)
+    tmp_prompt_file=$(portable_mktemp "changelog_prompt_XXXXXX.md")
+    [ -n "${debug}" ] && printf 'Debug: Using prompt file: %s\n' "${prompt_file_name}" >&2
     build_prompt "${prompt_file_name}" "${summaries_file}" >"${tmp_prompt_file}"
 
-    # TODO: add support for --update-mode
-    generate_from_prompt "${tmp_prompt_file}" "${output_file:-${changelog_file}}"
-    rm -f "${summaries_file}"
-    rm -f "${tmp_prompt_file}"
+    tmp_response=$(portable_mktemp "changelog_response_XXXXXX.md")
+    # printf 'Debug: Created temporary response file: %s\n' "${tmp_response}" >&2
+    generate_from_prompt "${tmp_prompt_file}" "${tmp_response}" "${model_mode}"
+
+    [ -n "${debug}" ] && printf 'Debug: Generated changelog response file: %s\n' "${tmp_response}"
+
+    temp_out_file=$(portable_mktemp "changelog_temp_out_XXXXXX.md")
+    cat "${output_file}" >"${temp_out_file}"
+    [ -n "${debug}" ] && printf 'Debug: Generated temporary working file: %s => %s\n' "${output_file}" "${temp_out_file}"
+
+    [ -n "${debug}" ] && printf 'Debug: Using changelog file %s\n' "${output_file}" >&2
+    update_changelog "${temp_out_file}" "${tmp_response}" "${output_version}" "${output_mode}"
+
+    if [ -n "${dry_run}" ]; then
+        #[ -n "${debug}" ] &&
+        printf 'Debug: Generated changelog content\n\n'
+        cat "$temp_out_file"
+    else
+        if cat "$temp_out_file" >"$output_file"; then
+            printf 'Changelog written to %s\n' "$output_file"
+        else
+            printf 'Error: failed to write %s\n' "$output_file" >&2
+            return 1 # or exit 1
+        fi
+    fi
+
+    printf 'Changelog generated successfully.\n'
 }
 
 if [ "${_is_sourced}" -eq 0 ]; then
     parse_args "$@"
 
-    # Verify the PWD is a valid git repository
-    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        printf 'Error: Current directory is not a valid git repository.\n'
-        exit 1
-    fi
+    # # Verify the PWD is a valid git repository
+    # if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    #     printf 'Error: Current directory is not a valid git repository.\n'
+    #     exit 1
+    # fi
     # # Enable debug mode if requested
     # if [ -n "${debug}" ]; then
     #     set -x
@@ -582,4 +616,9 @@ if [ "${_is_sourced}" -eq 0 ]; then
         ;;
     *) cmd_message "${REVISION}" ;;
     esac
+
+    if [ -z "${GIV_TMPDIR_SAVE}" ]; then
+        # Clean up temporary directory if it was created
+        remove_tmp_dir
+    fi
 fi

@@ -230,6 +230,7 @@ gen_commits() {
   mock_ollama "dummy" "- new change"
   run "$GIV_SCRIPT" changelog HEAD --output-mode prepend --output-version "v1.0.0"
   assert_success
+  cat CHANGELOG.md
   grep -q "new change" CHANGELOG.md
   grep -q "v1.0.0" CHANGELOG.md
 }

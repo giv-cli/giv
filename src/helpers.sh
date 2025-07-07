@@ -6,12 +6,47 @@ is_valid_pattern() {
     git ls-files --error-unmatch "$1" >/dev/null 2>&1
 }
 
+remove_tmp_dir() {
+    # Remove the temporary directory if it exists
+    if [ -n "$GIV_TMPDIR" ] && [ -d "$GIV_TMPDIR" ]; then
+        rm -rf "$GIV_TMPDIR"
+        printf 'Debug: Removed temporary directory %s\n' "$GIV_TMPDIR" >&2
+    else
+        printf 'Debug: No temporary directory to remove.\n' >&2
+    fi
+    GIV_TMPDIR="" # Clear the variable
+}
+
+# Portable mktemp: fallback if mktemp not available
+portable_mktemp_dir() {
+    # if GIV_TMPDIR is already set make sure it exists make it if it does not then exit
+    if [ -n "$GIV_TMPDIR" ]; then
+        if [ ! -d "$GIV_TMPDIR" ]; then
+            printf 'Warning: GIV_TMPDIR %s does not exist, creating it.\n' "$GIV_TMPDIR" >&2
+            mkdir -p "$GIV_TMPDIR"
+        fi
+        return
+    fi
+    base_path="${TMPDIR:-/tmp}/giv/"
+    mkdir -p "${base_path}"
+    if command -v mktemp >/dev/null 2>&1; then
+        GIV_TMPDIR=$(mktemp -d -p "${base_path}")
+    else
+        GIV_TMPDIR="${base_path}/giv.$$.$(date +%s)"
+        mkdir -p "${GIV_TMPDIR}"
+    fi
+    # export GIV_TMPDIR
+    #[ -n "${debug}" ] &&
+    #printf 'Debug: Created temporary directory %s\n' "${GIV_TMPDIR}" >&2
+}
+
 # Portable mktemp: fallback if mktemp not available
 portable_mktemp() {
+    [ -n "$GIV_TMPDIR" ] && portable_mktemp_dir
     if command -v mktemp >/dev/null 2>&1; then
-        mktemp
+        mktemp -p "${GIV_TMPDIR}" "$1"
     else
-        echo "/tmp/giv.$$.$(date +%s)"
+        echo "${GIV_TMPDIR}/giv.$$.$(date +%s)"
     fi
 }
 
@@ -21,9 +56,10 @@ build_prompt() {
 
     # Concatenate the prompt template and diff file content
     result="$(
+        cat "${diff_file}"
+        echo
         cat "${prompt_file}"
         echo
-        cat "${diff_file}"
     )"
     printf "%s\n" "${result}"
 }
@@ -56,47 +92,71 @@ extract_content() {
     # Usage: extract_content "$json_string"
     json=$1
 
-    # 1) pull out the raw, escaped value of "content":
+    # 1) Extract all lines from the "content" property (handles multi-line content)
     raw=$(printf '%s' "$json" | awk '
-  {
-    text = $0
-    # find the start of "content"
-    idx = index(text, "\"content\"")
-    if (idx == 0) exit
-
-    # jump to after "content"
-    after = substr(text, idx + length("\"content\""))
-    # find the colon
-    colon = index(after, ":")
-    if (colon == 0) exit
-    after = substr(after, colon + 1)
-    # strip leading whitespace
-    sub(/^[[:space:]]*/, "", after)
-
-    # must start with a double-quote
-    if (substr(after,1,1) != "\"") exit
-    s = substr(after,2)    # drop that opening "
-
-    val = ""
-    esc = 0
-    # accumulate until an unescaped quote
-    for (i = 1; i <= length(s); i++) {
-      c = substr(s,i,1)
-      if (c == "\\" && esc == 0) {
-        esc = 1
-        val = val c
-      } else if (c == "\"" && esc == 0) {
-        break
-      } else {
-        esc = 0
-        val = val c
-      }
+    BEGIN { in_content=0; esc=""; val="" }
+    {
+        line = $0
+        if (!in_content) {
+            # Look for "content":
+            m = match(line, /"content"[[:space:]]*:[[:space:]]*"/)
+            if (m) {
+                in_content=1
+                # Start after the opening quote
+                start = RSTART + RLENGTH
+                val = substr(line, start)
+                # Check if closing quote is on this line
+                i = 1; esc=0; out=""
+                while (i <= length(val)) {
+                    c = substr(val,i,1)
+                    if (c == "\\" && esc == 0) {
+                        esc = 1
+                        out = out c
+                    } else if (c == "\"" && esc == 0) {
+                        print out
+                        exit
+                    } else {
+                        esc = 0
+                        out = out c
+                    }
+                    i++
+                }
+                print out
+            }
+        } else {
+            # Already inside content, keep accumulating
+            i = 1; esc=0; out=""
+            while (i <= length(line)) {
+                c = substr(line,i,1)
+                if (c == "\\" && esc == 0) {
+                    esc = 1
+                    out = out c
+                } else if (c == "\"" && esc == 0) {
+                    print out
+                    exit
+                } else {
+                    esc = 0
+                    out = out c
+                }
+                i++
+            }
+            print out
+        }
     }
-    print val
-  }')
+    ')
 
     # 2) interpret backslash-escapes (\n, \", \\) into real characters:
-    printf '%b' "$raw"
+    printf '%s' "$raw" | awk '
+    {
+        gsub(/\\\\/, "\\", $0)
+        gsub(/\\"/, "\"", $0)
+        gsub(/\\n/, "\n", $0)
+        gsub(/\\r/, "\r", $0)
+        gsub(/\\t/, "\t", $0)
+        gsub(/\\b/, "\b", $0)
+        gsub(/\\f/, "\f", $0)
+        print
+    }'
 }
 
 generate_remote() {
@@ -134,23 +194,59 @@ run_local() {
     fi
 }
 
+# The `generate_response` function generates a response based on the specified mode.
+#
+# Parameters:
+#   $1 - Path to the input file.
+#   $2 (optional) - Mode for generating the response. Possible values are 'remote', 'none', or any other value for local generation.
+#
+# Description:
+#   The function determines the mode of operation based on the second argument ($2), falling back to the `model_mode` environment variable, and finally defaulting to 'auto'.
+#   If debugging is enabled (via the `debug` environment variable), it prints a debug message indicating the chosen mode.
+#
+#   Depending on the mode:
+#     - 'remote': Calls the `generate_remote` function with the input file path as an argument.
+#     - 'none': Outputs the content of the input file directly using `cat`.
+#     - Any other value: Calls the `run_local` function with the input file path as an argument.
 generate_response() {
-    [ -n "${debug}" ] && printf 'Debug: Generating response using %s model...\n' "${model_mode}" >&2
-    case ${model_mode} in
+    gen_mode="${2:-$model_mode:-auto}"
+    [ -n "${debug}" ] && printf 'Debug: Generating response using %s mode\n' "${gen_mode}" >&2
+    case ${gen_mode} in
     remote) generate_remote "$1" ;;
     none) cat "$1" ;;
     *) run_local "$1" ;;
     esac
 }
 
+# Function to generate a response from a prompt file.
+#
+# Parameters:
+#   $1 - The path to the prompt file.
+#   $2 - (Optional) The path to the output file where the response will be written. If not provided, the response is printed to stdout.
+#   $3 - (Optional) The generation mode. Defaults to the value of GIV_MODEL_MODE or model_mode if set, otherwise defaults to 'auto'.
+#
+# Environment Variables:
+#   debug - If set, enables debug output.
+#   dry_run - If set, prevents writing the response to an output file.
+#
+# Example Usage:
+#   generate_from_prompt "path/to/prompt.txt" "path/to/output.txt" "remote"
 generate_from_prompt() {
     prompt_file="$1"
-    output_file="$2"
+    response_output_file="$2"
+    gen_mode="${3:-${GIV_MODEL_MODE:-$model_mode:-'auto'}}"
     [ -n "${debug}" ] && printf 'Generating response from prompt file %s...\n' "${prompt_file}"
-    res=$(generate_response "${prompt_file}")
-    if [ -n "${output_file}" ] && [ "${dry_run}" != "true" ]; then
-        printf '%s' "${res}" >"${output_file}"
-        printf 'Response written to %s\n' "${output_file}"
+    res=$(generate_response "${prompt_file}" "${gen_mode}")
+    #printf 'Debug: Generated response from prompt:\n%s\n' "${res}" >&2
+    if [ -f "${response_output_file}" ] && [ -z "${dry_run}" ]; then
+        #printf 'Writing to %s\n' "${response_output_file}" >&2
+        if echo "${res}" >"${response_output_file}"; then
+            [ -n "${debug}" ] && printf 'Response written to %s\n' "${response_output_file}" >&2
+            return 0
+        else
+            printf 'Error: Failed to write response to %s\n' "${response_output_file}" >&2
+            exit 1
+        fi
     else
         printf '%s\n' "${res}"
     fi
@@ -352,28 +448,30 @@ build_history() {
 summarize_target() {
     target="$1"
     summaries_file="$2"
+    gen_mode="${3:-$model_mode}"
     [ -n "$debug" ] && echo "DEBUG: summaries_file='$summaries_file', target='$target'" >&2
 
     # If no target is specified, summarize the current commit or staged changes
     if [ "$target" = "--current" ] || [ "$target" = "--cached" ] || [ -z "$target" ]; then
         [ -n "$debug" ] && printf 'Processing target: %s\n' "$target" >&2
-        summarize_commit "$target" >>"$summaries_file"
+        summarize_commit "$target" "${gen_mode}" >>"$summaries_file"
+
         printf '\n\n' >>"$summaries_file"
     # Single commit
     elif ! echo "$target" | grep -q "\.\." && git rev-parse --verify "$target" >/dev/null 2>&1; then
         [ -n "$debug" ] && printf 'Summarizing commit: %s\n' "$target" >&2
-        summarize_commit "$target" >>"$summaries_file"
+        summarize_commit "$target" "${gen_mode}" >>"$summaries_file"
         printf '\n\n' >>"$summaries_file"
     # Handle commit rangs with a single commit
     elif [ "$(git rev-list --count "$target")" -eq 1 ]; then
         commit=$(git rev-list --reverse "$target" | head -n1)
         [ -n "$debug" ] && printf 'Summarizing single commit: %s\n' "$commit" >&2
-        summarize_commit "$commit" >>"$summaries_file"
+        summarize_commit "$commit" "${gen_mode}" >>"$summaries_file"
         [ -n "$debug" ] && printf 'Summaried single commit: %s in %s\n' "$commit" "$summaries_file" >&2
         printf '\n\n' >>"$summaries_file"
 
     else
-        # Handle commit ranges        
+        # Handle commit ranges
         git rev-list --reverse "$target" | while IFS= read -r commit; do
             [ -n "$debug" ] && printf 'Processing commit: %s\n' "$commit" >&2
             # Verify the commit is valid
@@ -381,7 +479,7 @@ summarize_target() {
                 printf 'Error: Invalid commit ID or range: %s\n' "$commit" >&2
                 continue
             fi
-            summarize_commit "${commit}" >>"${summaries_file}"
+            summarize_commit "${commit}" "${gen_mode}" >>"${summaries_file}"
             [ -n "$debug" ] && printf 'DEBUG: Processed commit %s\n' "$commit" >&2
             printf '\n\n' >>"$summaries_file"
         done
@@ -390,39 +488,45 @@ summarize_target() {
 
 summarize_commit() {
     commit="$1"
-    hist=$(portable_mktemp)
-    pr=$(portable_mktemp)
+    gen_mode="${2:-$model_mode}"
+    hist=$(portable_mktemp "hist.${commit}.XXXXXX.md")
+    pr=$(portable_mktemp "prompt.${commit}.XXXXXX.md")
+    res_file=$(portable_mktemp "summary.${commit}.XXXXXX.md")
     [ -n "$debug" ] && printf "DEBUG: summarize_commit commit='%s', hist='%s', prompt file='%s'\n" "$commit" "$hist" "$pr" >&2
     build_history "$hist" "$commit" "$todo_pattern" "$PATHSPEC"
     summary_template=$(build_prompt "${PROMPT_DIR}/summary_prompt.md" "$hist")
-    [ -n "$debug" ] &&  printf 'DEBUG: Using summary prompt: %s\n' "$summary_template" >&2
+    [ -n "$debug" ] && printf 'DEBUG: Using summary prompt: %s\n' "$summary_template" >&2
     printf '%s\n' "$summary_template" >"$pr"
-    res=$(generate_response "$pr")
-    rm -f "$hist" "$pr"
+    res=$(generate_response "$pr" "${gen_mode}")
+    echo "${res}" >"$res_file"
+    
     printf '%s\n' "$res"
 }
 
-# Helper: ensure blank line before/after header, but not multiple blank lines
+# Ensures that there are blank lines where required in the script or input.
+# This function can be used to enforce formatting standards by adding or checking for blank lines.
+# Usage:
+#   ensure_blank_lines [arguments]
+# Arguments:
+#   [arguments] - Optional parameters to customize the behavior (if any).
+# Returns:
+#   None. Modifies input or outputs formatted result as needed.
 ensure_blank_lines() {
-    output=$(awk '
-        function is_header(line) { return line ~ /^## / || line ~ /^# / }
-        {
-            if (is_header($0)) {
-                if (NR > 1 && prev != "") print "";
-                print $0;
-                prev = $0;
-                next;
-            }
-            if (prev != "" && is_header(prev)) print "";
-            print $0;
-            prev = $0;
-        }
-        END { if (prev != "") print "" }
-    ')
-
-    # Ensure there are no duplicate blank lines
-    output=$(printf '%s\n' "${output}" | awk 'NR==1{print} NR>1{if (!($0=="" && p=="")) print} {p=$0} END{if(p!="")print ""}')
-    printf '%s' "${output}"
+    printf '%s' "$1" | awk '
+    function is_header(l) { return l ~ /^#\s/ }   # “# ” or “## ” headers
+    {
+      if (is_header($0)) {
+        if (NR > 1 && prev != "") print "";       # blank line **before** header
+        print;                                    # the header itself
+        prev = $0;  next
+      }
+      if (prev != "" && is_header(prev)) print "" # blank line **after** header
+      print;  prev = $0
+    }
+    END { if (prev != "") print "" }              # newline-at-EOF
+  ' | # 1st pass
+        awk 'NF || !blank { print } { blank = !NF }      # de-dupe blank lines
+       END { if (!blank) print "" }' # final newline
 }
 
 # Remove duplicate blank lines and ensure file ends with newline
@@ -431,6 +535,24 @@ remove_duplicate_blank_lines() {
     awk 'NR==1{print} NR>1{if (!($0=="" && p=="")) print} {p=$0} END{if(p!="")print ""}' "$1" >"$1.tmp" && mv "$1.tmp" "$1"
 }
 
+# Extracts a specific section from a changelog file.
+#
+# Usage:
+#   extract_changelog_section <section_name> <changelog_file>
+#
+# Arguments:
+#   section_name    The name of the section to extract (e.g., "Unreleased", "1.0.0").
+#   changelog_file  The path to the changelog file.
+#
+# Output:
+#   Prints the contents of the specified section to stdout.
+#
+# Returns:
+#   0 if the section is found or file does not exist, otherwise non-zero.
+#
+# Notes:
+#   - Assumes sections are marked with '## [section_name]' or '## section_name'.
+#   - If the section or file is not found, outputs an empty string.
 extract_changelog_section() {
     ecs_section="$1"
     ecs_file="$2"
@@ -455,18 +577,30 @@ extract_changelog_section() {
     fi
     sed -n "${start_line},${end_line}p" "${ecs_file}"
 }
-# Updates a specific section in a changelog file, or adds it if not present.
-# $1 - Path to the changelog file.
-# $2 - Content to insert into the changelog section.
-# $3 - Version string to use as the section header.
-# $4 - Regex pattern to identify the section to replace.
 
+# Updates a specific section in a changelog file with new content for a given version.
+#
+# Arguments:
+#   $1 - Path to the changelog file to update.
+#   $2 - New content to insert into the changelog section.
+#   $3 - Version string to use as the section header (e.g., "1.2.3").
+#   $4 - Regular expression pattern to identify the section to update.
+#
+# Behavior:
+#   - If the section matching the pattern exists, replaces its content with the new content under the specified version header.
+#   - If the section does not exist, does nothing and returns 1.
+#   - Ensures proper blank lines using the `ensure_blank_lines` function.
+#
+# Returns:
+#   0 if the section was updated successfully.
+#   1 if the section matching the pattern was not found.
 update_changelog_section() {
     ic_file="$1"
     ic_content="$2"
     ic_version="$3"
     ic_pattern="$4"
     content_file=$(mktemp)
+    [ -n "${debug}" ] && printf 'Debug: Updating changelog section in %s with version %s and pattern %s\n' "${ic_file}" "${ic_version}" "${ic_pattern}" >&2
     printf "%s\n" "${ic_content}" >"${content_file}"
     if grep -qE "${ic_pattern}" "${ic_file}"; then
         awk -v pat="${ic_pattern}" -v ver="${ic_version}" -v content_file="${content_file}" '
@@ -481,36 +615,134 @@ update_changelog_section() {
                     replaced=1;
                     next
                 }
-                if (in_section && $0 ~ /^## /) in_section=0
-                if (!in_section) print $0
+                if (in_section && $0 ~ /^## /) {
+                    in_section=0
+                }
+                if (in_section) {
+                    next
+                }
+                print $0
             }
             ' "${ic_file}" | ensure_blank_lines >"${ic_file}.tmp"
         mv "${ic_file}.tmp" "${ic_file}"
-        rm -f "${content_file}"
         return 0
     else
-        rm -f "${content_file}"
+        [ -n "${debug}" ] && printf 'Debug: No section matching pattern %s found in %s\n' "${ic_pattern}" "${ic_file}" >&2       
         return 1
     fi
 }
 
-# Always inserts a new section at the top (after H1), even if duplicate exists.
+# prepend_changelog_section inserts a new changelog section at the top of a file after the H1 header.
+#
+# Arguments:
+#   $1 - Path to the changelog file to update.
+#   $2 - Content to insert under the new section.
+#   $3 - Version string to use as the section header (e.g., "1.2.3").
+#
+# Behavior:
+#   - Always inserts a new section at the top (after the first H1 header), even if a section for the same version already exists.
+#   - Preserves the rest of the file content.
+#   - Ensures proper formatting with blank lines between sections.
+#   - If the content has no '##' headers, inserts as a single block.
+#
+# Usage:
+#   prepend_changelog_section <changelog_file> <section_content> <version>
 prepend_changelog_section() {
     ic_file="$1"
     ic_content="$2"
     ic_version="$3"
-    content_file=$(mktemp)
+    content_file=$(portable_mktemp "content.XXXXXX.md")
+    tmp_output_file=$(portable_mktemp "ic_file.XXXXXX.md")
+    [ -n "${debug}" ] && printf 'Debug: Prepending changelog section in %s with version %s\n' "${ic_file}" "${ic_version}" >&2
+    cp "${ic_file}" "${tmp_output_file}"
     printf "%s\n" "$ic_content" >"$content_file"
-    awk -v ver="$ic_version" -v content_file="$content_file" '
-    BEGIN { added=0 }
-    /^# / && !added { print; print ""; print "## " ver; while ((getline line < content_file) > 0) print line; close(content_file); print ""; added=1; next }
-    { print }
-    END { if (!added) { print "## " ver; while ((getline line < content_file) > 0) print line; close(content_file); print "" } }
-    ' "$ic_file" | awk 'NR==1{print} NR>1{if (!($0=="" && p=="")) print} {p=$0} END{if(p!="")print ""}' >"$ic_file.tmp"
-    mv "$ic_file.tmp" "$ic_file"
+    [ -n "${debug}" ] && printf 'Debug: Prepending changelog section in %s with version %s\n' "${ic_file}" "${ic_version}" >&2
+    {
+        # Check if content_file has any '##' headers
+        if grep -q '^## ' "$content_file"; then
+            # Content has its own sections, insert as-is under the version header
+            awk -v ver="$ic_version" -v content_file="$content_file" '
+        BEGIN { added=0 }
+        {
+            if (!added && /^# /) {
+                print;
+                print "";
+                print "## " ver;
+                while ((getline line < content_file) > 0) print line;
+                close(content_file);
+                print "";
+                added=1;
+                next;
+            }
+            print;
+        }
+        END {
+            if (!added) {
+                print "## " ver;
+                while ((getline line < content_file) > 0) print line;
+                close(content_file);
+                print "";
+            }
+        }
+        ' "$ic_file"
+        else
+            # Content has no '##' headers, insert as a single block under the version header
+            [ -n "${debug}" ] && printf 'Debug: Content has no ## headers, inserting as a single block under version %s\n' "${ic_version}" >&2
+            # Insert the version header and content after the first H1 header
+            # If no H1 header exists, # Changelog will be added at the top
+            # If the file is empty, it will just add the version header and content
+            if ! grep -q '^# ' "$ic_file"; then
+                [ -n "${debug}" ] && printf 'Debug: No H1 header found, adding # Changelog at the top\n' >&2
+                printf '# Changelog\n\n%s\n' "${ic_content}"
+            else
+                [ -n "${debug}" ] && printf 'Debug: Found H1 header, inserting after it\n' >&2
+                # Insert the version header and content after the first H1 header
+                ed -s "${ic_file}" <<ED
+/#\s.*$/+1
+a
+${ic_content}
+.
+wq
+ED
+
+                if [ $? -ne 0 ]; then
+                    echo "Error: Failed to insert content using ed" >&2
+                    exit 1
+                fi
+                [ -n "${debug}" ] && printf 'Debug: Inserted content after H1 header\n' >&2
+
+            fi
+
+        fi
+    } >"$ic_file.tmp"
+    #| awk 'NR==1{print} NR>1{if (!($0=="" && p=="")) print} {p=$0} END{if(p!="")print ""}' >"$ic_file.tmp"
+
+    #printf 'Debug: Prepended content to %s\n' "${ic_file}.tmp" >&2
+
     rm -f "$content_file"
+    if mv "$ic_file.tmp" "$ic_file"; then
+        [ -n "${debug}" ] && printf 'Debug: Prepend completed, updated file %s\n' "${ic_file}" >&2
+        return 0
+    else
+        printf 'Error: Failed to update changelog file %s\n' "${ic_file}" >&2
+        exit 1
+    fi
+
 }
 
+# Appends a new changelog section to the specified file.
+#
+# This function always inserts a new section at the bottom of the changelog file,
+# even if a section for the given version already exists (duplicates are not checked).
+#
+# Arguments:
+#   $1 - Path to the changelog file to update.
+#   $2 - Content to insert under the new section.
+#   $3 - Version string to use as the section header (e.g., "1.2.3").
+#
+# The function creates a temporary file for the content, appends a new section
+# with the specified version header and content, and ensures there are no
+# consecutive blank lines in the output file.
 # Always inserts a new section at the bottom, even if duplicate exists.
 append_changelog_section() {
     ic_file="$1"
@@ -518,6 +750,8 @@ append_changelog_section() {
     ic_version="$3"
     content_file=$(mktemp)
     printf "%s\n" "$ic_content" >"$content_file"
+    [ -n "${debug}" ] && printf 'Debug: Appending changelog section in %s with version %s and pattern %s\n' "${ic_file}" "${ic_version}" "${ic_pattern}" >&2
+
     awk -v ver="$ic_version" -v content_file="$content_file" '
     { print }
     END { print ""; print "## " ver; while ((getline line < content_file) > 0) print line; close(content_file); print "" }
@@ -526,6 +760,25 @@ append_changelog_section() {
     rm -f "$content_file"
 }
 
+# Updates, prepends, or appends a changelog section in the specified file.
+#
+# Arguments:
+#   $1 - Path to the changelog file.
+#   $2 - Content to insert into the changelog section.
+#   $3 - Section name or version (used as the section header).
+#   $4 - Mode of operation: "auto", "update", "prepend", or "append".
+#
+# Behavior:
+#   - In "auto" or "update" mode, updates the section if it exists, otherwise prepends it.
+#   - In "prepend" mode, adds the section at the top.
+#   - In "append" mode, adds the section at the bottom.
+#   - Ensures the changelog file exists.
+#   - Adds a "Managed by giv" footer if not present.
+#   - Ensures proper blank line formatting and removes duplicate blank lines.
+#
+# Dependencies:
+#   - Requires helper functions: update_changelog_section, prepend_changelog_section,
+#     append_changelog_section, ensure_blank_lines, remove_duplicate_blank_lines.
 # Update/prepend/append changelog section
 update_changelog() {
     ic_file="$1"
@@ -535,29 +788,63 @@ update_changelog() {
     ic_version="$ic_section_name"
     ic_esc_version=$(echo "$ic_version" | sed 's/[][\\/.*^$]/\\&/g')
     ic_pattern="^##[[:space:]]*\[?$ic_esc_version\]?"
-    [ -f "$ic_file" ] || touch "$ic_file"
-    content_file=$(mktemp)
-    printf "%s\n" "$ic_content" >"$content_file"
+
+    # Create a temp file and copy ic_file into it (or create empty if ic_file doesn't exist)
+    tmp_file=$(portable_mktemp "tmp_changelog.XXXXXX.md")
+    if [ -f "$ic_file" ]; then
+        cp "$ic_file" "$tmp_file"
+        printf '# Changelog\n\n' >"$tmp_file"
+    else
+        : >"$tmp_file"
+    fi
+
+    content_file=$(portable_mktemp "tmp_changelog_content.XXXXXX.md")
+    cat "$ic_content" >"$content_file"
     ic_content_block=$(cat "$content_file")
-    rm -f "$content_file"
+
+    printf 'Debug: Updating changelog section in %s with version %s and mode %s\n' "$ic_file" "$ic_version" "$ic_mode" >&2
     case "$ic_mode" in
     auto | update)
-        if update_changelog_section "$ic_file" "$ic_content_block" "$ic_version" "$ic_pattern"; then :; else prepend_changelog_section "$ic_file" "$ic_content_block" "$ic_version"; fi
+        if update_changelog_section "$tmp_file" "$ic_content_block" "$ic_version" "$ic_pattern"; then
+            #[ -n "$debug" ] &&
+            printf 'Debug: Updated existing section for version %s\n' "$ic_version" >&2
+        else
+            #[ -n "$debug" ] &&
+            printf 'Debug: No existing section found, prepending new section for version %s\n' "$ic_version" >&2
+            prepend_changelog_section "$tmp_file" "$ic_content_block" "$ic_version"
+        fi
         ;;
     prepend)
-        prepend_changelog_section "$ic_file" "$ic_content_block" "$ic_version"
+        prepend_changelog_section "$tmp_file" "$ic_content_block" "$ic_version"
         ;;
     append)
-        append_changelog_section "$ic_file" "$ic_content_block" "$ic_version"
+        append_changelog_section "$tmp_file" "$ic_content_block" "$ic_version"
         ;;
     *)
         printf 'Unknown mode: %s\n' "$ic_mode" >&2
         return 1
         ;;
     esac
-    if ! tail -n 5 "$ic_file" | grep -q "Managed by giv"; then
-        printf '\n[Managed by giv](https://github.com/itlackey/giv)\n\n' >>"$ic_file"
+
+    #[ -n "$debug" ] &&
+    printf 'Debug: Tagging changelog document\n' >&2
+
+    if ! tail -n 5 "$tmp_file" | grep -q "Managed by giv"; then
+        if printf '\n[Managed by giv](https://github.com/itlackey/giv)\n\n' >>"$tmp_file"; then
+            [ -n "$debug" ] && printf 'Debug: Added footer to changelog file %s\n' "$tmp_file" >&2
+        else
+            printf 'Error: Failed to add footer to changelog file %s\n' "$tmp_file" >&2
+            return 1
+        fi
     fi
-    ensure_blank_lines "$ic_file"
-    remove_duplicate_blank_lines "$ic_file"
+ cat "${tmp_file}"
+    #[ -n "$debug" ] && 
+    printf 'Debug: Ensuring blank line spacing around headers\n' >&2
+    ensure_blank_lines "$(cat "${tmp_file}")" >"${tmp_file}.tmp" && mv "${tmp_file}.tmp" "$tmp_file"
+    cat "${tmp_file}"
+    [ -n "$debug" ] && printf 'Debug: Removing duplicates blank lines\n' >&2
+    remove_duplicate_blank_lines "$tmp_file"
+
+    # Return the path to the temp file
+    cat "$tmp_file"
 }

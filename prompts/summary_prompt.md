@@ -52,6 +52,7 @@ Write a structured, Keep a Changelog–style summary of the provided git diff. D
    - Parse the git diff to detect each change’s type.  
    - Assign changes to the appropriate group above.  
    - Extract file paths or components when pertinent.  
-   - If possible, explain "what" changed, "why," and the "impact."  
+   - If possible, explain "what" changed, "why," and the "impact." 
+   - Only use information provided in this content in your response. 
 
 Output only the completed summary—no additional commentary.
