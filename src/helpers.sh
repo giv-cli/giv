@@ -57,7 +57,7 @@ build_prompt() {
     # Concatenate the prompt template and diff file content
     result="$(
         cat "${diff_file}"
-        echo
+        echo "[INSTRUCTIONS]"
         cat "${prompt_file}"
         echo
     )"
@@ -235,8 +235,10 @@ generate_from_prompt() {
     prompt_file="$1"
     response_output_file="$2"
     gen_mode="${3:-${GIV_MODEL_MODE:-$model_mode:-'auto'}}"
+    tmp_response_file=$(portable_mktemp "tmp_${response_output_file}_XXXXXX.md")
     [ -n "${debug}" ] && printf 'Generating response from prompt file %s...\n' "${prompt_file}"
     res=$(generate_response "${prompt_file}" "${gen_mode}")
+    echo "${res}" >"${tmp_response_file}"
     #printf 'Debug: Generated response from prompt:\n%s\n' "${res}" >&2
     if [ -f "${response_output_file}" ] && [ -z "${dry_run}" ]; then
         #printf 'Writing to %s\n' "${response_output_file}" >&2
