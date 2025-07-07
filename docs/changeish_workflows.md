@@ -59,7 +59,7 @@ giv --staged --summary --message
 
 #### 📁 Reference
 
-- See `test_insert_changelog.bats` for how `changes.sh` is used in test scenarios.
+- See `test_insert_changelog.bats` for how `giv.sh` is used in test scenarios.
 
 ### 2. **Working with Unstaged Changes (Working Tree)**
 
@@ -109,9 +109,9 @@ giv --from v1.0.0 --to HEAD
 
 - The `test_Version-3a_auto-2ddetect_version_file.log` demonstrates how `giv` auto-detects version files (e.g., `package.json`, `Cargo.toml`).
 
-## 🛠️ Key Options in `changes.sh`
+## 🛠️ Key Options in `giv.sh`
 
-The `changes.sh` script provides several flags and options. Here are key ones:
+The `giv.sh` script provides several flags and options. Here are key ones:
 
 | Flag/Option             | Description                                                                 |
 |-|--|
@@ -181,7 +181,7 @@ jobs:
 ## 📖 Further Reading
 
 - CHANGELOG.md: Example of .env usage and CI/CD integration.
-- test_insert_changelog.bats: How changes.sh is used in test scenarios.
+- test_insert_changelog.bats: How giv.sh is used in test scenarios.
 - test_Version-3a_auto-2ddetect_version_file.log: Auto-detection of version files.
 
 By following this guide, you can streamline your workflow with `giv`, ensuring consistent changelogs and versioning across your projects.

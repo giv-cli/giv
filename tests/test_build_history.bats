@@ -15,9 +15,9 @@ setup() {
 
     git config user.name "Test"
     git config user.email "test@example.com"
-    touch changes.sh
+    touch giv.sh
     echo 'Version: 0.1.0' >package.json
-    git add changes.sh package.json
+    git add giv.sh package.json
     git commit -m "Initial commit"
 
     # Commit version 1.0.0
@@ -215,11 +215,11 @@ teardown() {
 }
 
 @test "build_diff outputs minimal diff with tracked change" {
-    echo "new line" >>changes.sh
-    git add changes.sh
+    echo "new line" >>giv.sh
+    git add giv.sh
     run build_diff --cached "" false
     assert_success
-    assert_output --partial "changes.sh"
+    assert_output --partial "giv.sh"
 }
 
 @test "build_diff includes untracked file content" {

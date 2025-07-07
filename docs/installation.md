@@ -49,7 +49,7 @@ curl -fsSL https://raw.githubusercontent.com/itlackey/giv/main/install.sh | sh -
   - Otherwise, `$HOME/.local/bin`
   - Otherwise, `$HOME/bin` (and creates the directory if needed)
 - The script will **automatically detect the latest release** if you do not specify a version.
-- The main script (`changes.sh`) is installed as `giv` in your chosen bin directory (as a symlink or copy, depending on platform).
+- The main script (`giv.sh`) is installed as `giv` in your chosen bin directory (as a symlink or copy, depending on platform).
 - The prompt templates are installed to an application data directory (not your current working directory):
   - Linux: `$XDG_DATA_HOME/giv/prompts` or `$HOME/.local/share/giv/prompts`
   - macOS: `$HOME/Library/Application Scripts/com.github.lackeyi/giv/prompts`

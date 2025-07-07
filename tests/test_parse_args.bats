@@ -6,7 +6,7 @@ export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/error.log"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
-SCRIPT="$BATS_TEST_DIRNAME/../src/changes.sh"
+SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
 OG_DIR="$(pwd)"
 
 setup() {

@@ -18,7 +18,7 @@ setup() {
   git init -q
   git config user.name "Test"
   git config user.email "test@example.com"
-  GIV_SCRIPT="$BATS_TEST_DIRNAME/../src/changes.sh"
+  GIV_SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
   mock_ollama "dummy" "Ollama run"
   mock_curl "dummy" "Hello from remote!"
 }

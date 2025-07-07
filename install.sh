@@ -4,12 +4,11 @@ set -eu
 
 # Repository and filenames
 REPO="itlackey/giv"
-SCRIPT_NAME="changes.sh"
-PROMPT_DIR="prompts"
-INSTALL_DIR=""
+SCRIPT_NAME="giv.sh"
+USER_BIN_DIR=""
 APP_DIR=""
 VERSION=""
-INSTALL_DIR_OVERRIDE=""
+USER_BIN_DIR_OVERRIDE=""
 
 # 1. Remove existing giv binary or symlink
 if command -v giv >/dev/null 2>&1; then
@@ -25,7 +24,7 @@ while [ $# -gt 0 ]; do
     shift 2
     ;;
   --install-dir)
-    INSTALL_DIR_OVERRIDE="$2"
+    USER_BIN_DIR_OVERRIDE="$2"
     shift 2
     ;;
   *)
@@ -37,17 +36,15 @@ while [ $# -gt 0 ]; do
   break
 done
 
-# 3. Determine INSTALL_DIR
-if [ -n "$INSTALL_DIR_OVERRIDE" ]; then
-  INSTALL_DIR="$INSTALL_DIR_OVERRIDE"
-elif [ -n "${INSTALL_PREFIX:-}" ]; then
-  INSTALL_DIR="$INSTALL_PREFIX"
+# 3. Determine USER_BIN_DIR
+if [ -n "$USER_BIN_DIR_OVERRIDE" ]; then
+  USER_BIN_DIR="$USER_BIN_DIR_OVERRIDE"
 elif [ -w "/usr/local/bin" ]; then
-  INSTALL_DIR="/usr/local/bin"
+  USER_BIN_DIR="/usr/local/bin"
 elif [ -d "$HOME/.local/bin" ]; then
-  INSTALL_DIR="$HOME/.local/bin"
+  USER_BIN_DIR="$HOME/.local/bin"
 else
-  INSTALL_DIR="$HOME/bin"
+  USER_BIN_DIR="$HOME/bin"
 fi
 
 # 4. Determine VERSION if not set
@@ -98,7 +95,8 @@ compute_app_dir() {
 APP_DIR="$(compute_app_dir)"
 
 # 8. Create necessary directories
-mkdir -p "$INSTALL_DIR" "$APP_DIR/$PROMPT_DIR"
+mkdir -p "$USER_BIN_DIR" "$APP_DIR/prompts"
+mkdir -p "$USER_BIN_DIR" "$APP_DIR/src"
 
 # 9. Check Git version for sparse-checkout
 if ! command -v git >/dev/null 2>&1; then
@@ -112,24 +110,24 @@ fi
 TMP="$(mktemp -d)"
 printf 'Installing version %s\n' "$VERSION"
 git -c advice.detachedHead=false clone -q --depth 1 --branch "$VERSION" "https://github.com/$REPO.git" "$TMP"
-cp -Ri "$TMP/$PROMPT_DIR"/* "$APP_DIR/$PROMPT_DIR/"
-cp "$TMP/$SCRIPT_NAME" "$APP_DIR/"
+cp -Ri "$TMP/prompts/*" "$APP_DIR/prompts/"
+cp -Ri "$TMP/src/*" "$APP_DIR/"
 chmod +x "$APP_DIR/$SCRIPT_NAME"
-printf 'Prompts → %s/%s\n' "$APP_DIR" "$PROMPT_DIR"
+printf 'Prompts → %s/%s\n' "$APP_DIR" "prompts"
+rm -rf "$TMP"
 
 # 11. Install giv.sh and create symlink or fallback copy
 if [ "$PLATFORM" = "windows" ]; then
-  cp -f "$TMP/$SCRIPT_NAME" "$INSTALL_DIR/giv"
+  cp -f "$APP_DIR/$SCRIPT_NAME" "$USER_BIN_DIR/giv"
 else
-  ln -sf "$APP_DIR/$SCRIPT_NAME" "$INSTALL_DIR/giv"
+  ln -sf "$APP_DIR/$SCRIPT_NAME" "$USER_BIN_DIR/giv"
 fi
-printf 'giv.sh → %s/%s and symlink/copy at %s/giv\n' "$APP_DIR" "$SCRIPT_NAME" "$INSTALL_DIR"
+printf 'giv.sh → %s/%s (symlink/copy) %s/giv\n' "$APP_DIR" "$SCRIPT_NAME" "$USER_BIN_DIR"
 
-rm -rf "$TMP"
 
 # 12. Final PATH check
 case ":$PATH:" in
-*":$INSTALL_DIR:"*) ;;
-*) printf 'Warning: %s is not in your PATH.\n' "$INSTALL_DIR" ;;
+*":$USER_BIN_DIR:"*) ;;
+*) printf 'Warning: %s is not in your PATH.\n' "$USER_BIN_DIR" ;;
 esac
 printf 'Installation complete!\n'

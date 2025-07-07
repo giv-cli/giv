@@ -7,8 +7,8 @@ load 'test_helper/bats-assert/load'
 
 BATS_TEST_START_TIME="$(date +%s)"
 
-# shellcheck source=../src/changes.sh
-SCRIPT="$BATS_TEST_DIRNAME/../src/changes.sh"
+# shellcheck source=../src/giv.sh
+SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
 
 setup() {
   # create a temp git repo
@@ -41,7 +41,7 @@ setup() {
   export debug="1"
 
   # load the script under test
-  # shellcheck source=../src/changes.sh
+  # shellcheck source=../src/giv.sh
   source "$SCRIPT"
 }
 
