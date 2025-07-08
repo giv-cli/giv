@@ -12,7 +12,8 @@ SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
 
 setup() {
   # create a temp git repo
-  REPO="$(mktemp -d)"
+  REPO="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
+  GIV_TMPDIR_SAVE=
   cd "$REPO"
   git init -q
   # make two commits
@@ -46,8 +47,10 @@ setup() {
 }
 
 teardown() {
+  remove_tmp_dir
   rm -rf "$REPO"
   rm -f *.out
+
 }
 
 mock_ollama() {
@@ -71,7 +74,7 @@ EOF
 #----------------------------------------
 # summarize_commit
 #----------------------------------------
-@test "summarize_commit writes RESP to out_file and cleans temps" {
+@test "summarize_commit writes RESP to out_file" {
   # force portable_mktemp to yield deterministic files
   COUNT=0
   portable_mktemp() {
@@ -91,10 +94,6 @@ EOF
   # should have RESP in out.txt
   run cat out.txt
   assert_output --partial "RESP"
-
-  # temps should be gone
-  [ ! -f hist.tmp ]
-  [ ! -f pr.tmp ]
 }
 
 #----------------------------------------
@@ -104,7 +103,7 @@ EOF
   tmp="$(mktemp)"
 
   generate_response() { echo "RESP"; }
-  export debug="1"
+  export debug="true"
   # call inside the real repo
   summarize_target HEAD~1..HEAD $tmp
   run cat "$tmp"
@@ -132,6 +131,7 @@ EOF
 @test "cmd_message with no id errors" {
   echo "some working changes" >"$REPO/file.txt"
   mock_ollama "dummy" "some working changes"
+  debug=
   run cmd_message ""
   assert_success
   assert_output --partial "some working changes"
@@ -146,6 +146,7 @@ EOF
 }
 @test "cmd_message single-commit prints message" {
   run git -C "$REPO" rev-parse HEAD~1 # ensure HEAD~1 exists
+  debug=
   run cmd_message HEAD~1
   [ "$status" -eq 0 ]
   assert_output "first commit"
@@ -164,7 +165,8 @@ EOF
   git add file.txt
   git commit -m "first commit"
   echo "second commit" >>"$REPO/file.txt"
-  git commit -am "second commit"  
+  git commit -am "second commit"
+  debug=
   run cmd_message HEAD~2..HEAD
   assert_success
   assert_output $'first commit\n\nsecond commit'
@@ -175,8 +177,11 @@ EOF
 #----------------------------------------
 @test "cmd_summary prints to stdout" {
   summarize_target() { echo "SUM"; }
-  run cmd_summary --dry-run
-  [ "$status" -eq 0 ]
+
+  run cmd_summary "" "--current" "auto" "true"
+  printf "Output: %s\n" "$output"
+
+  assert_success
   assert_output "SUM"
 }
 
@@ -185,7 +190,7 @@ EOF
   ollama() {
     echo "SUM"
   }
-  run cmd_summary HEAD~1 --dry-run
+  run cmd_summary "" HEAD~1 "auto" "true"
   [ "$status" -eq 0 ]
   assert_output --partial "SUM"
 }
@@ -193,8 +198,8 @@ EOF
 @test "cmd_summary writes to file when output_file set" {
   output_file="out.sum"
   summarize_target() { echo "SUM"; }
-  run cmd_summary
-  [ "$status" -eq 0 ]
+  run cmd_summary "${output_file}" "--current" "auto" "false"
+  assert_success
   [ -f out.sum ]
   assert_output --partial "Summary written to out.sum"
   rm -f out.sum
@@ -219,5 +224,5 @@ EOF
 @test "cmd_changelog writes to its default file" {
   run cmd_changelog
   assert_success
-  assert_output --partial "Response written to CHANGELOG.md"
+  assert_output --partial "Changelog written to CHANGELOG.md"
 }

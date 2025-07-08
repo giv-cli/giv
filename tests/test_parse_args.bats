@@ -11,7 +11,7 @@ OG_DIR="$(pwd)"
 
 setup() {
   # stub out external commands so parse_args doesn't actually exec them
-  show_help()    { printf 'HELP\n'; }
+  show_help() { printf 'HELP\n'; }
   show_version() { printf 'VERSION\n'; }
   #is_valid_git_range() { return 0; }
 
@@ -19,19 +19,22 @@ setup() {
   command_ollama() { return 0; }
   alias ollama='command_ollama'
 
-
   # source the script under test
   source "$SCRIPT"
 
-  TEST_DIR=$(mktemp -d)
+  TEST_DIR=$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")
   cd "$TEST_DIR" || exit 1
   # make a dummy config file
-  echo "GIV_API_KEY=XYZ" > tmp.cfg
-  echo "GIV_API_URL=TEST_URL" >> tmp.cfg
-  echo "GIV_API_MODEL=TEST_MODEL" >> tmp.cfg
+  echo "GIV_API_KEY=XYZ" >tmp.cfg
+  echo "GIV_API_URL=TEST_URL" >>tmp.cfg
+  echo "GIV_API_MODEL=TEST_MODEL" >>tmp.cfg
+  echo "GIV_TMPDIR_SAVE=" >>"tmp.cfg"
   chmod +r tmp.cfg
+  GIV_TMPDIR_SAVE=
 }
+
 teardown() {
+  remove_tmp_dir
   cd "$OG_DIR" || exit 1
   rm -rf "$TEST_DIR"
 }
@@ -42,11 +45,11 @@ setup_git_range() {
   git init
   git config user.email "test@example.com"
   git config user.name "Test User"
-  echo "a" > a.txt
+  echo "a" >a.txt
   git add a.txt
   git commit -m "first"
   git tag v1
-  echo "b" > b.txt
+  echo "b" >b.txt
   git add b.txt
   git commit -m "second"
   git tag v2
@@ -180,7 +183,6 @@ setup_git_range() {
 }
 # 10. explicit git-range target
 
-
 @test "valid git range as target" {
   setup_git_range
   run parse_args changelog v1..v2 --verbose
@@ -239,7 +241,6 @@ setup_git_range() {
   [ "$status" -eq 1 ]
   assert_output --partial "Unknown option or argument: --"
 }
-
 
 @test "no pattern corectly sets target and pattern" {
   debug=1

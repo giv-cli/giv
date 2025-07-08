@@ -9,7 +9,7 @@ SCRIPT="$BATS_TEST_DIRNAME/../src/helpers.sh"
 
 setup() {
     # Create a temporary git repo
-    REPO="$(mktemp -d)"
+    REPO="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
     cd "$REPO"
     git init -q
 
@@ -52,9 +52,11 @@ setup() {
     # Source the script under test
     # (Make sure this path points to where build_history() lives)
     source "$SCRIPT"
+    GIV_TMPDIR_SAVE=
 }
 
 teardown() {
+    remove_tmp_dir
     rm -rf "$REPO"
 }
 

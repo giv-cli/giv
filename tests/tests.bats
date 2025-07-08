@@ -2,7 +2,7 @@
 
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
-
+load '../src/helpers.sh'
 export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/main.error.log"
 
 setup_file() {
@@ -11,10 +11,12 @@ setup_file() {
 
 setup() {
   ORIG_DIR="$PWD"
-  TMP_DIR="$(mktemp -d)/giv-tests"
-  mkdir -p "$TMP_DIR"
+  mkdir -p "$BATS_TEST_DIRNAME/.tmp"
+  BATS_TMP_DIR="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
+
+  mkdir -p "$BATS_TMP_DIR"
   mkdir -p "$BATS_TEST_DIRNAME/.logs"
-  cd "$TMP_DIR"
+  cd "$BATS_TMP_DIR"
   git init -q
   git config user.name "Test"
   git config user.email "test@example.com"
@@ -24,12 +26,12 @@ setup() {
 }
 
 teardown() {
+  remove_tmp_dir
+  rm -rf "${BATS_TMP_DIR}"
   cd "${ORIG_DIR:-$PWD}" 2>/dev/null || true
 }
 
 # ---- Helpers ----
-
-
 
 mock_ollama() {
   arg1="${1:-dummy}"
@@ -49,7 +51,6 @@ EOF
   chmod +x bin/ollama
   export PATH="$PWD/bin:$PATH"
 }
-
 
 mock_curl() {
   local message="${2:-"Hello from curl!"}"
@@ -248,7 +249,7 @@ gen_commits() {
 @test "Release notes for range dry-run" {
   gen_commits
   mock_ollama "dummy" "relnote"
-  echo "" > ".env"
+  echo "" >".env"
   run "$GIV_SCRIPT" release-notes HEAD~2..HEAD --dry-run #--verbose
   assert_success
   assert_output --partial "relnote"
@@ -387,7 +388,7 @@ EOF
 }
 @test "Config defaults to PWD/.env" {
   echo "GIV_MODEL=llama3" >.env
-  
+
   mock_ollama "dummy" "- llama3"
 
   gen_commits
@@ -415,7 +416,7 @@ EOF
 # ---- ERROR CASES ----
 
 @test "Fails gracefully outside git repo" {
-  
+
   run "$GIV_SCRIPT" changelog HEAD
   assert_failure
   assert_output --partial "Error: Invalid target: HEAD"
@@ -463,13 +464,17 @@ EOF
   run "$GIV_SCRIPT" release-notes HEAD
   assert_success
   [ -f RELEASE_NOTES.md ]
-  assert_output --partial "Response written to RELEASE_NOTES.md" 
+  assert_output --partial "Response written to RELEASE_NOTES.md"
 }
 
 @test "Announce outputs ANNOUNCEMENT.md" {
+  gen_commits
   echo "ann" >ann.txt && git add ann.txt && git commit -m "ann"
   mock_ollama "dummy" "- announce"
-  run "$GIV_SCRIPT" announcement HEAD
+  run "$GIV_SCRIPT" announcement HEAD~3..HEAD
+
+  # printf 'Output: %s\n' "$output"
+  # printf '\n----\n'
   assert_success
   [ -f ANNOUNCEMENT.md ]
   grep -q "announce" ANNOUNCEMENT.md

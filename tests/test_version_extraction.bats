@@ -6,14 +6,16 @@ load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
 setup() {
-    TMPDIR_REPO="$(mktemp -d)"
+    TMPDIR_REPO="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
     cd "$TMPDIR_REPO"
     git init
-    TMPFILE="$(mktemp)"
+    TMPFILE="$(mktemp -p "${TMPDIR_REPO}")"
     export TMPFILE
+    GIV_TMPDIR_SAVE=
 }
 
 teardown() {
+    remove_tmp_dir
     if [ -n "$TMPFILE" ]; then
         rm -f "$TMPFILE"
     fi
@@ -94,7 +96,6 @@ EOF
 #     assert_success
 #     assert_equal "$output" ""
 # }
-
 
 @test "get_version_info detects version from current file" {
     echo "version = '1.2.3'" >"version.txt"

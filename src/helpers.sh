@@ -10,44 +10,56 @@ remove_tmp_dir() {
     # Remove the temporary directory if it exists
     if [ -n "$GIV_TMPDIR" ] && [ -d "$GIV_TMPDIR" ]; then
         rm -rf "$GIV_TMPDIR"
-        printf 'Debug: Removed temporary directory %s\n' "$GIV_TMPDIR" >&2
+        print_debug "Removed temporary directory $GIV_TMPDIR"
     else
-        printf 'Debug: No temporary directory to remove.\n' >&2
+        print_debug 'No temporary directory to remove.'
     fi
     GIV_TMPDIR="" # Clear the variable
 }
 
 # Portable mktemp: fallback if mktemp not available
 portable_mktemp_dir() {
-    # if GIV_TMPDIR is already set make sure it exists make it if it does not then exit
-    if [ -n "$GIV_TMPDIR" ]; then
-        if [ ! -d "$GIV_TMPDIR" ]; then
-            printf 'Warning: GIV_TMPDIR %s does not exist, creating it.\n' "$GIV_TMPDIR" >&2
-            mkdir -p "$GIV_TMPDIR"
-        fi
-        return
-    fi
     base_path="${TMPDIR:-/tmp}/giv/"
     mkdir -p "${base_path}"
-    if command -v mktemp >/dev/null 2>&1; then
-        GIV_TMPDIR=$(mktemp -d -p "${base_path}")
-    else
-        GIV_TMPDIR="${base_path}/giv.$$.$(date +%s)"
-        mkdir -p "${GIV_TMPDIR}"
+
+    # Ensure only one subfolder under $TMPDIR/giv exists per execution of the script
+    # If GIV_TMPDIR is not set, create a new temporary directory
+    if [ -z "$GIV_TMPDIR" ]; then
+
+        if command -v mktemp >/dev/null 2>&1; then
+            GIV_TMPDIR="$(mktemp -d -p "${base_path}")"
+        else
+            GIV_TMPDIR="${base_path}/giv.$$.$(date +%s)"
+            mkdir -p "${GIV_TMPDIR}"
+        fi
+
     fi
-    # export GIV_TMPDIR
-    #[ -n "${debug}" ] &&
-    #printf 'Debug: Created temporary directory %s\n' "${GIV_TMPDIR}" >&2
 }
 
 # Portable mktemp: fallback if mktemp not available
 portable_mktemp() {
-    [ -n "$GIV_TMPDIR" ] && portable_mktemp_dir
+    [ -z "$GIV_TMPDIR" ] && portable_mktemp_dir
     if command -v mktemp >/dev/null 2>&1; then
         mktemp -p "${GIV_TMPDIR}" "$1"
     else
         echo "${GIV_TMPDIR}/giv.$$.$(date +%s)"
     fi
+}
+
+# -------------------------------------------------------------------
+# Logging helpers
+# -------------------------------------------------------------------
+print_debug() {
+    [ "$debug" = "true" ] && printf 'DEBUG: %s\n' "$*" >&2
+}
+print_info() {
+    printf '%s\n' "$*" >&2
+}
+print_warn() {
+    printf 'WARNING: %s\n' "$*" >&2
+}
+print_error() {
+    printf 'ERROR: %s\n' "$*" >&2
 }
 
 build_prompt() {
@@ -210,7 +222,7 @@ run_local() {
 #     - Any other value: Calls the `run_local` function with the input file path as an argument.
 generate_response() {
     gen_mode="${2:-$model_mode:-auto}"
-    [ -n "${debug}" ] && printf 'Debug: Generating response using %s mode\n' "${gen_mode}" >&2
+    print_debug "Generating response using $gen_mode mode"
     case ${gen_mode} in
     remote) generate_remote "$1" ;;
     none) cat "$1" ;;
@@ -218,39 +230,41 @@ generate_response() {
     esac
 }
 
-# Function to generate a response from a prompt file.
+# -------------------------------------------------------------------
+# generate_from_prompt: run AI on a built prompt and write or print result
 #
-# Parameters:
-#   $1 - The path to the prompt file.
-#   $2 - (Optional) The path to the output file where the response will be written. If not provided, the response is printed to stdout.
-#   $3 - (Optional) The generation mode. Defaults to the value of GIV_MODEL_MODE or model_mode if set, otherwise defaults to 'auto'.
-#
-# Environment Variables:
-#   debug - If set, enables debug output.
-#   dry_run - If set, prevents writing the response to an output file.
-#
-# Example Usage:
-#   generate_from_prompt "path/to/prompt.txt" "path/to/output.txt" "remote"
+#   $1 = path to the prompt file
+#   $2 = path to write the response into
+#   $3 = (optional) model mode override
+# -------------------------------------------------------------------
 generate_from_prompt() {
     prompt_file="$1"
     response_output_file="$2"
-    gen_mode="${3:-${GIV_MODEL_MODE:-$model_mode:-'auto'}}"
-    tmp_response_file=$(portable_mktemp "tmp_${response_output_file}_XXXXXX.md")
-    [ -n "${debug}" ] && printf 'Generating response from prompt file %s...\n' "${prompt_file}"
-    res=$(generate_response "${prompt_file}" "${gen_mode}")
-    echo "${res}" >"${tmp_response_file}"
-    #printf 'Debug: Generated response from prompt:\n%s\n' "${res}" >&2
-    if [ -f "${response_output_file}" ] && [ -z "${dry_run}" ]; then
-        #printf 'Writing to %s\n' "${response_output_file}" >&2
-        if echo "${res}" >"${response_output_file}"; then
-            [ -n "${debug}" ] && printf 'Response written to %s\n' "${response_output_file}" >&2
-            return 0
-        else
-            printf 'Error: Failed to write response to %s\n' "${response_output_file}" >&2
-            exit 1
-        fi
+    gen_mode="${3:-${GIV_MODEL_MODE:-${model_mode:-auto}}}"
+
+    print_debug "Prompt file: $prompt_file"
+    print_debug "Output file: $response_output_file"
+    print_debug "Model mode: $gen_mode"
+
+    # 1) Invoke the AI
+    if ! res=$(generate_response "$prompt_file" "$gen_mode"); then
+        printf 'Error: generate_response failed (mode=%s)\n' "$gen_mode" >&2
+        exit 1
+    fi
+
+    # 2) Dry‐run?  Just print and exit
+    if [ "${dry_run}" = "true" ]; then
+        printf '%s\n' "$res"
+        return 0
+    fi
+
+    # 3) Otherwise, write (create or overwrite) the output file
+    if printf '%s\n' "$res" >"$response_output_file"; then
+        print_debug "Response written to $response_output_file"
+        return 0
     else
-        printf '%s\n' "${res}"
+        printf 'Error: Failed to write response to %s\n' "$response_output_file" >&2
+        exit 1
     fi
 }
 
@@ -355,7 +369,6 @@ get_version_info() {
 build_diff() {
     commit="$1"
     diff_pattern="$2"
-    debug="$3"
 
     # Build git diff command as a string (POSIX-compatible, no arrays)
     diff_cmd="git --no-pager diff"
@@ -364,13 +377,14 @@ build_diff() {
     --current | "") ;;
     *) diff_cmd="$diff_cmd ${commit}^!" ;;
     esac
-    [ -n "$debug" ] && printf 'Debug: Building diff for commit %s with pattern %s\n' "$commit" "$diff_pattern" >&2
+    print_debug "Building diff for commit $commit with pattern $diff_pattern"
+
     diff_cmd="$diff_cmd --minimal --no-prefix --unified=3 --no-color -b -w --compact-summary --color-moved=no"
     if [ -n "$diff_pattern" ]; then
         diff_cmd="$diff_cmd -- \"$diff_pattern\""
     fi
 
-    [ "$debug" = true ] && printf 'Debug: %s\n' "$diff_cmd" >&2
+    print_debug "$diff_cmd"
     # shellcheck disable=SC2086
     diff_output=$(eval "$diff_cmd")
 
@@ -447,45 +461,79 @@ build_history() {
     return 0
 }
 
+# -------------------------------------------------------------------
+# summarize_target: summarize a commit, or an inclusive two-/three-dot
+# range, or the working tree/index.
+#
+#   $1 = target (SHA, range, --current, --cached, or "")
+#   $2 = path to write summaries into
+#   $3 = (optional) override for model_mode
+# -------------------------------------------------------------------
 summarize_target() {
     target="$1"
     summaries_file="$2"
     gen_mode="${3:-$model_mode}"
-    [ -n "$debug" ] && echo "DEBUG: summaries_file='$summaries_file', target='$target'" >&2
 
-    # If no target is specified, summarize the current commit or staged changes
-    if [ "$target" = "--current" ] || [ "$target" = "--cached" ] || [ -z "$target" ]; then
-        [ -n "$debug" ] && printf 'Processing target: %s\n' "$target" >&2
-        summarize_commit "$target" "${gen_mode}" >>"$summaries_file"
-
-        printf '\n\n' >>"$summaries_file"
-    # Single commit
-    elif ! echo "$target" | grep -q "\.\." && git rev-parse --verify "$target" >/dev/null 2>&1; then
-        [ -n "$debug" ] && printf 'Summarizing commit: %s\n' "$target" >&2
-        summarize_commit "$target" "${gen_mode}" >>"$summaries_file"
-        printf '\n\n' >>"$summaries_file"
-    # Handle commit rangs with a single commit
-    elif [ "$(git rev-list --count "$target")" -eq 1 ]; then
-        commit=$(git rev-list --reverse "$target" | head -n1)
-        [ -n "$debug" ] && printf 'Summarizing single commit: %s\n' "$commit" >&2
-        summarize_commit "$commit" "${gen_mode}" >>"$summaries_file"
-        [ -n "$debug" ] && printf 'Summaried single commit: %s in %s\n' "$commit" "$summaries_file" >&2
-        printf '\n\n' >>"$summaries_file"
-
-    else
-        # Handle commit ranges
-        git rev-list --reverse "$target" | while IFS= read -r commit; do
-            [ -n "$debug" ] && printf 'Processing commit: %s\n' "$commit" >&2
-            # Verify the commit is valid
-            if ! git rev-parse --verify "$commit" >/dev/null 2>&1; then
-                printf 'Error: Invalid commit ID or range: %s\n' "$commit" >&2
-                continue
-            fi
-            summarize_commit "${commit}" "${gen_mode}" >>"${summaries_file}"
-            [ -n "$debug" ] && printf 'DEBUG: Processed commit %s\n' "$commit" >&2
-            printf '\n\n' >>"$summaries_file"
-        done
+    # 1) Special "current" / "cached" / empty
+    if [ -z "$target" ] || [ "$target" = "--current" ] || [ "$target" = "--cached" ]; then
+        print_debug "Processing special target: ${target}"
+        summarize_commit "$target" "$gen_mode" >>"$summaries_file"
+        printf '\n' >>"$summaries_file"
+        return
     fi
+
+    # 2) Two- or three-dot range?
+    if printf '%s' "$target" | grep -qE '\.\.\.?'; then
+        print_debug "Detected commit-range syntax: ${target}"
+        # Figure out which sep
+        if printf '%s' "$target" | grep -q '\.\.\.'; then
+            sep='...'
+        else
+            sep='..'
+        fi
+
+        # Split endpoints
+        left="${target%%"$sep"*}"
+        right="${target#*"$sep"}"
+        print_debug "Range endpoints: left='${left}' right='${right}'"
+
+        # Validate both endpoints
+        for c in "$left" "$right"; do
+            if ! git rev-parse --verify "$c" >/dev/null 2>&1; then
+                printf 'Error: Invalid commit in range: %s\n' "$c" >&2
+                exit 1
+            fi
+        done
+
+        # Summarize left endpoint first
+        summarize_commit "$left" "$gen_mode" >>"$summaries_file"
+        printf '\n' >>"$summaries_file"
+
+        # Now list & summarize everything in the range (excludes left)
+        commits_file=$(portable_mktemp "commits_list_XXXXXX")
+        git rev-list --reverse "$target" >"$commits_file"
+
+        while IFS= read -r commit; do
+            print_debug "Summarizing commit: $commit"
+            summarize_commit "$commit" "$gen_mode" >>"$summaries_file"
+            printf '\n' >>"$summaries_file"
+        done <"$commits_file"
+
+        rm -f "$commits_file"
+        return
+    fi
+
+    # 3) Single commit (tags, HEAD~N, SHA, etc.)
+    if git rev-parse --verify "$target" >/dev/null 2>&1; then
+        print_debug "Summarizing single commit: $target"
+        summarize_commit "$target" "$gen_mode" >>"$summaries_file"
+        printf '\n' >>"$summaries_file"
+        return
+    fi
+
+    # 4) Nothing matched → fatal
+    print_error "Error: Invalid target: $target"
+    exit 1
 }
 
 summarize_commit() {
@@ -501,7 +549,7 @@ summarize_commit() {
     printf '%s\n' "$summary_template" >"$pr"
     res=$(generate_response "$pr" "${gen_mode}")
     echo "${res}" >"$res_file"
-    
+
     printf '%s\n' "$res"
 }
 
@@ -515,7 +563,7 @@ summarize_commit() {
 #   None. Modifies input or outputs formatted result as needed.
 ensure_blank_lines() {
     printf '%s' "$1" | awk '
-    function is_header(l) { return l ~ /^#\s/ }   # “# ” or “## ” headers
+    function is_header(l) { return l ~ /^#\s/ }   # "# " or "## " headers
     {
       if (is_header($0)) {
         if (NR > 1 && prev != "") print "";       # blank line **before** header
@@ -629,7 +677,7 @@ update_changelog_section() {
         mv "${ic_file}.tmp" "${ic_file}"
         return 0
     else
-        [ -n "${debug}" ] && printf 'Debug: No section matching pattern %s found in %s\n' "${ic_pattern}" "${ic_file}" >&2       
+        [ -n "${debug}" ] && printf 'Debug: No section matching pattern %s found in %s\n' "${ic_pattern}" "${ic_file}" >&2
         return 1
     fi
 }
@@ -839,8 +887,8 @@ update_changelog() {
             return 1
         fi
     fi
- cat "${tmp_file}"
-    #[ -n "$debug" ] && 
+    cat "${tmp_file}"
+    #[ -n "$debug" ] &&
     printf 'Debug: Ensuring blank line spacing around headers\n' >&2
     ensure_blank_lines "$(cat "${tmp_file}")" >"${tmp_file}.tmp" && mv "${tmp_file}.tmp" "$tmp_file"
     cat "${tmp_file}"
