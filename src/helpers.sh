@@ -71,38 +71,75 @@ print_error() {
 #
 # Replaces every occurrence of [NAME] in the input with its corresponding
 # value. Supports multiline values and embedded quotes.
-replace_tokens() {
+replace_tokens_old() {
     # build an AWK script in a temp file
-    tmp_awk=$(portable_mktemp "awk.template.XXXXXXX.md") || return 1
+    tmp_awk=$(portable_mktemp "awk.template.XXXXXXXX.md") || return 1
+
+    # header
     cat >"$tmp_awk" <<'AWK_HEADER'
 BEGIN { ORS = "" }
 {
-  line = $0;
+line = $0;
 AWK_HEADER
 
-    # for each NAME=value, emit a gsub line
-    for assign; do
-        name=${assign%%=*}
-        val=${assign#*=}
-        # escape backslashes, double quotes, then newlines → \n
-        esc=$(printf '%s' "$val" |
-            sed -e 's/\\/\\\\/g' \
+    # for each env var starting with GIV_TOKEN_
+    env | while IFS='=' read -r var val; do
+        case "$var" in
+        GIV_TOKEN_*)
+            name=${var#GIV_TOKEN_}
+            # escape backslashes, quotes, newlines → \n
+            esc=$(printf '%s' "$val" | sed \
+                -e 's/\\/\\\\/g' \
                 -e 's/"/\\"/g' \
                 -e ':a;N;$!ba;s/\n/\\n/g')
-        printf '  gsub(/\[%s\]/, "%s", line);\n' "$name" "$esc" >>"$tmp_awk"
+            printf '  gsub(/\[%s\]/, "%s", line);\n' "$name" "$esc" >>"$tmp_awk"
+            ;;
+        esac
     done
 
-    # finish up
+    # footer
     cat >>"$tmp_awk" <<'AWK_FOOTER'
-  print line "\n";
+print line "\n";
 }
 AWK_FOOTER
 
-    # run it
+    # run & clean up
     awk -f "$tmp_awk"
     rm -f "$tmp_awk"
 }
 
+# Replaces every “[NAME]” in stdin with the contents of
+# the environment variable GIV_TOKEN_NAME (if set).
+#
+# Usage:
+#   export GIV_TOKEN_FOO="multi
+#   line
+#   text"
+#   replace_tokens < template.md > output.md
+
+replace_tokens() {
+  awk '
+  BEGIN {
+    ORS = ""
+    # build map[name] = value for all GIV_TOKEN_* vars
+    for (v in ENVIRON) {
+      if (substr(v, 1, 10) == "GIV_TOKEN_") {
+        name = substr(v, 11)
+        map[name] = ENVIRON[v]
+      }
+    }
+  }
+  {
+    line = $0
+    # apply each replacement; order is arbitrary but harmless
+    for (n in map) {
+      # \[ and \] to match literal brackets
+      gsub("\\[" n "\\]", map[n], line)
+    }
+    print line "\n"
+  }
+  '
+}
 build_prompt() {
     prompt_file="$1"
     diff_file="$2"
