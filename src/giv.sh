@@ -69,7 +69,7 @@ version_pattern=''
 prompt_file=''
 
 # Model settings
-model=${GIV_MODEL:-'qwen2.5-coder'}
+model=${GIV_MODEL:-'devstral'}
 model_mode=${GIV_MODEL_MODE:-'auto'}
 api_model=${GIV_API_MODEL:-}
 api_url=${GIV_API_URL:-}
@@ -157,8 +157,8 @@ parse_args() {
         api_model=${GIV_API_MODEL:-$api_model}
         api_url=${GIV_API_URL:-$api_url}
         api_key=${GIV_API_KEY:-$api_key}
-    elif [ ! -f "$config_file" ]; then
-        printf 'Warning: config file "%s" not found.\n' "$config_file"
+    elif [ ! -f "$config_file" ] && [ "${config_file}" != "${PWD}/.env" ]; then
+        print_warn "config file ${config_file} not found."
     fi
 
     # 2. Next arg: revision (if present and not option)
@@ -226,11 +226,11 @@ parse_args() {
     while [ $# -gt 0 ]; do
         case "$1" in
         --verbose)
-            debug=true
+            debug="true"
             shift
             ;;
         --dry-run)
-            dry_run=true
+            dry_run="true"
             shift
             ;;
         --config-file)

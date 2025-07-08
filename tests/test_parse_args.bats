@@ -144,7 +144,7 @@ setup_git_range() {
   run parse_args message --config-file bad --verbose
 
   assert_success
-  assert_output --partial 'Warning: config file "bad" not found.'
+  assert_output --partial 'WARNING: config file bad not found.'
   assert_output --partial "Subcommand: message"
 }
 
@@ -246,6 +246,7 @@ setup_git_range() {
   debug=1
   setup_git_range
   ollama() { echo "ollama called"; }
+  debug="true"
   run parse_args changelog HEAD
   assert_success
   echo "$output"

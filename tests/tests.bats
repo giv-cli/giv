@@ -23,6 +23,8 @@ setup() {
   GIV_SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
   mock_ollama "dummy" "Ollama run"
   mock_curl "dummy" "Hello from remote!"
+
+  GIV_TMPDIR_SAVE="true"
 }
 
 teardown() {
@@ -185,8 +187,11 @@ gen_commits() {
 @test "Changelog for last commit (HEAD)" {
   echo "clog" >c.txt && git add c.txt && git commit -m "clogmsg"
   mock_ollama "dummy" "- feat: clog"
+
   run "$GIV_SCRIPT" changelog HEAD
   assert_success
+  echo "$output"
+  cat CHANGELOG.md
   grep -q "clog" CHANGELOG.md
 }
 
@@ -430,7 +435,7 @@ EOF
 
 @test "Fails for bad config file path" {
   run "$GIV_SCRIPT" message HEAD --config-file doesnotexist.env
-  assert_output --partial "Warning: config file \"doesnotexist.env\" not found."
+  assert_output --partial "WARNING: config file doesnotexist.env not found."
 }
 
 ## TODO: Fix this test

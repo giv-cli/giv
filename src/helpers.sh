@@ -255,14 +255,14 @@ generate_from_prompt() {
     fi
 
     # 2) Dry‐run?  Just print and exit
-    if [ "${dry_run}" = "true" ]; then
+    if [ "${dry_run:-}" = "true" ]; then
         printf '%s\n' "$res"
         return 0
     fi
 
     # 3) Otherwise, write (create or overwrite) the output file
     if printf '%s\n' "$res" >"$response_output_file"; then
-        print_debug "Response written to $response_output_file"
+        print_info "Response written to $response_output_file"
         return 0
     else
         printf 'Error: Failed to write response to %s\n' "$response_output_file" >&2
