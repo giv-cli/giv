@@ -47,6 +47,8 @@ GIV_TMPDIR=""
 
 # shellcheck source=helpers.sh
 . "${SCRIPT_DIR}/helpers.sh"
+# shellcheck source=markdown.sh
+. "${SCRIPT_DIR}/markdown.sh"
 
 REVISION=""
 PATHSPEC=""
@@ -583,13 +585,6 @@ cmd_announcement() {
 
 # -------------------------------------------------------------------
 # cmd_changelog: generate or update CHANGELOG.md from Git history
-#
-# Globals:
-#   REVISION, model_mode, output_file, changelog_file,
-#   PROMPT_DIR, output_version, output_mode, dry_run
-# Dependencies:
-#   portable_mktemp, summarize_target, build_prompt,
-#   generate_from_prompt, update_changelog
 # -------------------------------------------------------------------
 cmd_changelog() {
     # 1) Determine output file
@@ -597,7 +592,10 @@ cmd_changelog() {
     print_debug "Changelog file: $output_file"
 
     # 2) Summarize Git history
-    summaries_file=$(portable_mktemp "changelog_summaries_XXXXXX")
+    summaries_file=$(portable_mktemp "summaries.XXXXXXX.md") || {
+        printf 'Error: cannot create temp file for summaries\n' >&2
+        exit 1
+    }
     if ! summarize_target "$REVISION" "$summaries_file" "$model_mode"; then
         printf 'Error: summarize_target failed\n' >&2
         rm -f "$summaries_file"
@@ -614,7 +612,11 @@ cmd_changelog() {
     # 4) Build the AI prompt
     prompt_template="${PROMPT_DIR}/changelog_prompt.md"
     print_debug "Building prompt from template: $prompt_template"
-    tmp_prompt_file=$(portable_mktemp "changelog_prompt_XXXXXX")
+    tmp_prompt_file=$(portable_mktemp "prompt.XXXXXXX.md") || {
+        printf 'Error: cannot create temp file for prompt\n' >&2
+        rm -f "$summaries_file"
+        exit 1
+    }
     if ! build_prompt "$prompt_template" "$summaries_file" >"$tmp_prompt_file"; then
         printf 'Error: build_prompt failed\n' >&2
         rm -f "$summaries_file" "$tmp_prompt_file"
@@ -622,45 +624,56 @@ cmd_changelog() {
     fi
 
     # 5) Generate AI response
-    response_file=$(portable_mktemp "changelog_response_XXXXXX")
+    response_file=$(portable_mktemp "response.XXXXXXX.md") || {
+        printf 'Error: cannot create temp file for AI response\n' >&2
+        rm -f "$summaries_file" "$tmp_prompt_file"
+        exit 1
+    }
     if ! generate_from_prompt "$tmp_prompt_file" "$response_file" "$model_mode"; then
         printf 'Error: generate_from_prompt failed\n' >&2
         rm -f "$summaries_file" "$tmp_prompt_file" "$response_file"
         exit 1
     fi
 
-    # 6) Prepare for update_changelog
-    tmp_out=$(portable_mktemp "changelog_temp_out_XXXXXX")
-    # Ensure existing file (so cp won't fail on first run)
-    if [ ! -f "$output_file" ]; then
-        print_debug "Output file missing; creating empty $output_file"
-        : >"$output_file"
-    fi
+    # 6) Prepare a working copy of the changelog
+    tmp_out=$(portable_mktemp "changelog.XXXXXXX.md") || {
+        printf 'Error: cannot create temp file for changelog update\n' >&2
+        exit 1
+    }
+    # ensure the file exists so cp won't fail
+    [ -f "$output_file" ] || : >"$output_file"
     cp "$output_file" "$tmp_out"
 
     print_debug "Updating changelog (version=$output_version, mode=$output_mode)"
 
-    # 7) Dry-run?
-    if [ "${dry_run}" = "true" ]; then
-        if ! update_changelog "$tmp_out" "$response_file" "$output_version" "$output_mode"; then
-            printf 'Error: update_changelog failed\n' >&2
-            exit 1
-        fi
+    # 7) Map "auto" → "update" for manage_section
+    mode_arg=$output_mode
+    [ "$mode_arg" = auto ] && mode_arg=update
+
+    # call our helper; it returns the path to the new file
+    updated=$(manage_section \
+        "# Changelog" \
+        "$tmp_out" \
+        "$response_file" \
+        "$mode_arg" \
+        "$output_version" \
+        "##") || {
+        printf 'Error: manage_section failed\n' >&2
+        exit 1
+    }
+
+    # 8) Dry‐run?
+    if [ "$dry_run" = "true" ]; then
         print_debug "Dry run: updated changelog content:"
-        cat "$tmp_out"
+        cat "$updated"
         return 0
     fi
 
-    # 8) Write back to real changelog
-    if update_changelog "$tmp_out" "$response_file" "$output_version" "$output_mode"; then
-        if cat "$tmp_out" >"$output_file"; then
-            printf 'Changelog written to %s\n' "$output_file"
-        else
-            printf 'Error: Failed to write %s\n' "$output_file" >&2
-            exit 1
-        fi
+    # 9) Write back to real changelog
+    if cat "$updated" >"$output_file"; then
+        printf 'Changelog written to %s\n' "$output_file"
     else
-        printf 'Error: update_changelog failed\n' >&2
+        printf 'Error: Failed to write %s\n' "$output_file" >&2
         exit 1
     fi
 

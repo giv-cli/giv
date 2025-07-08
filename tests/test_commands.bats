@@ -9,6 +9,8 @@ BATS_TEST_START_TIME="$(date +%s)"
 
 # shellcheck source=../src/giv.sh
 SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
+# shellcheck source=../src/giv.sh
+HELPERS="$BATS_TEST_DIRNAME/../src/helpers.sh"
 
 setup() {
   # create a temp git repo
@@ -44,6 +46,8 @@ setup() {
   # load the script under test
   # shellcheck source=../src/giv.sh
   source "$SCRIPT"
+
+  load "$HELPERS"
 }
 
 teardown() {

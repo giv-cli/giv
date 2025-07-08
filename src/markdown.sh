@@ -26,7 +26,7 @@ manage_section() {
   [ -f "$file" ] && orig="$file" || orig="/dev/null"
 
   # pick tmp
-  tmp=$(portable_mktemp_file) || return 1
+  tmp=$(portable_mktemp "markdown-temp.XXXXXXX.md") || return 1
 
   # if mode=update but no existing header, fall back to prepend
   if [ "$mode" = update ] && ! grep -qE "^${header}[[:space:]]*${section}([[:space:]]|\$)" "$orig"; then
@@ -143,14 +143,15 @@ manage_section() {
   printf '%s\n' "$tmp"
 }
 
-
 # append_link <file> <title> <url>
 #  - if URL is empty: prints a debug msg, returns 0, no change
 #  - if the exact [title](url) already exists: prints debug, returns 0
 #  - otherwise: trims trailing blank lines, ensures one blank above + one below,
 #    appends the link, moves temp → original, prints debug, returns 0
 append_link() {
-  file=$1; title=$2; url=$3
+  file=$1
+  title=$2
+  url=$3
   prefix="DEBUG: append_link:"
   if [ -z "$url" ]; then
     printf '%s URL is empty, skipping\n' "$prefix" >&2
@@ -164,7 +165,7 @@ append_link() {
     return 0
   fi
 
-  tmp=$(portable_mktemp_file) || {
+  tmp=$(portable_mktemp "append-link-temp.XXXXXXXX.md") || {
     printf '%s Failed to create temp file\n' "$prefix" >&2
     return 0
   }
@@ -199,3 +200,4 @@ append_link() {
   printf '%s Appended link: %s to %s\n' "$prefix" "$link" "$file" >&2
   return 0
 }
+

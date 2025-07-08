@@ -31,22 +31,6 @@ teardown() {
 #     assert_equal "$output" "v1.2.3"
 # }
 
-@test "extract_changelog_section extracts correct section" {
-    cat >"$TMPFILE" <<EOF
-# Changelog
-
-## v1.2.3
-
-- Added feature X
-
-## v1.2.2
-
-- Fixed bug Y
-EOF
-    run extract_changelog_section "v1.2.3" "$TMPFILE"
-    [ "$status" -eq 0 ]
-    echo "$output" | grep -q "Added feature X"
-}
 
 # @test "get_current_version_from_file detects version = '1.2.3'" {
 #     echo "version = '1.2.3'" >"$TMPFILE"

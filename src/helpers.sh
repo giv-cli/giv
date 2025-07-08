@@ -66,6 +66,43 @@ print_error() {
     printf 'ERROR: %s\n' "$*" >&2
 }
 
+# replace_tokens NAME1=value1 NAME2=value2 …
+#   < template.md > output.md
+#
+# Replaces every occurrence of [NAME] in the input with its corresponding
+# value. Supports multiline values and embedded quotes.
+replace_tokens() {
+    # build an AWK script in a temp file
+    tmp_awk=$(portable_mktemp "awk.template.XXXXXXX.md") || return 1
+    cat >"$tmp_awk" <<'AWK_HEADER'
+BEGIN { ORS = "" }
+{
+  line = $0;
+AWK_HEADER
+
+    # for each NAME=value, emit a gsub line
+    for assign; do
+        name=${assign%%=*}
+        val=${assign#*=}
+        # escape backslashes, double quotes, then newlines → \n
+        esc=$(printf '%s' "$val" |
+            sed -e 's/\\/\\\\/g' \
+                -e 's/"/\\"/g' \
+                -e ':a;N;$!ba;s/\n/\\n/g')
+        printf '  gsub(/\[%s\]/, "%s", line);\n' "$name" "$esc" >>"$tmp_awk"
+    done
+
+    # finish up
+    cat >>"$tmp_awk" <<'AWK_FOOTER'
+  print line "\n";
+}
+AWK_FOOTER
+
+    # run it
+    awk -f "$tmp_awk"
+    rm -f "$tmp_awk"
+}
+
 build_prompt() {
     prompt_file="$1"
     diff_file="$2"
@@ -557,247 +594,53 @@ summarize_commit() {
     printf '%s\n' "$res"
 }
 
-# Normalise blank-line spacing.
-#  ─ If called *with* an argument, treats it as literal text.
-#  ─ If called with *no* arguments, reformats STDIN.
-ensure_blank_lines() {
-    if [ "$#" -eq 0 ]; then
-        awk '
-      function is_hdr(x){return x~/^#\s/}
-      {
-        if (is_hdr($0)) {if(NR>1&&prev!="")print"";print;prev=$0;next}
-        if(prev!=""&&is_hdr(prev))print""
-        print;prev=$0
-      }
-      END{if(prev!="")print""}
-    ' | awk 'NF||!gap{print}{gap=!NF}END{if(!gap)print""}'
+# extract_section <section_name> <markdown_file> [<header_id>]
+#
+# Prints the matching section (including its heading) and its content
+# up to—but not including—the next heading of the same or higher level.
+#
+#   <section_name>  The literal text of the heading (e.g. "1.0.0" or "Unreleased")
+#   <markdown_file> Path to the file to search
+#   <header_id>     Heading marker (e.g. "##" or "###"); defaults to "##"
+#
+# Returns 0 always; prints nothing if file or section is missing.
+extract_section() {
+    section=$1
+    file=$2
+    header=${3:-"##"}
+
+    # nothing to do if file absent
+    [ ! -f "$file" ] && return 0
+
+    # escape section name for regex
+    esc=$(printf '%s' "$section" | sed 's/[][\\/.*^$]/\\&/g')
+
+    # build pattern to find the heading line
+    pat="^${header}[[:space:]]*\\[?${esc}\\]?"
+
+    # locate the first matching heading line number
+    start=$(grep -nE "$pat" "$file" 2>/dev/null | head -n1 | cut -d: -f1)
+    [ -z "$start" ] && return 0
+
+    # count how many "#" in header to get its level
+    HL=${#header}
+
+    # build a regex matching any heading of level ≤ HL
+    lvl_pat="^#{1,${HL}}[[:space:]]"
+
+    # find the next heading (same or higher level) after start
+    offset=$(tail -n +"$((start + 1))" "$file" |
+        grep -nE "$lvl_pat" |
+        head -n1 |
+        cut -d: -f1)
+
+    if [ -n "$offset" ]; then
+        end=$((start + offset - 1))
     else
-        printf '%s' "$1" | ensure_blank_lines
+        # no further heading: go to EOF
+        end=$(wc -l <"$file")
     fi
-}
 
-# Collapse multiple blank lines and ensure newline at EOF.
-remove_duplicate_blank_lines() {
-    f="$1"
-    tmp=$(mktemp)
-    awk '
-    NR==1{print;next}
-    {if(!($0=="" && p==""))print;p=$0}
-    END{if(p!="")print""}
-  ' "$f" >"$tmp" && mv "$tmp" "$f"
-}
-
-# Extracts a specific section from a changelog file.
-#
-# Usage:
-#   extract_changelog_section <section_name> <changelog_file>
-#
-# Arguments:
-#   section_name    The name of the section to extract (e.g., "Unreleased", "1.0.0").
-#   changelog_file  The path to the changelog file.
-#
-# Output:
-#   Prints the contents of the specified section to stdout.
-#
-# Returns:
-#   0 if the section is found or file does not exist, otherwise non-zero.
-#
-# Notes:
-#   - Assumes sections are marked with '## [section_name]' or '## section_name'.
-#   - If the section or file is not found, outputs an empty string.
-extract_changelog_section() {
-    sec="$1" file="$2"
-    [ ! -f "$file" ] && {
-        echo ""
-        return 0
-    }
-
-    pat=
-    start=
-    end=
-    esc=
-    esc=$(printf '%s' "$sec" | sed 's/[][\\/.*^$]/\\&/g')
-    pat="^##[[:space:]]*\\[?$esc\\]?"
-
-    start=$(grep -nE "$pat" "$file" | head -n1 | cut -d: -f1)
-    [ -z "$start" ] && {
-        echo ""
-        return 0
-    }
-    start=$((start + 1))
-
-    end=$(tail -n +"$start" "$file" | grep -nE '^##[[:space:]]' | head -n1 | cut -d: -f1)
-    [ -n "$end" ] && end=$((start + end - 2)) || end=$(wc -l <"$file")
-
+    # print from the header line through end
     sed -n "${start},${end}p" "$file"
-}
-
-# Updates a specific section in a changelog file with new content for a given version.
-#
-# Arguments:
-#   $1 - Path to the changelog file to update.
-#   $2 - New content to insert into the changelog section.
-#   $3 - Version string to use as the section header (e.g., "1.2.3").
-#   $4 - Regular expression pattern to identify the section to update.
-#
-# Behavior:
-#   - If the section matching the pattern exists, replaces its content with the new content under the specified version header.
-#   - If the section does not exist, does nothing and returns 1.
-#   - Ensures proper blank lines using the `ensure_blank_lines` function.
-#
-# Returns:
-#   0 if the section was updated successfully.
-#   1 if the section matching the pattern was not found.
-
-update_changelog_section() {
-    file="$1" content="$2" version="$3" pattern="$4"
-    cf=$(mktemp)
-    printf '%s\n' "$content" >"$cf"
-
-    if grep -qE "$pattern" "$file"; then
-        awk -v pat="$pattern" -v ver="$version" -v cf="$cf" '
-      $0~pat && !done {
-        print ""; print "## " ver
-        while((getline l < cf)>0)print l; close(cf)
-        in=1; done=1; next
-      }
-      in && /^##[[:space:]]/{in=0}
-      in{next} {print}
-    ' "$file" | ensure_blank_lines >"${file}.tmp"
-        mv "${file}.tmp" "$file"
-        rm -f "$cf"
-        return 0
-    fi
-    rm -f "$cf"
-    return 1
-}
-
-# prepend_changelog_section inserts a new changelog section at the top of a file after the H1 header.
-#
-# Arguments:
-#   $1 - Path to the changelog file to update.
-#   $2 - Content to insert under the new section.
-#   $3 - Version string to use as the section header (e.g., "1.2.3").
-#
-# Behavior:
-#   - Always inserts a new section at the top (after the first H1 header), even if a section for the same version already exists.
-#   - Preserves the rest of the file content.
-#   - Ensures proper formatting with blank lines between sections.
-#   - If the content has no '##' headers, inserts as a single block.
-#
-# Usage:
-#   prepend_changelog_section <changelog_file> <section_content> <version>
-prepend_changelog_section() {
-    file="$1" content="$2" version="$3"
-    tmp=$(mktemp)
-
-    [ -f "$file" ] && cat "$file" >"$tmp" || : >"$tmp"
-
-    bf=$(mktemp)
-    {
-        printf '## %s\n' "$version"
-        printf '%s\n\n' "$content"
-    } >"$bf"
-
-    awk -v bf="$bf" '
-    NR==1 && /^# /{
-      print; print""; while((getline l < bf)>0)print l; close(bf); next
-    }
-    {print}
-  ' "$tmp" >"${tmp}.new"
-
-    # If we never saw an H1 header, prepend entire doc
-    grep -q '^# ' "${tmp}.new" || {
-        {
-            printf '# Changelog\n\n'
-            cat "$bf"
-            cat "${tmp}.new"
-        } >"${tmp}.work"
-        mv "${tmp}.work" "${tmp}.new"
-    }
-
-    mv "${tmp}.new" "$file"
-    rm -f "$tmp" "$bf"
-}
-
-# Appends a new changelog section to the specified file.
-#
-# This function always inserts a new section at the bottom of the changelog file,
-# even if a section for the given version already exists (duplicates are not checked).
-#
-# Arguments:
-#   $1 - Path to the changelog file to update.
-#   $2 - Content to insert under the new section.
-#   $3 - Version string to use as the section header (e.g., "1.2.3").
-#
-# The function creates a temporary file for the content, appends a new section
-# with the specified version header and content, and ensures there are no
-# consecutive blank lines in the output file.
-# Always inserts a new section at the bottom, even if duplicate exists.
-
-append_changelog_section() {
-    file="$1" content="$2" version="$3"
-    tmp=$(mktemp)
-    [ -f "$file" ] && cat "$file" >"$tmp"
-
-    {
-        printf '\n## %s\n' "$version"
-        printf '%s\n\n' "$content"
-    } >>"$tmp"
-
-    remove_duplicate_blank_lines "$tmp"
-    mv "$tmp" "$file"
-}
-
-# Updates, prepends, or appends a changelog section in the specified file.
-#
-# Arguments:
-#   $1 - Path to the changelog file.
-#   $2 - Content to insert into the changelog section.
-#   $3 - Section name or version (used as the section header).
-#   $4 - Mode of operation: "auto", "update", "prepend", or "append".
-#
-# Behavior:
-#   - In "auto" or "update" mode, updates the section if it exists, otherwise prepends it.
-#   - In "prepend" mode, adds the section at the top.
-#   - In "append" mode, adds the section at the bottom.
-#   - Ensures the changelog file exists.
-#   - Adds a "Managed by giv" footer if not present.
-#   - Ensures proper blank line formatting and removes duplicate blank lines.
-#
-# Dependencies:
-#   - Requires helper functions: update_changelog_section, prepend_changelog_section,
-#     append_changelog_section, ensure_blank_lines, remove_duplicate_blank_lines.
-# Update/prepend/append changelog section
-update_changelog() {
-    file="$1" content="$2" sec="$3" mode="${4:-auto}"
-    ver="$sec"
-    esc=$(printf '%s' "$ver" | sed 's/[][\\/.*^$]/\\&/g')
-    pat="^##[[:space:]]*\\[?$esc\\]?"
-    tmp=$(portable_mktemp "chglog.XXXXXX.md")
-    [ -f "$file" ] && cp "$file" "$tmp" || : >"$tmp"
-
-    # guarantee H1
-    grep -q '^# ' "$tmp" || sed -i '1i # Changelog\n' "$tmp"
-
-    case "$mode" in
-    auto | update)
-        update_changelog_section "$tmp" "$content" "$ver" "$pat" ||
-            prepend_changelog_section "$tmp" "$content" "$ver"
-        ;;
-    prepend) prepend_changelog_section "$tmp" "$content" "$ver" ;;
-    append) append_changelog_section "$tmp" "$content" "$ver" ;;
-    *)
-        echo "update_changelog: unknown mode '$mode'" >&2
-        return 1
-        ;;
-    esac
-
-    # footer
-    grep -q "Managed by giv" "$tmp" || printf '\n[Managed by giv](https://github.com/itlackey/giv)\n' >>"$tmp"
-
-    ensure_blank_lines <"$tmp" | remove_duplicate_blank_lines >"${tmp}.clean"
-    mv "${tmp}.clean" "$file"
-
-    cat "$file" # emit final doc to stdout
 }

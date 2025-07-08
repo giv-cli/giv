@@ -2,9 +2,11 @@
 
 # Path to the script under test; adjust as needed
 SCRIPT="${BATS_TEST_DIRNAME}/../src/markdown.sh"
+HELPERS="${BATS_TEST_DIRNAME}/../src/helpers.sh"
 
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
+load "$HELPERS"
 load "$SCRIPT"
 
 # Create a temp file and print its path
@@ -96,17 +98,17 @@ write_file() {
     done
 }
 @test "prepend mode on empty file emits title and section" {
-  rm -f orig.md
-  write_file new.md "X" "Y"
+    rm -f orig.md
+    write_file new.md "X" "Y"
 
-  run manage_section "# Changelog" orig.md new.md prepend v0.1 '##'
-  [ "$status" -eq 0 ]
+    run manage_section "# Changelog" orig.md new.md prepend v0.1 '##'
+    [ "$status" -eq 0 ]
 
-  tmp="$output"
-  run cat "$tmp"
-  [ "$status" -eq 0 ]
+    tmp="$output"
+    run cat "$tmp"
+    [ "$status" -eq 0 ]
 
-  assert_output <<EOF
+    assert_output <<EOF
 # Changelog
 
 ## v0.1
@@ -186,46 +188,46 @@ EOF
 }
 
 @test "exit cleanly when URL is empty" {
-  write_file test.md "Line1"
-  run append_link test.md "Test" ""
-  [ "$status" -eq 0 ]
-  # look in $output, not $stderr
-  [[ "$output" =~ "URL is empty" ]]
-  # file untouched:
-  run cat test.md
-  assert_output "Line1"
+    write_file test.md "Line1"
+    run append_link test.md "Test" ""
+    [ "$status" -eq 0 ]
+    # look in $output, not $stderr
+    [[ "$output" =~ "URL is empty" ]]
+    # file untouched:
+    run cat test.md
+    assert_output "Line1"
 }
 
 @test "append link to non-existent file" {
-  rm -f test.md
-  run append_link test.md "T" "http://u"
-  [ "$status" -eq 0 ]
-  # debug now lives in $output
-  [[ "$output" =~ "creating" ]]
-  run cat test.md
-  assert_output <<EOF
+    rm -f test.md
+    run append_link test.md "T" "http://u"
+    [ "$status" -eq 0 ]
+    # debug now lives in $output
+    [[ "$output" =~ "creating" ]]
+    run cat test.md
+    assert_output <<EOF
 [T](http://u)
 
 EOF
 }
 
 @test "append link to empty existing file" {
-  write_file test.md ""
-  run append_link test.md "T" "http://u"
-  [ "$status" -eq 0 ]
-  run cat test.md
-  assert_output <<EOF
+    write_file test.md ""
+    run append_link test.md "T" "http://u"
+    [ "$status" -eq 0 ]
+    run cat test.md
+    assert_output <<EOF
 [T](http://u)
 
 EOF
 }
 
 @test "append link to non-empty file" {
-  write_file test.md "A" "B"
-  run append_link test.md "T" "http://u"
-  [ "$status" -eq 0 ]
-  run cat test.md
-  assert_output <<EOF
+    write_file test.md "A" "B"
+    run append_link test.md "T" "http://u"
+    [ "$status" -eq 0 ]
+    run cat test.md
+    assert_output <<EOF
 A
 B
 
@@ -235,11 +237,11 @@ EOF
 }
 
 @test "trim multiple blanks before appending" {
-  printf "A\n\n\n" > test.md
-  run append_link test.md "T" "http://u"
-  [ "$status" -eq 0 ]
-  run cat test.md
-  assert_output <<EOF
+    printf "A\n\n\n" >test.md
+    run append_link test.md "T" "http://u"
+    [ "$status" -eq 0 ]
+    run cat test.md
+    assert_output <<EOF
 A
 
 [T](http://u)
@@ -248,15 +250,109 @@ EOF
 }
 
 @test "do not duplicate existing link" {
-  write_file test.md "X" "[T](http://u)" "Y"
-  run append_link test.md "T" "http://u"
-  [ "$status" -eq 0 ]
-  # again, check $output
-  [[ "$output" =~ "Link already exists" ]]
-  run cat test.md
-  assert_output <<EOF
+    write_file test.md "X" "[T](http://u)" "Y"
+    run append_link test.md "T" "http://u"
+    [ "$status" -eq 0 ]
+    # again, check $output
+    [[ "$output" =~ "Link already exists" ]]
+    run cat test.md
+    assert_output <<EOF
 X
 [T](http://u)
 Y
+EOF
+}
+
+@test "non-existent file returns nothing" {
+    rm -f file.md
+    run extract_section "v1.0.0" file.md
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "section not found returns nothing" {
+    write_file file.md \
+        "# Title" \
+        "" \
+        "## v1.0.0" \
+        "Content"
+    run extract_section "v2.0.0" file.md
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "extract second-level section including header" {
+    write_file file.md \
+        "# Title" \
+        "" \
+        "## v1.0.0" \
+        "Line1" \
+        "Line2" \
+        "" \
+        "## v0.9.0" \
+        "Other"
+    run extract_section "v1.0.0" file.md
+    [ "$status" -eq 0 ]
+    assert_output <<EOF
+## v1.0.0
+Line1
+Line2
+EOF
+}
+
+@test "extract bracketed section name" {
+    write_file file.md \
+        "# Title" \
+        "" \
+        "## [v1.0.0]" \
+        "Alpha" \
+        "Beta" \
+        "" \
+        "## v0.9.0" \
+        "XYZ"
+    run extract_section "v1.0.0" file.md
+    [ "$status" -eq 0 ]
+    assert_output <<EOF
+## [v1.0.0]
+Alpha
+Beta
+EOF
+}
+
+@test "extract third-level section stops at next higher" {
+    cat >file.md <<'EOF'
+# Title
+
+### Subsection
+A
+B
+
+### Another
+C
+
+## Top
+D
+EOF
+
+    run extract_section "Subsection" file.md "###"
+    [ "$status" -eq 0 ]
+    assert_output <<EOF
+### Subsection
+A
+B
+EOF
+}
+
+@test "extract last section at EOF" {
+    write_file file.md \
+        "# Title" \
+        "" \
+        "## Final" \
+        "Last"
+    run extract_section "Final" file.md
+    [ "$status" -eq 0 ]
+    assert_output <<EOF
+## Final
+Last
 EOF
 }
