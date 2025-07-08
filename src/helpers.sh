@@ -557,36 +557,34 @@ summarize_commit() {
     printf '%s\n' "$res"
 }
 
-# Ensures that there are blank lines where required in the script or input.
-# This function can be used to enforce formatting standards by adding or checking for blank lines.
-# Usage:
-#   ensure_blank_lines [arguments]
-# Arguments:
-#   [arguments] - Optional parameters to customize the behavior (if any).
-# Returns:
-#   None. Modifies input or outputs formatted result as needed.
+# Normalise blank-line spacing.
+#  ─ If called *with* an argument, treats it as literal text.
+#  ─ If called with *no* arguments, reformats STDIN.
 ensure_blank_lines() {
-    printf '%s' "$1" | awk '
-    function is_header(l) { return l ~ /^#\s/ }   # "# " or "## " headers
-    {
-      if (is_header($0)) {
-        if (NR > 1 && prev != "") print "";       # blank line **before** header
-        print;                                    # the header itself
-        prev = $0;  next
+    if [ "$#" -eq 0 ]; then
+        awk '
+      function is_hdr(x){return x~/^#\s/}
+      {
+        if (is_hdr($0)) {if(NR>1&&prev!="")print"";print;prev=$0;next}
+        if(prev!=""&&is_hdr(prev))print""
+        print;prev=$0
       }
-      if (prev != "" && is_header(prev)) print "" # blank line **after** header
-      print;  prev = $0
-    }
-    END { if (prev != "") print "" }              # newline-at-EOF
-  ' | # 1st pass
-        awk 'NF || !blank { print } { blank = !NF }      # de-dupe blank lines
-       END { if (!blank) print "" }' # final newline
+      END{if(prev!="")print""}
+    ' | awk 'NF||!gap{print}{gap=!NF}END{if(!gap)print""}'
+    else
+        printf '%s' "$1" | ensure_blank_lines
+    fi
 }
 
-# Remove duplicate blank lines and ensure file ends with newline
+# Collapse multiple blank lines and ensure newline at EOF.
 remove_duplicate_blank_lines() {
-    # $1: file path
-    awk 'NR==1{print} NR>1{if (!($0=="" && p=="")) print} {p=$0} END{if(p!="")print ""}' "$1" >"$1.tmp" && mv "$1.tmp" "$1"
+    f="$1"
+    tmp=$(mktemp)
+    awk '
+    NR==1{print;next}
+    {if(!($0=="" && p==""))print;p=$0}
+    END{if(p!="")print""}
+  ' "$f" >"$tmp" && mv "$tmp" "$f"
 }
 
 # Extracts a specific section from a changelog file.
@@ -608,28 +606,30 @@ remove_duplicate_blank_lines() {
 #   - Assumes sections are marked with '## [section_name]' or '## section_name'.
 #   - If the section or file is not found, outputs an empty string.
 extract_changelog_section() {
-    ecs_section="$1"
-    ecs_file="$2"
-    if [ ! -f "${ecs_file}" ]; then
+    sec="$1" file="$2"
+    [ ! -f "$file" ] && {
         echo ""
         return 0
-    fi
-    ecs_esc=$(echo "${ecs_section}" | sed 's/[][\\/.*^$]/\\&/g')
-    ecs_pattern="^##[[:space:]]*\[?${ecs_esc}\]?"
-    start_line=$(grep -nE "${ecs_pattern}" "${ecs_file}" | head -n1 | cut -d: -f1)
-    if [ -z "${start_line}" ]; then
+    }
+
+    pat=
+    start=
+    end=
+    esc=
+    esc=$(printf '%s' "$sec" | sed 's/[][\\/.*^$]/\\&/g')
+    pat="^##[[:space:]]*\\[?$esc\\]?"
+
+    start=$(grep -nE "$pat" "$file" | head -n1 | cut -d: -f1)
+    [ -z "$start" ] && {
         echo ""
         return 0
-    else
-        start_line=$((start_line + 1))
-    fi
-    end_line=$(tail -n "$((start_line + 1))" "${ecs_file}" | grep -n '^## ' | head -n1 | cut -d: -f1)
-    if [ -n "${end_line}" ]; then
-        end_line=$((start_line + end_line - 1))
-    else
-        end_line=$(wc -l <"${ecs_file}")
-    fi
-    sed -n "${start_line},${end_line}p" "${ecs_file}"
+    }
+    start=$((start + 1))
+
+    end=$(tail -n +"$start" "$file" | grep -nE '^##[[:space:]]' | head -n1 | cut -d: -f1)
+    [ -n "$end" ] && end=$((start + end - 2)) || end=$(wc -l <"$file")
+
+    sed -n "${start},${end}p" "$file"
 }
 
 # Updates a specific section in a changelog file with new content for a given version.
@@ -648,42 +648,28 @@ extract_changelog_section() {
 # Returns:
 #   0 if the section was updated successfully.
 #   1 if the section matching the pattern was not found.
+
 update_changelog_section() {
-    ic_file="$1"
-    ic_content="$2"
-    ic_version="$3"
-    ic_pattern="$4"
-    content_file=$(mktemp)
-    print_debug "Updating changelog section in ${ic_file} with version ${ic_version} and pattern ${ic_pattern}"
-    printf "%s\n" "${ic_content}" >"${content_file}"
-    if grep -qE "${ic_pattern}" "${ic_file}"; then
-        awk -v pat="${ic_pattern}" -v ver="${ic_version}" -v content_file="${content_file}" '
-            BEGIN { in_section=0; replaced=0 }
-            {
-                if ($0 ~ pat && !replaced) {
-                    print "";
-                    print "## " ver;
-                    while ((getline line < content_file) > 0) print line;
-                    close(content_file);
-                    in_section=1;
-                    replaced=1;
-                    next
-                }
-                if (in_section && $0 ~ /^## /) {
-                    in_section=0
-                }
-                if (in_section) {
-                    next
-                }
-                print $0
-            }
-            ' "${ic_file}" | ensure_blank_lines >"${ic_file}.tmp"
-        mv "${ic_file}.tmp" "${ic_file}"
+    file="$1" content="$2" version="$3" pattern="$4"
+    cf=$(mktemp)
+    printf '%s\n' "$content" >"$cf"
+
+    if grep -qE "$pattern" "$file"; then
+        awk -v pat="$pattern" -v ver="$version" -v cf="$cf" '
+      $0~pat && !done {
+        print ""; print "## " ver
+        while((getline l < cf)>0)print l; close(cf)
+        in=1; done=1; next
+      }
+      in && /^##[[:space:]]/{in=0}
+      in{next} {print}
+    ' "$file" | ensure_blank_lines >"${file}.tmp"
+        mv "${file}.tmp" "$file"
+        rm -f "$cf"
         return 0
-    else
-        print_debug "No section matching pattern ${ic_pattern} found in ${ic_file}"
-        return 1
     fi
+    rm -f "$cf"
+    return 1
 }
 
 # prepend_changelog_section inserts a new changelog section at the top of a file after the H1 header.
@@ -702,86 +688,36 @@ update_changelog_section() {
 # Usage:
 #   prepend_changelog_section <changelog_file> <section_content> <version>
 prepend_changelog_section() {
-    ic_file="$1"
-    ic_content="$2"
-    ic_version="$3"
-    content_file=$(portable_mktemp "content.XXXXXX.md")
-    tmp_output_file=$(portable_mktemp "ic_file.XXXXXX.md")
-    print_debug "Prepending changelog section in ${ic_file} with version ${ic_version}"
-    cp "${ic_file}" "${tmp_output_file}"
-    printf "%s\n" "$ic_content" >"$content_file"
-    print_debug "Prepending changelog section in ${ic_file} with version ${ic_version}"
+    file="$1" content="$2" version="$3"
+    tmp=$(mktemp)
+
+    [ -f "$file" ] && cat "$file" >"$tmp" || : >"$tmp"
+
+    bf=$(mktemp)
     {
-        # Check if content_file has any '##' headers
-        if grep -q '^## ' "$content_file"; then
-            # Content has its own sections, insert as-is under the version header
-            awk -v ver="$ic_version" -v content_file="$content_file" '
-        BEGIN { added=0 }
+        printf '## %s\n' "$version"
+        printf '%s\n\n' "$content"
+    } >"$bf"
+
+    awk -v bf="$bf" '
+    NR==1 && /^# /{
+      print; print""; while((getline l < bf)>0)print l; close(bf); next
+    }
+    {print}
+  ' "$tmp" >"${tmp}.new"
+
+    # If we never saw an H1 header, prepend entire doc
+    grep -q '^# ' "${tmp}.new" || {
         {
-            if (!added && /^# /) {
-                print;
-                print "";
-                print "## " ver;
-                while ((getline line < content_file) > 0) print line;
-                close(content_file);
-                print "";
-                added=1;
-                next;
-            }
-            print;
-        }
-        END {
-            if (!added) {
-                print "## " ver;
-                while ((getline line < content_file) > 0) print line;
-                close(content_file);
-                print "";
-            }
-        }
-        ' "$ic_file"
-        else
-            # Content has no '##' headers, insert as a single block under the version header
-            print_debug "Content has no ## headers, inserting as a single block under version ${ic_version}"
-            # Insert the version header and content after the first H1 header
-            # If no H1 header exists, # Changelog will be added at the top
-            # If the file is empty, it will just add the version header and content
-            if ! grep -q '^# ' "$ic_file"; then
-                print_debug "No H1 header found, adding # Changelog at the top"
-                printf '# Changelog\n\n%s\n' "${ic_content}"
-            else
-                print_debug "Found H1 header, inserting after it"
-                # Insert the version header and content after the first H1 header
-                ed -s "${ic_file}" <<ED
-/#\s.*$/+1
-a
-${ic_content}
-.
-wq
-ED
+            printf '# Changelog\n\n'
+            cat "$bf"
+            cat "${tmp}.new"
+        } >"${tmp}.work"
+        mv "${tmp}.work" "${tmp}.new"
+    }
 
-                if [ $? -ne 0 ]; then
-                    echo "Error: Failed to insert content using ed" >&2
-                    exit 1
-                fi
-                print_debug "Inserted content after H1 header"
-
-            fi
-
-        fi
-    } >"$ic_file.tmp"
-    #| awk 'NR==1{print} NR>1{if (!($0=="" && p=="")) print} {p=$0} END{if(p!="")print ""}' >"$ic_file.tmp"
-
-    #printf 'Debug: Prepended content to %s\n' "${ic_file}.tmp" >&2
-
-    rm -f "$content_file"
-    if mv "$ic_file.tmp" "$ic_file"; then
-        print_debug "Prepend completed, updated file ${ic_file}"
-        return 0
-    else
-        printf 'Error: Failed to update changelog file %s\n' "${ic_file}" >&2
-        exit 1
-    fi
-
+    mv "${tmp}.new" "$file"
+    rm -f "$tmp" "$bf"
 }
 
 # Appends a new changelog section to the specified file.
@@ -798,20 +734,19 @@ ED
 # with the specified version header and content, and ensures there are no
 # consecutive blank lines in the output file.
 # Always inserts a new section at the bottom, even if duplicate exists.
-append_changelog_section() {
-    ic_file="$1"
-    ic_content="$2"
-    ic_version="$3"
-    content_file=$(mktemp)
-    printf "%s\n" "$ic_content" >"$content_file"
-    print_debug "Appending changelog section in ${ic_file} with version ${ic_version} and pattern ${ic_pattern}"
 
-    awk -v ver="$ic_version" -v content_file="$content_file" '
-    { print }
-    END { print ""; print "## " ver; while ((getline line < content_file) > 0) print line; close(content_file); print "" }
-    ' "$ic_file" | awk 'NR==1{print} NR>1{if (!($0=="" && p=="")) print} {p=$0} END{if(p!="")print ""}' >"$ic_file.tmp"
-    mv "$ic_file.tmp" "$ic_file"
-    rm -f "$content_file"
+append_changelog_section() {
+    file="$1" content="$2" version="$3"
+    tmp=$(mktemp)
+    [ -f "$file" ] && cat "$file" >"$tmp"
+
+    {
+        printf '\n## %s\n' "$version"
+        printf '%s\n\n' "$content"
+    } >>"$tmp"
+
+    remove_duplicate_blank_lines "$tmp"
+    mv "$tmp" "$file"
 }
 
 # Updates, prepends, or appends a changelog section in the specified file.
@@ -835,66 +770,34 @@ append_changelog_section() {
 #     append_changelog_section, ensure_blank_lines, remove_duplicate_blank_lines.
 # Update/prepend/append changelog section
 update_changelog() {
-    ic_file="$1"
-    ic_content="$2"
-    ic_section_name="$3"
-    ic_mode="$4"
-    ic_version="$ic_section_name"
-    ic_esc_version=$(echo "$ic_version" | sed 's/[][\\/.*^$]/\\&/g')
-    ic_pattern="^##[[:space:]]*\[?$ic_esc_version\]?"
+    file="$1" content="$2" sec="$3" mode="${4:-auto}"
+    ver="$sec"
+    esc=$(printf '%s' "$ver" | sed 's/[][\\/.*^$]/\\&/g')
+    pat="^##[[:space:]]*\\[?$esc\\]?"
+    tmp=$(portable_mktemp "chglog.XXXXXX.md")
+    [ -f "$file" ] && cp "$file" "$tmp" || : >"$tmp"
 
-    # Create a temp file and copy ic_file into it (or create empty if ic_file doesn't exist)
-    tmp_file=$(portable_mktemp "tmp_changelog.XXXXXX.md")
-    if [ -f "$ic_file" ]; then
-        cp "$ic_file" "$tmp_file"
-        printf '# Changelog\n\n' >"$tmp_file"
-    else
-        : >"$tmp_file"
-    fi
+    # guarantee H1
+    grep -q '^# ' "$tmp" || sed -i '1i # Changelog\n' "$tmp"
 
-    content_file=$(portable_mktemp "tmp_changelog_content.XXXXXX.md")
-    cat "$ic_content" >"$content_file"
-    ic_content_block=$(cat "$content_file")
-
-    print_debug "Updating changelog section in ${ic_file} with version {$ic_version} and mode $ic_mode"
-    case "$ic_mode" in
+    case "$mode" in
     auto | update)
-        if update_changelog_section "$tmp_file" "$ic_content_block" "$ic_version" "$ic_pattern"; then
-            print_debug "Updated existing section for version $ic_version"
-        else
-            print_debug "No existing section found, prepending new section for version $ic_version"
-            prepend_changelog_section "$tmp_file" "$ic_content_block" "$ic_version"
-        fi
+        update_changelog_section "$tmp" "$content" "$ver" "$pat" ||
+            prepend_changelog_section "$tmp" "$content" "$ver"
         ;;
-    prepend)
-        prepend_changelog_section "$tmp_file" "$ic_content_block" "$ic_version"
-        ;;
-    append)
-        append_changelog_section "$tmp_file" "$ic_content_block" "$ic_version"
-        ;;
+    prepend) prepend_changelog_section "$tmp" "$content" "$ver" ;;
+    append) append_changelog_section "$tmp" "$content" "$ver" ;;
     *)
-        printf 'Unknown mode: %s\n' "$ic_mode" >&2
+        echo "update_changelog: unknown mode '$mode'" >&2
         return 1
         ;;
     esac
 
-    print_debug "Tagging changelog document"
+    # footer
+    grep -q "Managed by giv" "$tmp" || printf '\n[Managed by giv](https://github.com/itlackey/giv)\n' >>"$tmp"
 
-    if ! tail -n 5 "$tmp_file" | grep -q "Managed by giv"; then
-        if printf '\n[Managed by giv](https://github.com/itlackey/giv)\n\n' >>"$tmp_file"; then
-            print_debug "Added footer to changelog file $tmp_file"
-        else
-            print_error "Failed to add footer to changelog file $tmp_file"
-            return 1
-        fi
-    fi
-    cat "${tmp_file}"
-    print_debug "Ensuring blank line spacing around headers"
-    ensure_blank_lines "$(cat "${tmp_file}")" >"${tmp_file}.tmp" && mv "${tmp_file}.tmp" "$tmp_file"
-    cat "${tmp_file}"
-    print_debug "Removing duplicates blank lines"
-    remove_duplicate_blank_lines "$tmp_file"
+    ensure_blank_lines <"$tmp" | remove_duplicate_blank_lines >"${tmp}.clean"
+    mv "${tmp}.clean" "$file"
 
-    # Return the path to the temp file
-    cat "$tmp_file"
+    cat "$file" # emit final doc to stdout
 }

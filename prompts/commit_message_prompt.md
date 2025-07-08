@@ -1,4 +1,4 @@
-Write a git commit message following the Keep a Changelog standard:
+Write a git commit message for the provide git history following the Keep a Changelog standard:
 
 1. Format Requirements:
    - First line (header): Brief overview of changes (50 characters or less)

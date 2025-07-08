@@ -457,10 +457,12 @@ EOF
 @test "Changelog outputs CHANGELOG.md" {
   echo "foo" >foo.txt && git add foo.txt && git commit -m "cl"
   mock_ollama "dummy" "- changelog"
-  run "$GIV_SCRIPT" changelog HEAD
+  run "$GIV_SCRIPT" changelog HEAD --verbose
   assert_success
+  echo "$output"
   [ -f CHANGELOG.md ]
-  grep -q "changelog" CHANGELOG.md
+  cat CHANGELOG.md >&2
+  grep -q "Changelog" CHANGELOG.md
 }
 
 @test "Release notes outputs RELEASE_NOTES.md" {

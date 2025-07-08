@@ -8,6 +8,9 @@
 - ADDED: --type "annoucement" option to generate a release announcement
 - ADDED: --type "commit" option to generate commit message `git commit -m "$(giv -t commit)"
 - ENHANCEMENT: add git config user.name to output
+- ENHANCEMENT: add project name to summaries(?)
+- ENHANCEMENT: add README to summaries/prompt(?)
+- 
 
 - CHORE: Add more "real-world" tests with more detailed output validation
 - ENHANCEMENT: allow user to specify (regex?) patterns for matching sections, headers, versions, todos

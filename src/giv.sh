@@ -644,12 +644,10 @@ cmd_changelog() {
     if [ "${dry_run}" = "true" ]; then
         if ! update_changelog "$tmp_out" "$response_file" "$output_version" "$output_mode"; then
             printf 'Error: update_changelog failed\n' >&2
-            rm -f "$summaries_file" "$tmp_prompt_file" "$response_file" "$tmp_out"
             exit 1
         fi
         print_debug "Dry run: updated changelog content:"
         cat "$tmp_out"
-        rm -f "$summaries_file" "$tmp_prompt_file" "$response_file" "$tmp_out"
         return 0
     fi
 
@@ -659,17 +657,14 @@ cmd_changelog() {
             printf 'Changelog written to %s\n' "$output_file"
         else
             printf 'Error: Failed to write %s\n' "$output_file" >&2
-            rm -f "$summaries_file" "$tmp_prompt_file" "$response_file" "$tmp_out"
             exit 1
         fi
     else
         printf 'Error: update_changelog failed\n' >&2
-        rm -f "$summaries_file" "$tmp_prompt_file" "$response_file" "$tmp_out"
         exit 1
     fi
 
     print_debug "Changelog generated successfully."
-    rm -f "$summaries_file" "$tmp_prompt_file" "$response_file" "$tmp_out"
 }
 
 if [ "${_is_sourced}" -eq 0 ]; then
