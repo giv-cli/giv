@@ -53,7 +53,7 @@ PATHSPEC=""
 
 config_file=""
 is_config_loaded=false
-debug=true
+debug=false
 dry_run=""
 template_dir="$PROMPT_DIR"
 output_file=''
@@ -131,7 +131,7 @@ parse_args() {
             ;;
         --config-file=*)
             config_file="${arg#--config-file=}"
-            [ -n "${debug}" ] && printf 'Debug: Found config file argument: --config-file=%s\n' "${config_file}"
+            print_debug "Found config file argument: --config-file=${config_file}"
             break
             ;;
         *)
@@ -182,7 +182,7 @@ parse_args() {
                 if git rev-list "$1" >/dev/null 2>&1; then
                     REVISION="$1"
                     # If it's a valid commit ID, shift it
-                    [ -n "$debug" ] && printf 'Debug: Valid commit range: %s\n' "$1"
+                    print_debug "Valid commit range: $1"
                     shift
                 else
                     printf 'Error: Invalid commit range: %s\n' "$1" >&2
@@ -191,7 +191,7 @@ parse_args() {
             elif git rev-parse --verify "$1" >/dev/null 2>&1; then
                 REVISION="$1"
                 # If it's a valid commit ID, shift it
-                [ -n "$debug" ] && printf 'Debug: Valid commit ID: %s\n' "$1"
+                print_debug "Valid commit ID: $1"
                 shift
             else
                 printf 'Error: Invalid target: %s\n' "$1" >&2
@@ -211,7 +211,7 @@ parse_args() {
     PATHSPEC=""
     while [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; do
         # If the first argument is a pattern, collect it
-        [ -n "$debug" ] && printf 'Debug: Collecting pattern: %s\n' "$1"
+        print_debug "Collecting pattern: $1"
         if [ -z "${PATHSPEC}" ]; then
             PATHSPEC="$1"
         else
@@ -306,15 +306,15 @@ parse_args() {
     # Determine ollama/remote mode once before parsing args
     if [ "${model_mode}" = "auto" ] || [ "${model_mode}" = "local" ]; then
         if ! command -v ollama >/dev/null 2>&1; then
-            [ -n "${debug}" ] && printf 'Debug: ollama not found, forcing remote mode (local model unavailable).\n'
+            print_debug "ollama not found, forcing remote mode (local model unavailable)"
             model_mode="remote"
             if [ -z "${api_key}" ]; then
-                [ -n "${debug}" ] && printf 'Warning: ollama not found, so remote mode is required, but GIV_API_KEY is not set.\n' >&2
+                print_warn "ollama not found, so remote mode is required, but GIV_API_KEY is not set"
                 model_mode="none"
                 dry_run=true
             fi
             if [ -z "${api_url}" ]; then
-                [ -n "${debug}" ] && printf 'Warning: ollama not found, so remote mode is required, but no API URL provided (use --api-url or GIV_API_URL).\n' >&2
+                print_warn "ollama not found, so remote mode is required, but no API URL provided (use --api-url or GIV_API_URL)"
                 model_mode="none"
                 dry_run=true
             fi
@@ -334,7 +334,7 @@ parse_args() {
 
     [ "${model_mode}" = "none" ] && print_warn "Model mode set to \"none\", no model will be used."
 
-    if [ -n "$debug" ]; then
+    if [ "$debug" = "true" ]; then
         printf 'Environment variables:\n'
         printf '  GIV_TMPDIR: %s\n' "${GIV_TMPDIR:-}"
         printf '  GIV_MODEL_MODE: %s\n' "${GIV_MODEL_MODE:-}"
@@ -473,10 +473,10 @@ cmd_message() {
     if [ "$commit_id" = "--current" ] || [ "$commit_id" = "--cached" ]; then
         hist=$(portable_mktemp "commit_history_XXXXXX.md")
         build_history "$hist" "$commit_id" "$todo_pattern" "$PATHSPEC"
-        [ -n "$debug" ] && printf 'Debug: Generated history file %s\n' "$hist"
+        print_debug "Generated history file $hist"
         pr=$(portable_mktemp "commit_message_prompt_XXXXXX.md")
         printf '%s' "$(build_prompt "${PROMPT_DIR}/commit_message_prompt.md" "$hist")" >"$pr"
-        [ -n "$debug" ] && printf 'Debug: Generated prompt file %s\n' "$pr"
+        print_debug "Generated prompt file $pr"
         res=$(generate_response "$pr" "$model_mode")
         printf '%s\n' "$res"
         return
@@ -681,7 +681,7 @@ if [ "${_is_sourced}" -eq 0 ]; then
     #     exit 1
     # fi
     # # Enable debug mode if requested
-    # if [ -n "${debug}" ]; then
+    # if [ "${debug}" = "true" ]; then
     #     set -x
     # fi
 

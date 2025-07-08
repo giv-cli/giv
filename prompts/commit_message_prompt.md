@@ -22,11 +22,12 @@ Write a git commit message following the Keep a Changelog standard:
      * deps: for dependency updates
 
 3. Input Processing:
-   - Analyze the git diff output provided
+   - Analyze the git diff output provided above
    - Identify the overall purpose of the changes
    - Extract individual changes and their types
    - Group related changes under appropriate types
    - Focus on what changed and why
+   - Only include changes from the git history provided in this message.
 
 4. Output Format:
 [Overview under 50 chars]
@@ -42,3 +43,4 @@ Improve user authentication system
 [fix] Resolve login timeout issues
 [docs] Update API documentation
 [perf] Optimize authentication queries
+

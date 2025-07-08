@@ -50,7 +50,9 @@ portable_mktemp() {
 # Logging helpers
 # -------------------------------------------------------------------
 print_debug() {
-    [ "$debug" = "true" ] && printf 'DEBUG: %s\n' "$*" >&2
+    if [ "${debug:-}" = "true" ]; then
+        printf 'DEBUG: %s\n' "$*" >&2
+    fi
 }
 print_info() {
     printf '%s\n' "$*" >&2
@@ -185,7 +187,7 @@ generate_remote() {
         -H "Content-Type: application/json" \
         -d "${body}")
 
-    if [ -n "${debug}" ]; then
+    if [ "$debug" = "true" ]; then
         echo "Response from remote API:" >&2
         echo "${response}" >&2
         #echo "${response}" >> "response.json"
@@ -194,12 +196,12 @@ generate_remote() {
     # Extract the content field from the response
     result=$(extract_content "${response}")
 
-    [ -n "$debug" ] && printf 'Debug: Parsed response:\n%s\n' "$result" >&2
+    #print_debug "Parsed response:$result"
     echo "${result}"
 }
 
 run_local() {
-    if [ -n "${debug}" ]; then
+    if [ "$debug" = "true" ]; then
         ollama run "${model}" --verbose <"$1"
     else
         ollama run "${model}" <"$1"
@@ -273,7 +275,7 @@ extract_todo_changes() {
     range="$1"
     pattern="${2:-$todo_pattern}"
 
-    [ "$debug" = true ] && printf 'Debug: Extracting TODO changes for range: %s with pattern: %s\n' "${range}" "${pattern}" >&2
+    print_debug "Extracting TODO changes for range: ${range} and pattern ${pattern}"
     # Default to no pattern if not set
     set -- # Reset positional args to avoid confusion
 
@@ -290,7 +292,7 @@ extract_todo_changes() {
 # helper: writes message header based on commit type
 get_message_header() {
     commit="$1"
-    [ -n "${debug}" ] && printf 'Debug: Getting message header for commit %s\n' "$commit" >&2
+    print_debug "Getting message header for commit $commit"
     case "$commit" in
     --cached) echo "Staged Changes" ;;
     --current | "") echo "Current Changes" ;;
@@ -300,7 +302,7 @@ get_message_header() {
 
 # helper: finds the version file path
 find_version_file() {
-    [ -n "${debug}" ] && printf 'Debug: Finding version file...\n' >&2
+    print_debug "Finding version file..."
     if [ -n "${version_file}" ] && [ -f "${version_file}" ]; then
         echo "${version_file}"
         return
@@ -311,12 +313,12 @@ find_version_file() {
             return
         }
     done
-    [ -n "${debug}" ] && printf 'Debug: No version file found, searching for giv.sh...\n' >&2
+    print_debug "No version file found, searching for giv.sh..."
     giv_sh=$(git ls-files --full-name | grep '/giv\.sh$' | head -n1)
     if [ -n "${giv_sh}" ]; then
         echo "${giv_sh}"
     else
-        [ -n "${debug}" ] && printf 'Debug: No version file found, returning empty string.\n' >&2
+        print_debug "No version file found, returning empty string."
         echo ""
     fi
 
@@ -326,7 +328,7 @@ find_version_file() {
 get_version_info() {
     commit="$1"
     vf="$2"
-    [ -n "$debug" ] && printf 'Debug: Getting version info for commit %s from file %s\n' "$commit" "$vf" >&2
+    print_debug "Getting version info for commit $commit from $vf"
 
     # Ensure empty string is returned on failure
     case "$commit" in
@@ -422,7 +424,7 @@ build_history() {
     todo_pattern="${3:-${GIV_TODO_PATTERN:-TODO}}"
     diff_pattern="${4:-}"
 
-    [ -n "$debug" ] && printf 'Debug: Building history for commit %s\n' "$commit" >&2
+    print_debug "Building history for commit $commit"
     : >"$hist"
 
     if [ -z "$commit" ]; then
@@ -441,7 +443,7 @@ build_history() {
 
     # version
     vf=$(find_version_file)
-    [ -n "$vf" ] && [ -n "$debug" ] && printf 'Debug: Found version file: %s\n' "$vf" >&2
+    [ -n "$vf" ] && print_debug "Found version file: $vf"
     [ -n "$vf" ] && {
         ver=$(get_version_info "$commit" "$vf")
         [ -n "$ver" ] && printf '**Version:** %s\n' "$ver" >>"$hist"
@@ -454,7 +456,7 @@ build_history() {
 
     # TODO diff
     td=$(extract_todo_changes "$commit" "$todo_pattern")
-    [ -n "$debug" ] && printf 'Debug: TODO changes: %s\n' "$td" >&2
+    print_debug "TODO changes: $td"
     # shellcheck disable=SC2016
     [ -n "$td" ] && printf '\n### TODO Changes\n```diff\n%s\n```\n' "$td" >>"$hist"
 
@@ -542,10 +544,10 @@ summarize_commit() {
     hist=$(portable_mktemp "hist.${commit}.XXXXXX.md")
     pr=$(portable_mktemp "prompt.${commit}.XXXXXX.md")
     res_file=$(portable_mktemp "summary.${commit}.XXXXXX.md")
-    [ -n "$debug" ] && printf "DEBUG: summarize_commit commit='%s', hist='%s', prompt file='%s'\n" "$commit" "$hist" "$pr" >&2
+    print_debug "summarize_commit $commit $hist $pr"
     build_history "$hist" "$commit" "$todo_pattern" "$PATHSPEC"
     summary_template=$(build_prompt "${PROMPT_DIR}/summary_prompt.md" "$hist")
-    [ -n "$debug" ] && printf 'DEBUG: Using summary prompt: %s\n' "$summary_template" >&2
+    print_debug "Using summary prompt: $summary_template"
     printf '%s\n' "$summary_template" >"$pr"
     res=$(generate_response "$pr" "${gen_mode}")
     echo "${res}" >"$res_file"
@@ -650,7 +652,7 @@ update_changelog_section() {
     ic_version="$3"
     ic_pattern="$4"
     content_file=$(mktemp)
-    [ -n "${debug}" ] && printf 'Debug: Updating changelog section in %s with version %s and pattern %s\n' "${ic_file}" "${ic_version}" "${ic_pattern}" >&2
+    print_debug "Updating changelog section in ${ic_file} with version ${ic_version} and pattern ${ic_pattern}"
     printf "%s\n" "${ic_content}" >"${content_file}"
     if grep -qE "${ic_pattern}" "${ic_file}"; then
         awk -v pat="${ic_pattern}" -v ver="${ic_version}" -v content_file="${content_file}" '
@@ -677,7 +679,7 @@ update_changelog_section() {
         mv "${ic_file}.tmp" "${ic_file}"
         return 0
     else
-        [ -n "${debug}" ] && printf 'Debug: No section matching pattern %s found in %s\n' "${ic_pattern}" "${ic_file}" >&2
+        print_debug "No section matching pattern ${ic_pattern} found in ${ic_file}"
         return 1
     fi
 }
@@ -703,10 +705,10 @@ prepend_changelog_section() {
     ic_version="$3"
     content_file=$(portable_mktemp "content.XXXXXX.md")
     tmp_output_file=$(portable_mktemp "ic_file.XXXXXX.md")
-    [ -n "${debug}" ] && printf 'Debug: Prepending changelog section in %s with version %s\n' "${ic_file}" "${ic_version}" >&2
+    print_debug "Prepending changelog section in ${ic_file} with version ${ic_version}"
     cp "${ic_file}" "${tmp_output_file}"
     printf "%s\n" "$ic_content" >"$content_file"
-    [ -n "${debug}" ] && printf 'Debug: Prepending changelog section in %s with version %s\n' "${ic_file}" "${ic_version}" >&2
+    print_debug "Prepending changelog section in ${ic_file} with version ${ic_version}"
     {
         # Check if content_file has any '##' headers
         if grep -q '^## ' "$content_file"; then
@@ -737,15 +739,15 @@ prepend_changelog_section() {
         ' "$ic_file"
         else
             # Content has no '##' headers, insert as a single block under the version header
-            [ -n "${debug}" ] && printf 'Debug: Content has no ## headers, inserting as a single block under version %s\n' "${ic_version}" >&2
+            print_debug "Content has no ## headers, inserting as a single block under version ${ic_version}"
             # Insert the version header and content after the first H1 header
             # If no H1 header exists, # Changelog will be added at the top
             # If the file is empty, it will just add the version header and content
             if ! grep -q '^# ' "$ic_file"; then
-                [ -n "${debug}" ] && printf 'Debug: No H1 header found, adding # Changelog at the top\n' >&2
+                print_debug "No H1 header found, adding # Changelog at the top"
                 printf '# Changelog\n\n%s\n' "${ic_content}"
             else
-                [ -n "${debug}" ] && printf 'Debug: Found H1 header, inserting after it\n' >&2
+                print_debug "Found H1 header, inserting after it"
                 # Insert the version header and content after the first H1 header
                 ed -s "${ic_file}" <<ED
 /#\s.*$/+1
@@ -759,7 +761,7 @@ ED
                     echo "Error: Failed to insert content using ed" >&2
                     exit 1
                 fi
-                [ -n "${debug}" ] && printf 'Debug: Inserted content after H1 header\n' >&2
+                print_debug "Inserted content after H1 header"
 
             fi
 
@@ -771,7 +773,7 @@ ED
 
     rm -f "$content_file"
     if mv "$ic_file.tmp" "$ic_file"; then
-        [ -n "${debug}" ] && printf 'Debug: Prepend completed, updated file %s\n' "${ic_file}" >&2
+        print_debug "Prepend completed, updated file ${ic_file}"
         return 0
     else
         printf 'Error: Failed to update changelog file %s\n' "${ic_file}" >&2
@@ -800,7 +802,7 @@ append_changelog_section() {
     ic_version="$3"
     content_file=$(mktemp)
     printf "%s\n" "$ic_content" >"$content_file"
-    [ -n "${debug}" ] && printf 'Debug: Appending changelog section in %s with version %s and pattern %s\n' "${ic_file}" "${ic_version}" "${ic_pattern}" >&2
+    print_debug "Appending changelog section in ${ic_file} with version ${ic_version} and pattern ${ic_pattern}"
 
     awk -v ver="$ic_version" -v content_file="$content_file" '
     { print }
@@ -852,15 +854,13 @@ update_changelog() {
     cat "$ic_content" >"$content_file"
     ic_content_block=$(cat "$content_file")
 
-    printf 'Debug: Updating changelog section in %s with version %s and mode %s\n' "$ic_file" "$ic_version" "$ic_mode" >&2
+    print_debug "Updating changelog section in ${ic_file} with version {$ic_version} and mode $ic_mode"
     case "$ic_mode" in
     auto | update)
         if update_changelog_section "$tmp_file" "$ic_content_block" "$ic_version" "$ic_pattern"; then
-            #[ -n "$debug" ] &&
-            printf 'Debug: Updated existing section for version %s\n' "$ic_version" >&2
+            print_debug "Updated existing section for version $ic_version"
         else
-            #[ -n "$debug" ] &&
-            printf 'Debug: No existing section found, prepending new section for version %s\n' "$ic_version" >&2
+            print_debug "No existing section found, prepending new section for version $ic_version"
             prepend_changelog_section "$tmp_file" "$ic_content_block" "$ic_version"
         fi
         ;;
@@ -876,23 +876,21 @@ update_changelog() {
         ;;
     esac
 
-    #[ -n "$debug" ] &&
-    printf 'Debug: Tagging changelog document\n' >&2
+    print_debug "Tagging changelog document"
 
     if ! tail -n 5 "$tmp_file" | grep -q "Managed by giv"; then
         if printf '\n[Managed by giv](https://github.com/itlackey/giv)\n\n' >>"$tmp_file"; then
-            [ -n "$debug" ] && printf 'Debug: Added footer to changelog file %s\n' "$tmp_file" >&2
+            print_debug "Added footer to changelog file $tmp_file"
         else
-            printf 'Error: Failed to add footer to changelog file %s\n' "$tmp_file" >&2
+            print_error "Failed to add footer to changelog file $tmp_file"
             return 1
         fi
     fi
     cat "${tmp_file}"
-    #[ -n "$debug" ] &&
-    printf 'Debug: Ensuring blank line spacing around headers\n' >&2
+    print_debug "Ensuring blank line spacing around headers"
     ensure_blank_lines "$(cat "${tmp_file}")" >"${tmp_file}.tmp" && mv "${tmp_file}.tmp" "$tmp_file"
     cat "${tmp_file}"
-    [ -n "$debug" ] && printf 'Debug: Removing duplicates blank lines\n' >&2
+    print_debug "Removing duplicates blank lines"
     remove_duplicate_blank_lines "$tmp_file"
 
     # Return the path to the temp file
