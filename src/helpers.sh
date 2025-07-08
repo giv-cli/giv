@@ -1,3 +1,5 @@
+#!/bin/sh
+
 is_valid_git_range() {
     git rev-list "$1" >/dev/null 2>&1
 }

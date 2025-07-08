@@ -117,6 +117,7 @@ parse_args() {
     i=1
     while [ $i -le $# ]; do
         eval "arg=\${$i}"
+        # shellcheck disable=SC2154
         case "$arg" in
         --config-file)
             next=$((i + 1))
