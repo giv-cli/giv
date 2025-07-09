@@ -59,4 +59,4 @@ Write a structured, Keep a Changelog–style summary of the provided git diff. D
 
 [EXAMPLE]
 [RULES]
-Output only the completed summary—no additional commentary.
+

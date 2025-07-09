@@ -1,3 +1,5 @@
+# Summary of Changes
+
 [SUMMARY]
 
 Write one engaging blog post announcing the [VERSION] release of [PROJECT_TITLE], using the following guidelines:
@@ -36,7 +38,5 @@ Write one engaging blog post announcing the [VERSION] release of [PROJECT_TITLE]
    • Distill key benefits and real-world applications  
    • Craft a narrative that flows logically from introduction to CTA  
    • Ensure all technical details are translated into user-friendly language  
-
-Output just the final blog post—no extra commentary and using only information from the summaries provided above.
 
 [RULES]

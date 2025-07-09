@@ -1,4 +1,9 @@
+## Summary of Changes
+
 [SUMMARY]
+
+## Instructions
+
 Write one comprehensive release notes document [PROJECT_TITLE] [VERSION] from the provided change summaries, following these guidelines:
 
 1. Structure  
@@ -34,4 +39,4 @@ Write one comprehensive release notes document [PROJECT_TITLE] [VERSION] from th
 
 [EXAMPLE]
 [RULES]
-Output only the final release notes—no extra commentary.
+

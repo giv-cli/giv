@@ -366,7 +366,6 @@ parse_args() {
     print_debug "  Template Directory: ${template_dir}"
     print_debug "  Config File: ${config_file}"
     print_debug "  Config Loaded: ${is_config_loaded}"
-    print_debug "  Output File: ${output_file}"
     print_debug "  TODO Files: ${todo_files}"
     print_debug "  TODO Pattern: ${todo_pattern}"
     print_debug "  Version File: ${version_file}"
@@ -375,6 +374,7 @@ parse_args() {
     print_debug "  Model Mode: ${model_mode}"
     print_debug "  API Model: ${api_model}"
     print_debug "  API URL: ${api_url}"
+    print_debug "  Output File: ${output_file}"
     print_debug "  Output Mode: ${output_mode}"
     print_debug "  Output Version: ${output_version}"
     print_debug "  Prompt File: ${prompt_file}"
@@ -593,8 +593,12 @@ cmd_announcement() {
 
     prompt_file_name="${PROMPT_DIR}/announcement_prompt.md"
     tmp_prompt_file=$(portable_mktemp "announcement_prompt_XXXXXX.md")
-    build_prompt "${prompt_file_name}" "${summaries_file}" >"${tmp_prompt_file}"
+    project_title="$(parse_project_title "${summaries_file}")"
+    print_debug "Project title: ${project_title}"
+    build_prompt --project-title "${project_title}" "${prompt_file_name}" "${summaries_file}" >"${tmp_prompt_file}"
 
+    print_debug "Generated prompt file: ${tmp_prompt_file}"
+    print_info "$(cat "${tmp_prompt_file}" || true)"
     generate_from_prompt "${tmp_prompt_file}" \
         "${output_file:-${announce_file}}" "${model_mode}"
 }

@@ -138,6 +138,8 @@ Summary:
 Line A
 Line B
 Done.
+
+Output just the final content—no extra commentary or code fencing. Use only information contained in this prompt and the summaries provided above.
 EOF
 }
 
@@ -180,5 +182,7 @@ Rules:
 1. First rule
 2. Second rule
 
+
+Output just the final content—no extra commentary or code fencing. Use only information contained in this prompt and the summaries provided above.
 EOF
 }

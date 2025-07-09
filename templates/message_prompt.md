@@ -1,4 +1,9 @@
+## Summary of Changes
+
 [SUMMARY]
+
+## Instructions
+
 Write a git commit message for the provided git history following the Keep a Changelog standard:
 
 1. Format Requirements:
@@ -40,3 +45,4 @@ Write a git commit message for the provided git history following the Keep a Cha
 
 [EXAMPLE]
 
+[RULES]

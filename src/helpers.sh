@@ -110,10 +110,17 @@ replace_tokens() {
 # Exports GIV_TOKEN_SUMMARY (and any of PROJECT_TITLE, VERSION, EXAMPLE, RULES
 # if passed) then runs replace_tokens on the template.
 build_prompt() {
-    project_title=$(parse_project_title)
-    version="${GIV_TOKEN_VERSION:-}"
-    example="${GIV_TOKEN_EXAMPLE:-}"
-    rules="${GIV_TOKEN_RULES:-}"
+    project_title="$(parse_project_title)"
+
+    version="${output_version:-${GIV_TOKEN_VERSION:-}}"
+    if [ -z "${version}" ] || [ "${version}" = "auto" ]; then
+        print_debug "No version set or version is 'auto', trying to find it from version file"
+        # Try to find the version file and extract the version
+        version_file="$(find_version_file)"
+        version="$(get_version_info --current "${version_file:-}")"
+    fi
+    example=""
+    rules=""
     # parse flags
     while [ $# -gt 2 ]; do
         case "$1" in
@@ -156,13 +163,19 @@ build_prompt() {
     # export our tokens
     export GIV_TOKEN_SUMMARY
     GIV_TOKEN_SUMMARY=$(cat "${diff_file}")
-    [ -n "$project_title" ] && export GIV_TOKEN_PROJECT_TITLE="$project_title"
-    [ -n "$version" ] && export GIV_TOKEN_VERSION="$version"
-    [ -n "$example" ] && export GIV_TOKEN_EXAMPLE="$example"
-    [ -n "$rules" ] && export GIV_TOKEN_RULES="$rules"
 
-    # run the replacement
-    replace_tokens <"$prompt_template"
+    export GIV_TOKEN_PROJECT_TITLE="${project_title:-${GIV_TOKEN_PROJECT_TITLE}}"
+    export GIV_TOKEN_VERSION="${version:-${GIV_TOKEN_VERSION}}"
+    export GIV_TOKEN_EXAMPLE="${example:-${GIV_TOKEN_EXAMPLE}}"
+    export GIV_TOKEN_RULES="${rules:-${GIV_TOKEN_RULES}}"
+
+    # Append the extra instructions to the prompt content before passing to replace_tokens
+    {
+        cat "${prompt_template}"
+        printf '\nOutput just the final content—no extra commentary or code fencing. '
+        printf 'Use only information contained in this prompt and the summaries provided above.'
+    } | replace_tokens
+    return
 }
 
 # Locate the project from the codebase. Looks for common project files

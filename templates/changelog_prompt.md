@@ -1,4 +1,9 @@
+# Summary of Changes
+
 [SUMMARY]
+
+## Task
+
 Generate a comprehensive changelog in the Keep a Changelog format for [PROJECT_TITLE] [VERSION]:
 
 1. Format Requirements:
@@ -32,7 +37,8 @@ Generate a comprehensive changelog in the Keep a Changelog format for [PROJECT_T
 
 [EXAMPLE]
 
-Processing Instructions:
+## Processing Instructions
+
 - Analyze all provided summaries
 - Identify release boundaries
 - Group changes by type
