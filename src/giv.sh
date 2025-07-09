@@ -19,11 +19,11 @@ IFS='
 get_script_dir() {
     # $1: path to script (may be $0 or ${BASH_SOURCE[0]})
     script="$1"
-    case "$script" in
-    /*) dir=$(dirname "$script") ;;
-    *) dir=$(cd "$(dirname "$script")" 2>/dev/null && pwd) ;;
+    case "${script}" in
+    /*) dir=$(dirname "${script}") ;;
+    *) dir=$(cd "$(dirname "${script}")" 2>/dev/null && pwd) ;;
     esac
-    printf '%s\n' "$dir"
+    printf '%s\n' "${dir}"
 }
 
 # Detect if sourced (works in bash, zsh, dash, sh)
@@ -41,7 +41,7 @@ else
     _SCRIPT_PATH="$0"
 fi
 
-SCRIPT_DIR="$(get_script_dir "$_SCRIPT_PATH")"
+SCRIPT_DIR="$(get_script_dir "${_SCRIPT_PATH}")"
 PROMPT_DIR="${SCRIPT_DIR}/../templates"
 GIV_TMPDIR=""
 
@@ -57,7 +57,7 @@ config_file=""
 is_config_loaded=false
 debug=false
 dry_run=""
-template_dir="$PROMPT_DIR"
+template_dir="${PROMPT_DIR}"
 output_file=''
 todo_pattern=''
 todo_files="*todo*"
@@ -82,7 +82,21 @@ changelog_file='CHANGELOG.md'
 release_notes_file='RELEASE_NOTES.md'
 announce_file='ANNOUNCEMENT.md'
 
-# Parse global flags and detect subcommand/target/pattern
+# Parses command-line arguments passed to the script and sets corresponding
+# variables or flags based on the provided options. Handles validation and
+# error reporting for invalid or missing arguments.
+#
+# Usage:
+#   parse_args "$@"
+#
+# Globals:
+#   May set or modify global variables depending on parsed arguments.
+#
+# Arguments:
+#   All command-line arguments passed to the script.
+#
+# Returns:
+#   0 if parsing is successful, non-zero on error.
 parse_args() {
 
     # Restore original arguments for main parsing
@@ -149,18 +163,18 @@ parse_args() {
     # -------------------------------------------------------------------
 
     # Always attempt to source config file if it exists; empty config_file is a valid state.
-    if [ -n "$config_file" ] && [ -f "$config_file" ]; then
+    if [ -n "${config_file}" ] && [ -f "${config_file}" ]; then
         # shellcheck disable=SC1090
-        . "$config_file"
+        . "${config_file}"
         is_config_loaded=true
-        print_debug "Loaded config file: $config_file"
+        print_debug "Loaded config file: ${config_file}"
         # Override defaults with config file values
-        model=${GIV_MODEL:-$model}
-        model_mode=${GIV_MODEL_MODE:-$model_mode}
-        api_model=${GIV_API_MODEL:-$api_model}
-        api_url=${GIV_API_URL:-$api_url}
-        api_key=${GIV_API_KEY:-$api_key}
-    elif [ ! -f "$config_file" ] && [ "${config_file}" != "${PWD}/.env" ]; then
+        model=${GIV_MODEL:-${model}}
+        model_mode=${GIV_MODEL_MODE:-${model_mode}}
+        api_model=${GIV_API_MODEL:-${api_model}}
+        api_url=${GIV_API_URL:-${api_url}}
+        api_key=${GIV_API_KEY:-${api_key}}
+    elif [ ! -f "${config_file}" ] && [ "${config_file}" != "${PWD}/.env" ]; then
         print_warn "config file ${config_file} not found."
     fi
 
@@ -205,7 +219,7 @@ parse_args() {
         esac
     fi
 
-    if [ -z "$REVISION" ]; then
+    if [ -z "${REVISION}" ]; then
         # If no target specified, default to current working tree
         print_debug "Debug: No target specified, defaulting to current working tree."
         REVISION="--current"
@@ -223,7 +237,7 @@ parse_args() {
         shift
     done
 
-    print_debug "Target and pattern parsed: $REVISION, $PATHSPEC"
+    print_debug "Target and pattern parsed: ${REVISION}, ${PATHSPEC}"
 
     # 4. Remaining args: global options
     while [ $# -gt 0 ]; do
@@ -344,26 +358,26 @@ parse_args() {
     print_debug "  GIV_API_MODEL: ${GIV_API_MODEL:-}"
     print_debug "  GIV_API_URL: ${GIV_API_URL:-}"
     print_debug "Parsed options:"
-    print_debug "  Debug: $debug"
-    print_debug "  Dry Run: $dry_run"
-    print_debug "  Subcommand: $subcmd"
-    print_debug "  Revision: $REVISION"
-    print_debug "  Pathspec: $PATHSPEC"
-    print_debug "  Template Directory: $template_dir"
-    print_debug "  Config File: $config_file"
-    print_debug "  Config Loaded: $is_config_loaded"
-    print_debug "  Output File: $output_file"
-    print_debug "  TODO Files: $todo_files"
-    print_debug "  TODO Pattern: $todo_pattern"
-    print_debug "  Version File: $version_file"
-    print_debug "  Version Pattern: $version_pattern"
-    print_debug "  Model: $model"
-    print_debug "  Model Mode: $model_mode"
-    print_debug "  API Model: $api_model"
-    print_debug "  API URL: $api_url"
-    print_debug "  Output Mode: $output_mode"
-    print_debug "  Output Version: $output_version"
-    print_debug "  Prompt File: $prompt_file"
+    print_debug "  Debug: ${debug}"
+    print_debug "  Dry Run: ${dry_run}"
+    print_debug "  Subcommand: ${subcmd}"
+    print_debug "  Revision: ${REVISION}"
+    print_debug "  Pathspec: ${PATHSPEC}"
+    print_debug "  Template Directory: ${template_dir}"
+    print_debug "  Config File: ${config_file}"
+    print_debug "  Config Loaded: ${is_config_loaded}"
+    print_debug "  Output File: ${output_file}"
+    print_debug "  TODO Files: ${todo_files}"
+    print_debug "  TODO Pattern: ${todo_pattern}"
+    print_debug "  Version File: ${version_file}"
+    print_debug "  Version Pattern: ${version_pattern}"
+    print_debug "  Model: ${model}"
+    print_debug "  Model Mode: ${model_mode}"
+    print_debug "  API Model: ${api_model}"
+    print_debug "  API URL: ${api_url}"
+    print_debug "  Output Mode: ${output_mode}"
+    print_debug "  Output Version: ${output_version}"
+    print_debug "  Prompt File: ${prompt_file}"
 }
 # -------------------------------------------------------------------
 # Helper Functions
@@ -379,7 +393,7 @@ get_available_releases() {
 # Update the script to a specific release version (or latest if not specified)
 run_update() {
     version="${1:-latest}"
-    if [ "$version" = "latest" ]; then
+    if [ "${version}" = "latest" ]; then
         latest_version=$(get_available_releases | head -n 1)
         printf 'Updating giv to version %s...\n' "${latest_version}"
         curl -fsSL https://raw.githubusercontent.com/giv-cli/giv/main/install.sh | sh -- --version "${latest_version}"
@@ -470,15 +484,14 @@ cmd_message() {
     print_debug "Generating commit message for ${commit_id}"
 
     # Handle both --current and --cached (see argument parsing section for details).
-    if [ "$commit_id" = "--current" ] || [ "$commit_id" = "--cached" ]; then
+    if [ "${commit_id}" = "--current" ] || [ "${commit_id}" = "--cached" ]; then
         hist=$(portable_mktemp "commit_history_XXXXXX.md")
-        build_history "$hist" "$commit_id" "$todo_pattern" "$PATHSPEC"
-        print_debug "Generated history file $hist"
+        build_history "${hist}" "${commit_id}" "${todo_pattern}" "${PATHSPEC}"
+        print_debug "Generated history file ${hist}"
         pr=$(portable_mktemp "commit_message_prompt_XXXXXX.md")
-        printf '%s' "$(build_prompt "${PROMPT_DIR}/message_prompt.md" "$hist")" >"$pr"
-        print_debug "Generated prompt file $pr"
-        res=$(generate_response "$pr" "$model_mode")
-        res=$(generate_response "$pr" "$model_mode")
+        build_prompt "${PROMPT_DIR}/message_prompt.md" "${hist}" >"${pr}"
+        print_debug "Generated prompt file ${pr}"
+        res=$(generate_response "${pr}" "${model_mode}")        
         if [ $? -ne 0 ]; then
             printf 'Error: Failed to generate AI response.\n' >&2
             exit 1
@@ -487,33 +500,33 @@ cmd_message() {
         return
     fi
     # Detect exactly two- or three-dot ranges (A..B or A...B)
-    if echo "$commit_id" | grep -qE '\.\.\.?'; then
-        print_debug "Detected commit range syntax: $commit_id"
+    if echo "${commit_id}" | grep -qE '\.\.\.?'; then
+        print_debug "Detected commit range syntax: ${commit_id}"
 
         # Confirm Git accepts it as a valid range
-        if ! git rev-list "$commit_id" >/dev/null 2>&1; then
-            print_error "Invalid commit range: $commit_id"
+        if ! git rev-list "${commit_id}" >/dev/null 2>&1; then
+            print_error "Invalid commit range: ${commit_id}"
             exit 1
         fi
 
         # Use symmetric-difference for three-dot, exclusion for two-dot
-        case "$commit_id" in
+        case "${commit_id}" in
         *...*)
-            print_debug "Processing three-dot range: $commit_id"
-            git --no-pager log --pretty=%B --left-right "$commit_id" | sed '${/^$/d;}'
+            print_debug "Processing three-dot range: ${commit_id}"
+            git --no-pager log --pretty=%B --left-right "${commit_id}" | sed '${/^$/d;}'
             ;;
         *..*)
-            print_debug "Processing two-dot range: $commit_id"
-            git --no-pager log --reverse --pretty=%B "$commit_id" | sed '${/^$/d;}'
+            print_debug "Processing two-dot range: ${commit_id}"
+            git --no-pager log --reverse --pretty=%B "${commit_id}" | sed '${/^$/d;}'
             ;;
         *) ;;
         esac
         return
     fi
 
-    print_debug "Processing single commit: $commit_id"
-    if ! git rev-parse --verify "$commit_id" >/dev/null 2>&1; then
-        printf 'Error: Invalid commit ID: %s\n' "$commit_id" >&2
+    print_debug "Processing single commit: ${commit_id}"
+    if ! git rev-parse --verify "${commit_id}" >/dev/null 2>&1; then
+        printf 'Error: Invalid commit ID: %s\n' "${commit_id}" >&2
         exit 1
     fi
     git --no-pager log -1 --pretty=%B "${commit_id}" | sed '${/^$/d;}'
