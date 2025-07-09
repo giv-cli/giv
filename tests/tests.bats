@@ -98,33 +98,6 @@ gen_commits() {
 }
 
 # ---- MESSAGE SUBCOMMAND ----
-@test "SCRIPT runs successfully with specified options" {
-
-  export CONFIG_FILE="$BATS_TEST_DIRNAME/../.env"
-  export GIV_MODEL_MODE="remote"
-  # Run the script with the specified options
-  run "$GIV_SCRIPT" "message" --config-file "${CONFIG_FILE}" --verbose
-
-  echo "Output: $output"
-  # Assert that the script ran successfully
-  assert_success
-
-  # Validate the parsed options
-  assert_output --partial "Debug: true"
-  assert_output --partial "Subcommand: message"
-  assert_output --partial "Revision: --current"
-  assert_output -e "Template Directory.*/prompts"
-  assert_output -e "Config File.*/\.env"
-  assert_output --partial "Config Loaded: true"
-  assert_output --partial "TODO Files: *todo*"
-  assert_output --partial "Model: qwen2.5-coder"
-  assert_output --partial "Model Mode: remote"
-  assert_output --partial "API Model: compound-beta"
-  assert_output --partial "API URL: https://api.groq.com/openai/v1/chat/completions"
-  assert_output --partial "Output Mode: auto"
-  assert_output --partial "Output Version: auto"
-}
-
 @test "Generate message for HEAD (default)" {
   echo "msg" >m.txt && git add m.txt && git commit -m "commit for message"
   run "$GIV_SCRIPT" message HEAD

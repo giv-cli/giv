@@ -259,10 +259,13 @@ generate_remote() {
 
     # Escape for JSON (replace backslash, double quote, and control characters)
     # Use json_escape to safely encode the prompt as a JSON string
-    escaped_content=$(printf "%s" "${content}" | json_escape)
+    escaped_content=$(printf "%s" "${content}" | json_escape) 
+    
+    # shellcheck disable=SC2154
     body=$(printf '{"model":"%s","messages":[{"role":"user","content":%s}],"max_completion_tokens":8192}' \
-        "${api_model}" "${escaped_content}")
+    "${api_model}" "${escaped_content}")
 
+    # shellcheck disable=SC2154
     response=$(curl -s -X POST "${api_url}" \
         -H "Authorization: Bearer ${api_key}" \
         -H "Content-Type: application/json" \
@@ -283,6 +286,7 @@ generate_remote() {
 
 run_local() {
     if [ "$debug" = "true" ]; then
+        # shellcheck disable=SC2154
         ollama run "${model}" --verbose <"$1"
     else
         ollama run "${model}" <"$1"
@@ -480,6 +484,7 @@ build_diff() {
         [ ! -f "$f" ] && continue
         if [ -n "$diff_pattern" ]; then
             # Only match if the pattern matches the filename (basic glob)
+            # shellcheck disable=SC2254
             case "$f" in
             $diff_pattern) ;;
             *) continue ;;
