@@ -1,3 +1,5 @@
+[PROJECT_TITLE] [VERSION]
+[SUMMARY]
 Write a structured, Keep a Changelog–style summary of the provided git diff. Do not include any version headings or other releases—just one section of grouped changes with type prefixes for each list item.
 
 1. Overview  
@@ -55,4 +57,6 @@ Write a structured, Keep a Changelog–style summary of the provided git diff. D
    - If possible, explain "what" changed, "why," and the "impact." 
    - Only use information provided in this content in your response. 
 
+[EXAMPLE]
+[RULES]
 Output only the completed summary—no additional commentary.

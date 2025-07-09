@@ -1,4 +1,6 @@
-Write one engaging blog post announcing the latest software release, using the following guidelines:
+[SUMMARY]
+
+Write one engaging blog post announcing the [VERSION] release of [PROJECT_TITLE], using the following guidelines:
 
 1. Audience & Tone  
    • General audience interested in the software  
@@ -36,3 +38,5 @@ Write one engaging blog post announcing the latest software release, using the f
    • Ensure all technical details are translated into user-friendly language  
 
 Output just the final blog post—no extra commentary and using only information from the summaries provided above.
+
+[RULES]

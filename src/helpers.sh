@@ -66,48 +66,6 @@ print_error() {
     printf 'ERROR: %s\n' "$*" >&2
 }
 
-# replace_tokens NAME1=value1 NAME2=value2 …
-#   < template.md > output.md
-#
-# Replaces every occurrence of [NAME] in the input with its corresponding
-# value. Supports multiline values and embedded quotes.
-replace_tokens_old() {
-    # build an AWK script in a temp file
-    tmp_awk=$(portable_mktemp "awk.template.XXXXXXXX.md") || return 1
-
-    # header
-    cat >"$tmp_awk" <<'AWK_HEADER'
-BEGIN { ORS = "" }
-{
-line = $0;
-AWK_HEADER
-
-    # for each env var starting with GIV_TOKEN_
-    env | while IFS='=' read -r var val; do
-        case "$var" in
-        GIV_TOKEN_*)
-            name=${var#GIV_TOKEN_}
-            # escape backslashes, quotes, newlines → \n
-            esc=$(printf '%s' "$val" | sed \
-                -e 's/\\/\\\\/g' \
-                -e 's/"/\\"/g' \
-                -e ':a;N;$!ba;s/\n/\\n/g')
-            printf '  gsub(/\[%s\]/, "%s", line);\n' "$name" "$esc" >>"$tmp_awk"
-            ;;
-        esac
-    done
-
-    # footer
-    cat >>"$tmp_awk" <<'AWK_FOOTER'
-print line "\n";
-}
-AWK_FOOTER
-
-    # run & clean up
-    awk -f "$tmp_awk"
-    rm -f "$tmp_awk"
-}
-
 # Replaces every “[NAME]” in stdin with the contents of
 # the environment variable GIV_TOKEN_NAME (if set).
 #
@@ -116,9 +74,8 @@ AWK_FOOTER
 #   line
 #   text"
 #   replace_tokens < template.md > output.md
-
 replace_tokens() {
-  awk '
+    awk '
   BEGIN {
     ORS = ""
     # build map[name] = value for all GIV_TOKEN_* vars
@@ -140,18 +97,66 @@ replace_tokens() {
   }
   '
 }
-build_prompt() {
-    prompt_file="$1"
-    diff_file="$2"
 
-    # Concatenate the prompt template and diff file content
-    result="$(
-        cat "${diff_file}"
-        echo "[INSTRUCTIONS]"
-        cat "${prompt_file}"
-        echo
-    )"
-    printf "%s\n" "${result}"
+# build_prompt [--project-title X] [--version V] [--example E] [--rules R] \
+#              <template_file> <diff_file>
+#
+# Exports GIV_TOKEN_SUMMARY (and any of PROJECT_TITLE, VERSION, EXAMPLE, RULES
+# if passed) then runs replace_tokens on the template.
+build_prompt() {
+    project_title=""
+    version=""
+    example=""
+    rules=""
+    # parse flags
+    while [ $# -gt 2 ]; do
+        case "$1" in
+        --project-title)
+            project_title=$2
+            shift 2
+            ;;
+        --version)
+            version=$2
+            shift 2
+            ;;
+        --example)
+            example=$2
+            shift 2
+            ;;
+        --rules)
+            rules=$2
+            shift 2
+            ;;
+        *)
+            printf 'unknown option: %s\n' "$1" >&2
+            return 1
+            ;;
+        esac
+    done
+
+    prompt_template=$1
+    diff_file=$2
+
+    # validate files
+    if [ ! -f "$prompt_template" ]; then
+        printf 'template file not found: %s\n' "$prompt_template" >&2
+        return 1
+    fi
+    if [ ! -f "$diff_file" ]; then
+        printf 'diff file not found: %s\n' "$diff_file" >&2
+        return 1
+    fi
+
+    # export our tokens
+    export GIV_TOKEN_SUMMARY
+    GIV_TOKEN_SUMMARY=$(cat "$diff_file")
+    [ -n "$project_title" ] && export GIV_TOKEN_PROJECT_TITLE="$project_title"
+    [ -n "$version" ] && export GIV_TOKEN_VERSION="$version"
+    [ -n "$example" ] && export GIV_TOKEN_EXAMPLE="$example"
+    [ -n "$rules" ] && export GIV_TOKEN_RULES="$rules"
+
+    # run the replacement
+    replace_tokens <"$prompt_template"
 }
 
 # Extract version string from a line (preserving v if present)

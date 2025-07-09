@@ -1,4 +1,5 @@
-Generate an engaging social media post announcing the latest software release:
+[SUMMARY]
+Generate an engaging social media post announcing the [PROJECT_TITLE] [VERSION] release:
 
 1. Content Requirements:
    - Write for multiple social media platforms (Twitter, LinkedIn, Facebook)
@@ -47,3 +48,5 @@ Read the full announcement and upgrade now! [link] #SoftwareRelease #NewFeatures
 - Extract the most engaging features
 - Focus on driving engagement and clicks
 - Ensure all links and hashtags are included
+
+[RULES]

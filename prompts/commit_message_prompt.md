@@ -1,3 +1,4 @@
+[SUMMARY]
 Write a git commit message for the provide git history following the Keep a Changelog standard:
 
 1. Format Requirements:
@@ -36,11 +37,5 @@ Write a git commit message for the provide git history following the Keep a Chan
 [fix] Resolve login timeout issues
 [docs] Update API documentation
 
-Example:
-Improve user authentication system
-
-[feat] Add JWT token handling
-[fix] Resolve login timeout issues
-[docs] Update API documentation
-[perf] Optimize authentication queries
+[EXAMPLE]
 

@@ -1,4 +1,5 @@
-Write one comprehensive release notes document from the provided change summaries, following these guidelines:
+[SUMMARY]
+Write one comprehensive release notes document [PROJECT_TITLE] [VERSION] from the provided change summaries, following these guidelines:
 
 1. Structure  
    • Title: “Release Notes – vX.Y.Z (YYYY-MM-DD)”  
@@ -31,4 +32,6 @@ Write one comprehensive release notes document from the provided change summarie
    • Draft brief Upgrade Instructions if there are compatibility steps  
    • List Known Issues if mentioned  
 
+[EXAMPLE]
+[RULES]
 Output only the final release notes—no extra commentary.
