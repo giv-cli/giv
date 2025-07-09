@@ -14,7 +14,7 @@
 Run this in your terminal to install the latest released version of `giv`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/itlackey/giv/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/giv-cli/giv/main/install.sh | sh
 ```
 
 ## Install a Specific Version
@@ -22,7 +22,7 @@ curl -fsSL https://raw.githubusercontent.com/itlackey/giv/main/install.sh | sh
 To install a specific version (e.g., `v0.1.9`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/itlackey/giv/main/install.sh | sh -s -- --version v0.1.9
+curl -fsSL https://raw.githubusercontent.com/giv-cli/giv/main/install.sh | sh -s -- --version v0.1.9
 ```
 
 ## Install the Latest Changes from the `main` Branch
@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/itlackey/giv/main/install.sh | sh -
 To install the very latest changes (may be unstable):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/itlackey/giv/main/install.sh | sh -s -- --version main
+curl -fsSL https://raw.githubusercontent.com/giv-cli/giv/main/install.sh | sh -s -- --version main
 ```
 
 ## Install the Latest Changes from a specific Branch
@@ -38,7 +38,7 @@ curl -fsSL https://raw.githubusercontent.com/itlackey/giv/main/install.sh | sh -
 To install from a different branch (may be unstable):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/itlackey/giv/main/install.sh | sh -s -- --version <branch name>
+curl -fsSL https://raw.githubusercontent.com/giv-cli/giv/main/install.sh | sh -s -- --version <branch name>
 ```
 
 ## How the Installer Works

@@ -29,6 +29,9 @@
 # Commit message for working tree
 giv message
 
+# Commit staged changes with a generated commit message
+git commit -m "$(giv message --cached)"
+
 # Create/update a changelog, scanning TODOs in *.ts files only
 giv changelog --todo-files '*.ts' --todo-pattern 'TODO\\(\\w+\\):'
 
@@ -44,7 +47,7 @@ giv release-notes v1.2.0..HEAD \
 ## Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/itlackey/giv/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/giv-cli/giv/main/install.sh | sh
 ```
 
 The script downloads the latest binary links it in `$PATH`
@@ -154,6 +157,50 @@ giv <subcommand> [revision] [pathspec] [OPTIONS]
 ## License
 
 CC-BY. If **giv** helps you *give* better releases, please ⭐ the repo and spread the word!
+
+## Contributing
+
+I'll help you fill in the "Contributing" section with the requested information. Here's a suggestion:
+
+---
+
+## Contributing
+
+We welcome contributions from everyone! If you'd like to contribute, please follow these steps:
+
+1. **Clone the repository and update submodules:**
+   ```bash
+   git clone https://github.com/giv-cli/giv.git
+   cd giv
+   git submodule update --init --recursive
+   ```
+
+2. **Create a new branch for your changes:**
+   ```bash
+   git checkout -b my-feature-branch
+   ```
+
+3. **Make your changes and commit them:**
+   ```bash
+   # Make changes...
+
+   # Verify all tests pass
+   bats tests/*.bats
+   
+   git add .
+   git commit -m "$(giv message --staged)"
+   ```
+
+4. **Push your changes to GitHub:**
+   ```bash
+   git push origin my-feature-branch
+   ```
+
+5. **Create a pull request on GitHub.**
+
+Please ensure that your contributions adhere to the existing code style and include appropriate tests if necessary.
+
+
 
 [1]: https://keepachangelog.com/en/1.1.0/ "Keep a Changelog"
 [2]: https://semver.org/ "Semantic Versioning 2.0.0 | Semantic Versioning"

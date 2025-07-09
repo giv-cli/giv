@@ -1,6 +1,6 @@
 # Supercharge Your npm Project Changelog with AI: Automate Releases Using giv
 
-Keeping a changelog up to date is essential for any project, but it’s often tedious and easy to neglect. What if you could automate beautiful, structured changelogs using AI—right from your npm workflow? Enter [giv](https://github.com/itlackey/giv): an open-source Bash tool that summarizes your Git history into clean, Markdown changelogs using local or remote AI models.
+Keeping a changelog up to date is essential for any project, but it’s often tedious and easy to neglect. What if you could automate beautiful, structured changelogs using AI—right from your npm workflow? Enter [giv](https://github.com/giv-cli/giv): an open-source Bash tool that summarizes your Git history into clean, Markdown changelogs using local or remote AI models.
 
 In this post, I’ll show you how to integrate giv into your npm-based project, customize it for your workflow, and never stress about changelogs again.
 
@@ -20,7 +20,7 @@ In this post, I’ll show you how to integrate giv into your npm-based project, 
 First, install giv globally:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/itlackey/giv/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/giv-cli/giv/main/install.sh | sh
 ```
 
 ---
@@ -124,7 +124,7 @@ Or for staged changes:
 
 Automate your changelog, impress your users, and streamline your releases. Add giv to your npm project today and let AI do the heavy lifting.
 
-👉 [Get giv on GitHub](https://github.com/itlackey/giv)
+👉 [Get giv on GitHub](https://github.com/giv-cli/giv)
 
 ---
 

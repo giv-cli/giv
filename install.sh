@@ -3,7 +3,7 @@
 set -eu
 
 # Repository and filenames
-REPO="itlackey/giv"
+REPO="giv-cli/giv"
 SCRIPT_NAME="giv.sh"
 USER_BIN_DIR=""
 APP_DIR=""

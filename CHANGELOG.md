@@ -233,4 +233,4 @@ Generated my giv
 
 - Fixed an issue where the script does not append to the end of changelog if no existing sections are found.
 
-[Managed by giv](https://github.com/itlackey/giv)
+[Managed by giv](https://github.com/giv-cli/giv)

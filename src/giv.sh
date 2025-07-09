@@ -337,35 +337,33 @@ parse_args() {
 
     [ "${model_mode}" = "none" ] && print_warn "Model mode set to \"none\", no model will be used."
 
-    if [ "$debug" = "true" ]; then
-        printf 'Environment variables:\n'
-        printf '  GIV_TMPDIR: %s\n' "${GIV_TMPDIR:-}"
-        printf '  GIV_MODEL_MODE: %s\n' "${GIV_MODEL_MODE:-}"
-        printf '  GIV_MODEL: %s\n' "${GIV_MODEL:-}"
-        printf '  GIV_API_MODEL: %s\n' "${GIV_API_MODEL:-}"
-        printf '  GIV_API_URL: %s\n' "${GIV_API_URL:-}"
-        echo "Parsed options:"
-        echo "  Debug: $debug"
-        echo "  Dry Run: $dry_run"
-        echo "  Subcommand: $subcmd"
-        echo "  Revision: $REVISION"
-        echo "  Pathspec: $PATHSPEC"
-        echo "  Template Directory: $template_dir"
-        echo "  Config File: $config_file"
-        echo "  Config Loaded: $is_config_loaded"
-        echo "  Output File: $output_file"
-        echo "  TODO Files: $todo_files"
-        echo "  TODO Pattern: $todo_pattern"
-        echo "  Version File: $version_file"
-        echo "  Version Pattern: $version_pattern"
-        echo "  Model: $model"
-        echo "  Model Mode: $model_mode"
-        echo "  API Model: $api_model"
-        echo "  API URL: $api_url"
-        echo "  Output Mode: $output_mode"
-        echo "  Output Version: $output_version"
-        echo "  Prompt File: $prompt_file"
-    fi
+    print_debug "Environment variables:"
+    print_debug "  GIV_TMPDIR: ${GIV_TMPDIR:-}"
+    print_debug "  GIV_MODEL_MODE: ${GIV_MODEL_MODE:-}"
+    print_debug "  GIV_MODEL: ${GIV_MODEL:-}"
+    print_debug "  GIV_API_MODEL: ${GIV_API_MODEL:-}"
+    print_debug "  GIV_API_URL: ${GIV_API_URL:-}"
+    print_debug "Parsed options:"
+    print_debug "  Debug: $debug"
+    print_debug "  Dry Run: $dry_run"
+    print_debug "  Subcommand: $subcmd"
+    print_debug "  Revision: $REVISION"
+    print_debug "  Pathspec: $PATHSPEC"
+    print_debug "  Template Directory: $template_dir"
+    print_debug "  Config File: $config_file"
+    print_debug "  Config Loaded: $is_config_loaded"
+    print_debug "  Output File: $output_file"
+    print_debug "  TODO Files: $todo_files"
+    print_debug "  TODO Pattern: $todo_pattern"
+    print_debug "  Version File: $version_file"
+    print_debug "  Version Pattern: $version_pattern"
+    print_debug "  Model: $model"
+    print_debug "  Model Mode: $model_mode"
+    print_debug "  API Model: $api_model"
+    print_debug "  API URL: $api_url"
+    print_debug "  Output Mode: $output_mode"
+    print_debug "  Output Version: $output_version"
+    print_debug "  Prompt File: $prompt_file"
 }
 # -------------------------------------------------------------------
 # Helper Functions
@@ -375,7 +373,7 @@ show_version() {
 }
 # Show all available release tags
 get_available_releases() {
-    curl -s https://api.github.com/repos/itlackey/giv/releases | awk -F'"' '/"tag_name":/ {print $4}'
+    curl -s https://api.github.com/repos/giv-cli/giv/releases | awk -F'"' '/"tag_name":/ {print $4}'
     exit 0
 }
 # Update the script to a specific release version (or latest if not specified)
@@ -384,10 +382,10 @@ run_update() {
     if [ "$version" = "latest" ]; then
         latest_version=$(get_available_releases | head -n 1)
         printf 'Updating giv to version %s...\n' "${latest_version}"
-        curl -fsSL https://raw.githubusercontent.com/itlackey/giv/main/install.sh | sh -- --version "${latest_version}"
+        curl -fsSL https://raw.githubusercontent.com/giv-cli/giv/main/install.sh | sh -- --version "${latest_version}"
     else
         printf 'Updating giv to version %s...\n' "${version}"
-        curl -fsSL "https://raw.githubusercontent.com/itlackey/giv/main/install.sh" | sh -- --version "${version}"
+        curl -fsSL "https://raw.githubusercontent.com/giv-cli/giv/main/install.sh" | sh -- --version "${version}"
     fi
     printf 'Update complete.\n'
     exit 0
