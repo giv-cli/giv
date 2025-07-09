@@ -9,6 +9,8 @@ setup() {
     TMPDIR_REPO="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
     cd "$TMPDIR_REPO"
     git init
+    git config user.name "Test"
+    git config user.email "test@example.com"
     TMPFILE="$(mktemp -p "${TMPDIR_REPO}")"
     export TMPFILE
     GIV_TMPDIR_SAVE=
@@ -30,7 +32,6 @@ teardown() {
 #     assert_success
 #     assert_equal "$output" "v1.2.3"
 # }
-
 
 # @test "get_current_version_from_file detects version = '1.2.3'" {
 #     echo "version = '1.2.3'" >"$TMPFILE"

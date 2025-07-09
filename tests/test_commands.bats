@@ -18,6 +18,8 @@ setup() {
   GIV_TMPDIR_SAVE=
   cd "$REPO"
   git init -q
+  git config user.name "Test"
+  git config user.email "test@example.com"
   # make two commits
   echo "one" >file.txt
   git add file.txt

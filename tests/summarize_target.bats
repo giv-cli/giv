@@ -7,7 +7,9 @@ setup() {
     mkdir -p "$TMP_REPO"
     cd "$TMP_REPO"
     git init -q
-
+    git config user.name "Test"
+    git config user.email "test@example.com"
+    
     # Make two commits
     echo "first" >a.txt
     git add a.txt
