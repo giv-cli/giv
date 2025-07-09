@@ -1,0 +1,11 @@
+{
+  "name": "giv",
+  "version": "{{VERSION}}",
+  "description": "Git history AI assistant CLI tool",
+  "bin": { "giv": "src/giv.sh" },
+  "files": [
+    "src/",
+    "templates/"
+  ],
+  "preferGlobal": true
+}
