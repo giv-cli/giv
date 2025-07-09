@@ -462,15 +462,14 @@ EOF
 # # -------------------------------------------------------------------
 
 cmd_message() {
-    commit_id="$1"
+    commit_id="${1:-}"
     if [ -z "${commit_id}" ]; then
         commit_id="--current"
     fi
 
     print_debug "Generating commit message for ${commit_id}"
 
-    # Handle both --current and --cached, as argument parsing may set either value.
-    # This duplication ensures correct behavior regardless of which is set.
+    # Handle both --current and --cached (see argument parsing section for details).
     if [ "$commit_id" = "--current" ] || [ "$commit_id" = "--cached" ]; then
         hist=$(portable_mktemp "commit_history_XXXXXX.md")
         build_history "$hist" "$commit_id" "$todo_pattern" "$PATHSPEC"
@@ -479,10 +478,14 @@ cmd_message() {
         printf '%s' "$(build_prompt "${PROMPT_DIR}/message_prompt.md" "$hist")" >"$pr"
         print_debug "Generated prompt file $pr"
         res=$(generate_response "$pr" "$model_mode")
-        printf '%s\n' "$res"
+        res=$(generate_response "$pr" "$model_mode")
+        if [ $? -ne 0 ]; then
+            printf 'Error: Failed to generate AI response.\n' >&2
+            exit 1
+        fi
+        printf '%s\n' "${res}"
         return
     fi
-
     # Detect exactly two- or three-dot ranges (A..B or A...B)
     if echo "$commit_id" | grep -qE '\.\.\.?'; then
         print_debug "Detected commit range syntax: $commit_id"
@@ -503,6 +506,7 @@ cmd_message() {
             print_debug "Processing two-dot range: $commit_id"
             git --no-pager log --reverse --pretty=%B "$commit_id" | sed '${/^$/d;}'
             ;;
+        *) ;;
         esac
         return
     fi
@@ -512,7 +516,7 @@ cmd_message() {
         printf 'Error: Invalid commit ID: %s\n' "$commit_id" >&2
         exit 1
     fi
-    git --no-pager log -1 --pretty=%B "$commit_id" | sed '${/^$/d;}'
+    git --no-pager log -1 --pretty=%B "${commit_id}" | sed '${/^$/d;}'
     return
 }
 
@@ -525,10 +529,11 @@ cmd_summary() {
     summaries_file=$(portable_mktemp "summary_summaries_XXXXXX.md")
 
     summarize_target "${sum_revision}" "${summaries_file}" "${sum_model_mode}"
-    cat "${summaries_file}" >&2
+    print_debug "$(cat "${summaries_file}" || true)"
+
     # Early exit if no summaries were produced
     if [ ! -f "${summaries_file}" ]; then
-        printf 'Error: No summaries generated for %s.\n' "$sum_revision" >&2
+        printf 'Error: No summaries generated for %s.\n' "${sum_revision}" >&2
         exit 1
     fi
 

@@ -33,9 +33,9 @@ By convention, store your templates in the `.giv/templates/` folder in your proj
 ```
 .giv/
 ├── templates/
-│   ├── summary.md
-│   ├── announcement.md
-│   └── message.md
+│   ├── summary_prompt.md
+│   ├── announcement_prompt.md
+│   └── message_prompt.md
 ├── src/
 ```
 
@@ -51,17 +51,16 @@ Follow these steps to create or customize a prompt template:
 2. **Copy or Create File:** In `templates/`, create a new file named `<subcommand>_prompt.md`, or copy an existing template from the `templates/` directory of this repository.
 3. **Insert Tokens:** Open the file and place tokens where dynamic content should appear. Use headers, paragraphs, or lists for structure.
 4. **Save & Reference:** Save the file. When running `giv`, use the `--prompt-file` option to point to your template:
-
    ```sh
    giv summary --prompt-file=templates/summary_custom.md
-   ```
+   ```   
 5. **Test & Iterate:** Review the generated output, tweak your template, and retest until satisfied.
 
 ---
 
 ## 5. Example: Custom Summary Template
 
-Below is a sample `templates/summary.md` for the `giv summary` subcommand. Copy and adapt it as needed:
+Below is a sample `templates/summary_summary.md` for the `giv summary` subcommand. Copy and adapt it as needed:
 
 ```markdown
 # Project: [PROJECT_TITLE]
