@@ -42,7 +42,7 @@ else
 fi
 
 SCRIPT_DIR="$(get_script_dir "$_SCRIPT_PATH")"
-PROMPT_DIR="${SCRIPT_DIR}/../prompts"
+PROMPT_DIR="${SCRIPT_DIR}/../templates"
 GIV_TMPDIR=""
 
 # shellcheck source=helpers.sh
@@ -478,7 +478,7 @@ cmd_message() {
         build_history "$hist" "$commit_id" "$todo_pattern" "$PATHSPEC"
         print_debug "Generated history file $hist"
         pr=$(portable_mktemp "commit_message_prompt_XXXXXX.md")
-        printf '%s' "$(build_prompt "${PROMPT_DIR}/commit_message_prompt.md" "$hist")" >"$pr"
+        printf '%s' "$(build_prompt "${PROMPT_DIR}/message_prompt.md" "$hist")" >"$pr"
         print_debug "Generated prompt file $pr"
         res=$(generate_response "$pr" "$model_mode")
         printf '%s\n' "$res"

@@ -1,5 +1,5 @@
 [SUMMARY]
-Write a git commit message for the provide git history following the Keep a Changelog standard:
+Write a git commit message for the provided git history following the Keep a Changelog standard:
 
 1. Format Requirements:
    - First line (header): Brief overview of changes (50 characters or less)
@@ -21,6 +21,7 @@ Write a git commit message for the provide git history following the Keep a Chan
      * perf: for performance improvements
      * security: for security fixes
      * deps: for dependency updates
+   - You can use as many list items as needed
 
 3. Input Processing:
    - Analyze the git diff output provided above
@@ -33,9 +34,9 @@ Write a git commit message for the provide git history following the Keep a Chan
 4. Output Format:
 [Overview under 50 chars]
 
-[feat] Add user authentication
-[fix] Resolve login timeout issues
-[docs] Update API documentation
+[feat] Added a feature
+[fix] Resolved an issue
+[docs] Update the documentation
 
 [EXAMPLE]
 

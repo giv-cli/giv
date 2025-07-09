@@ -95,7 +95,7 @@ compute_app_dir() {
 APP_DIR="$(compute_app_dir)"
 
 # 8. Create necessary directories
-mkdir -p "$USER_BIN_DIR" "$APP_DIR/prompts"
+mkdir -p "$USER_BIN_DIR" "$APP_DIR/templates"
 mkdir -p "$USER_BIN_DIR" "$APP_DIR/src"
 
 # 9. Check Git version for sparse-checkout
@@ -110,10 +110,10 @@ fi
 TMP="$(mktemp -d)"
 printf 'Installing version %s\n' "$VERSION"
 git -c advice.detachedHead=false clone -q --depth 1 --branch "$VERSION" "https://github.com/$REPO.git" "$TMP"
-cp -Ri "$TMP/prompts/*" "$APP_DIR/prompts/"
+cp -Ri "$TMP/templates/*" "$APP_DIR/templates/"
 cp -Ri "$TMP/src/*" "$APP_DIR/"
 chmod +x "$APP_DIR/$SCRIPT_NAME"
-printf 'Prompts → %s/%s\n' "$APP_DIR" "prompts"
+printf 'Prompts → %s/%s\n' "$APP_DIR" "templates"
 rm -rf "$TMP"
 
 # 11. Install giv.sh and create symlink or fallback copy
