@@ -407,7 +407,7 @@ generate_from_prompt() {
     fi
 
     # 2) Dry‐run?  Just print and exit
-    if [ "${dry_run:-}" = "true" ]; then
+    if [ "${dry_run:-}" = "true" ] || [ -z "${response_output_file}" ]; then
         printf '%s\n' "$res"
         return 0
     fi

@@ -537,10 +537,9 @@ cmd_summary() {
     sum_output_file="${1:-}"
     sum_revision="${2:---current}"
     sum_model_mode="${3:-auto}"
-    sum_dry_run="${4:-}"
+    #sum_dry_run="${4:-}"
 
     summaries_file=$(portable_mktemp "summary_summaries_XXXXXX.md")
-
     summarize_target "${sum_revision}" "${summaries_file}" "${sum_model_mode}"
     print_debug "$(cat "${summaries_file}" || true)"
 
@@ -550,18 +549,13 @@ cmd_summary() {
         exit 1
     fi
 
-    if [ -n "${sum_output_file}" ]; then
-        if [ "${sum_dry_run}" != "true" ]; then
-            cp "${summaries_file}" "${sum_output_file}"
-            printf 'Summary written to %s\n' "${sum_output_file}"
-        else
-            cat "${summaries_file}"
-        fi
-    else
-        cat "${summaries_file}"
-    fi
+    # Generate final summary from summaries
+    prompt_file_name="${PROMPT_DIR}/final_summary_prompt.md"
+    tmp_prompt_file=$(portable_mktemp "final_summary_prompt_XXXXXX.md")
+    build_prompt "${prompt_file_name}" "${summaries_file}" >"${tmp_prompt_file}"
+    print_debug "$(cat "${tmp_prompt_file}" || true)"
+    generate_from_prompt "${tmp_prompt_file}" "${sum_output_file}" "${sum_model_mode}"
 }
-
 cmd_release_notes() {
     summaries_file=$(portable_mktemp "release_notes_summaries_XXXXXX.md")
     summarize_target "${REVISION}" "${summaries_file}" "${model_mode}"
