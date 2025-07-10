@@ -40,4 +40,4 @@ rm -rf "${PIP_DIST_DIR}/pypi"
 mv -f "${PIP_BUILD_TEMP}" "${PIP_DIST_DIR}/"
 
 
-printf "PyPi build completed. Files are in %s\n" "${PIP_DIST_DIR}"
+printf "PyPi build completed. Files are in %s\n" "${PIP_DIST_DIR}/pypi"
