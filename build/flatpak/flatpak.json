@@ -1,0 +1,30 @@
+{
+  "app-id": "com.github.giv-cli.giv",
+  "runtime": "org.freedesktop.Platform",
+  "runtime-version": "23.08",
+  "sdk": "org.freedesktop.Sdk",
+  "command": "giv",
+  "modules": [
+    {
+      "name": "giv",
+      "buildsystem": "simple",
+      "build-commands": [
+        "install -D src/giv /app/bin/giv",
+        "install -Dm644 src/*.sh /app/lib/giv/",
+        "install -Dm644 templates/* /app/share/giv/templates/"
+      ],
+      "sources": [
+        { "type": "file", "path": "src/giv" },
+        { "type": "file", "path": "src/helpers.sh" },
+        { "type": "file", "path": "src/markdown.sh" },
+        { "type": "file", "path": "templates/changelog_prompt.md" },
+        { "type": "file", "path": "templates/message_prompt.md" },
+        { "type": "file", "path": "templates/post_example.md" },
+        { "type": "file", "path": "templates/post_prompt.md" },
+        { "type": "file", "path": "templates/release_notes_prompt.md" },
+        { "type": "file", "path": "templates/summary_prompt.md" },
+        { "type": "file", "path": "templates/announcement_prompt.md" }
+      ]
+    }
+  ]
+}

@@ -2,10 +2,24 @@
   "name": "giv",
   "version": "{{VERSION}}",
   "description": "Git history AI assistant CLI tool",
-  "bin": { "giv": "src/giv.sh" },
+  "bin": { "giv": "src/giv" },
   "files": [
     "src/",
-    "templates/"
+    "templates/",
+    "docs/",
+    "README.md"
   ],
+  "keywords": [
+    "git",
+    "cli",
+    "ai",
+    "changelog",
+    "history",
+    "assistant",
+    "release"
+  ],
+  "repository": "https://github.com/giv-cli/giv",
+  "private": false,
+  "license": "CC-BY",
   "preferGlobal": true
 }

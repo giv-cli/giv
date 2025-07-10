@@ -1,0 +1,22 @@
+{
+    "version": "{{VERSION}}",
+    "description": "Git history AI assistant CLI tool (POSIX shell)",
+    "homepage": "https://github.com/giv-cli/giv",
+    "license": "CC-BY",
+    "url": "https://github.com/giv-cli/giv/releases/download/v{{VERSION}}/giv-{{VERSION}}.tar.gz",
+    "hash": "{{SHA256}}",
+    "extract_dir": "src",
+    "bin": "giv",
+    "checkver": {
+        "github": "giv-cli/giv"
+    },
+    "autoupdate": {
+        "url": "https://github.com/giv-cli/giv/releases/download/v$version/giv-$version.tar.gz",
+        "hash": {
+            "url": "https://github.com/giv-cli/giv/releases/download/v$version/giv-$version.tar.gz.sha256"
+        }
+    },
+    "pre_install": [
+        "if (!(Get-Command sh -ErrorAction SilentlyContinue)) { throw 'This tool requires a POSIX shell (e.g. Git Bash, MSYS2, or WSL). Please install Git for Windows and ensure sh.exe is in your PATH.' }"
+    ]
+}
