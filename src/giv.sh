@@ -10,46 +10,104 @@ set -eu
 
 IFS='
 '
+# -------------------------------------------------------------------
+# Path detection for libraries, templates, and docs (POSIX compatible)
+# -------------------------------------------------------------------
 
-# -------------------------------------------------------------------
-# Paths & Defaults
-# -------------------------------------------------------------------
-# Resolve script directory robustly, whether sourced or executed
-# Works in POSIX sh, bash, zsh, dash
+# Get the directory where this script is located (absolute, even if symlinked)
 get_script_dir() {
-    # $1: path to script (may be $0 or ${BASH_SOURCE[0]})
-    script="$1"
-    case "${script}" in
-    /*) dir=$(dirname "${script}") ;;
-    *) dir=$(cd "$(dirname "${script}")" 2>/dev/null && pwd) ;;
-    esac
-    printf '%s\n' "${dir}"
+    # $1: path to script (may be $0 or a shell-specific value)
+    target="$1"
+    [ -z "${target}" ] && target="$0"
+    # Prefer readlink -f if available, fallback to manual cd/pwd
+    if command -v readlink >/dev/null 2>&1 && readlink -f "${target}" >/dev/null 2>&1; then
+        dirname "$(readlink -f "${target}")"
+    else
+        cd "$(dirname "${target}")" 2>/dev/null && pwd
+    fi
 }
 
-# Detect if sourced (works in bash, zsh, dash, sh)
-_is_sourced=0
-# shellcheck disable=SC2292
-if [ "${BASH_SOURCE:-}" != "" ] && [ "${BASH_SOURCE:-}" != "$0" ]; then
-    _is_sourced=1
-elif [ -n "${ZSH_EVAL_CONTEXT:-}" ] && [ "${ZSH_EVAL_CONTEXT#*:}" = "file" ]; then
-    _is_sourced=1
-fi
-# Use BASH_SOURCE if available, else $0
+# Try to detect the actual script path
+SCRIPT_PATH="$0"
+# shellcheck disable=SC2296
 if [ -n "${BASH_SOURCE:-}" ]; then
-    _SCRIPT_PATH="${BASH_SOURCE}"
+    SCRIPT_PATH="${BASH_SOURCE}"
+elif [ -n "${ZSH_VERSION:-}" ] && [ -n "${(%):-%x}" ]; then
+    SCRIPT_PATH="${(%):-%x}"
+fi
+SCRIPT_DIR="$(get_script_dir "${SCRIPT_PATH}")"
+
+# Allow overrides for advanced/testing/dev
+GIV_LIB_DIR="${GIV_LIB_DIR:-}"
+GIV_TEMPLATE_DIR="${GIV_TEMPLATE_DIR:-}"
+GIV_DOCS_DIR="${GIV_DOCS_DIR:-}"
+
+# Library location (.sh files)
+if [ -n "$GIV_LIB_DIR" ]; then
+    LIB_DIR="$GIV_LIB_DIR"
+elif [ -d "$SCRIPT_DIR" ]; then
+    # Local or system install: helpers in same dir
+    LIB_DIR="$SCRIPT_DIR"
+elif [ -d "/usr/local/lib/giv" ]; then
+    LIB_DIR="/usr/local/lib/giv"
+elif [ -n "${SNAP:-}" ] && [ -d "$SNAP/lib/giv" ]; then
+    LIB_DIR="$SNAP/lib/giv"
 else
-    _SCRIPT_PATH="$0"
+    printf 'Error: Could not find giv lib directory.\n' >&2
+    exit 1
 fi
 
-SCRIPT_DIR="$(get_script_dir "${_SCRIPT_PATH}")"
-PROMPT_DIR="${SCRIPT_DIR}/../templates"
-GIV_TMPDIR=""
+# Template location
+if [ -n "$GIV_TEMPLATE_DIR" ]; then
+    TEMPLATE_DIR="$GIV_TEMPLATE_DIR"
+elif [ -d "$LIB_DIR/../templates" ]; then
+    TEMPLATE_DIR="$LIB_DIR/../templates"
+elif [ -d "/usr/local/share/giv/templates" ]; then
+    TEMPLATE_DIR="/usr/local/share/giv/templates"
+elif [ -n "${SNAP:-}" ] && [ -d "$SNAP/share/giv/templates" ]; then
+    TEMPLATE_DIR="$SNAP/share/giv/templates"
+else
+    printf 'Error: Could not find giv template directory.\n' >&2
+    exit 1
+fi
+
+# Docs location (optional)
+if [ -n "$GIV_DOCS_DIR" ]; then
+    DOCS_DIR="$GIV_DOCS_DIR"
+elif [ -d "$LIB_DIR/../docs" ]; then
+    DOCS_DIR="$LIB_DIR/../docs"
+elif [ -d "/usr/local/share/giv/docs" ]; then
+    DOCS_DIR="/usr/local/share/giv/docs"
+elif [ -n "${SNAP:-}" ] && [ -d "$SNAP/share/giv/docs" ]; then
+    DOCS_DIR="$SNAP/share/giv/docs"
+else
+    DOCS_DIR=""  # It's optional; do not fail if not found
+fi
 
 # shellcheck source=helpers.sh
 . "${SCRIPT_DIR}/helpers.sh"
 # shellcheck source=markdown.sh
 . "${SCRIPT_DIR}/markdown.sh"
 
+# Detect if sourced (works in bash, zsh, dash, sh)
+_is_sourced=0
+# shellcheck disable=SC2296
+# if [ "${BATS_TEST_FILENAME:-}" ]; then
+#     _is_sourced=1
+# el
+if [ "$(basename -- "$0")" = "sh" ] || [ "$(basename -- "$0")" = "-sh" ]; then
+    _is_sourced=1
+elif [ "${0##*/}" = "dash" ] || [ "${0##*/}" = "-dash" ]; then
+    _is_sourced=1
+elif [ -n "${ZSH_EVAL_CONTEXT:-}" ] && case $ZSH_EVAL_CONTEXT in *:file) true;; *) false;; esac; then
+    _is_sourced=1
+elif [ -n "${KSH_VERSION:-}" ] && [ -n "${.sh.file:-}" ] && [ "${.sh.file}" != "" ] && [ "${.sh.file}" != "$0" ]; then
+    _is_sourced=1
+elif [ -n "${BASH_VERSION:-}" ] && [ -n "${BASH_SOURCE:-}" ] && [ "${BASH_SOURCE}" != "$0" ]; then
+    _is_sourced=1
+fi
+
+GIV_TMPDIR=""
 REVISION=""
 PATHSPEC=""
 
@@ -57,7 +115,7 @@ config_file=""
 is_config_loaded=false
 debug=false
 dry_run=""
-template_dir="${PROMPT_DIR}"
+template_dir="${TEMPLATE_DIR}"
 output_file=''
 todo_pattern=''
 todo_files="*todo*"
@@ -489,7 +547,7 @@ cmd_message() {
         build_history "${hist}" "${commit_id}" "${todo_pattern}" "${PATHSPEC}"
         print_debug "Generated history file ${hist}"
         pr=$(portable_mktemp "commit_message_prompt_XXXXXX.md")
-        build_prompt "${PROMPT_DIR}/message_prompt.md" "${hist}" >"${pr}"
+        build_prompt "${TEMPLATE_DIR}/message_prompt.md" "${hist}" >"${pr}"
         print_debug "Generated prompt file ${pr}"
         res=$(generate_response "${pr}" "${model_mode}")        
         if [ $? -ne 0 ]; then
@@ -550,7 +608,7 @@ cmd_summary() {
     fi
 
     # Generate final summary from summaries
-    prompt_file_name="${PROMPT_DIR}/final_summary_prompt.md"
+    prompt_file_name="${TEMPLATE_DIR}/final_summary_prompt.md"
     tmp_prompt_file=$(portable_mktemp "final_summary_prompt_XXXXXX.md")
     build_prompt "${prompt_file_name}" "${summaries_file}" >"${tmp_prompt_file}"
     print_debug "$(cat "${tmp_prompt_file}" || true)"
@@ -566,7 +624,7 @@ cmd_release_notes() {
         exit 1
     fi
 
-    prompt_file_name="${PROMPT_DIR}/release_notes_prompt.md"
+    prompt_file_name="${TEMPLATE_DIR}/release_notes_prompt.md"
     tmp_prompt_file=$(portable_mktemp "release_notes_prompt_XXXXXX.md")
     build_prompt "${prompt_file_name}" "${summaries_file}" >"${tmp_prompt_file}"
     [ "${debug}" = "true" ] && printf 'Debug: Generated prompt file %s\n' "${tmp_prompt_file}"
@@ -585,7 +643,7 @@ cmd_announcement() {
         exit 1
     fi
 
-    prompt_file_name="${PROMPT_DIR}/announcement_prompt.md"
+    prompt_file_name="${TEMPLATE_DIR}/announcement_prompt.md"
     tmp_prompt_file=$(portable_mktemp "announcement_prompt_XXXXXX.md")
     project_title="$(parse_project_title "${summaries_file}")"
     print_debug "Project title: ${project_title}"
@@ -624,7 +682,7 @@ cmd_changelog() {
     fi
 
     # 4) Build the AI prompt
-    prompt_template="${PROMPT_DIR}/changelog_prompt.md"
+    prompt_template="${TEMPLATE_DIR}/changelog_prompt.md"
     print_debug "Building prompt from template: $prompt_template"
     tmp_prompt_file=$(portable_mktemp "prompt.XXXXXXX.md") || {
         printf 'Error: cannot create temp file for prompt\n' >&2

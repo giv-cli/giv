@@ -758,7 +758,7 @@ summarize_commit() {
     build_history "${hist}" "${commit}" "${todo_pattern}" "$PATHSPEC"
     sc_version_file=$(find_version_file)
     sc_version=$(get_version_info "${commit}" "${sc_version_file}")
-    summary_template=$(build_prompt --version "${sc_version}" "${PROMPT_DIR}/summary_prompt.md" "${hist}")
+    summary_template=$(build_prompt --version "${sc_version}" "${TEMPLATE_DIR}/summary_prompt.md" "${hist}")
     print_debug "Using summary prompt: ${summary_template}"
     printf '%s\n' "${summary_template}" >"${pr}"
     res=$(generate_response "${pr}" "${gen_mode}")
