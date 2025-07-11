@@ -598,6 +598,7 @@ cmd_summary() {
     #sum_dry_run="${4:-}"
 
     summaries_file=$(portable_mktemp "summary_summaries_XXXXXX.md")
+    print_debug "Generating summaries to: ${summaries_file}"
     summarize_target "${sum_revision}" "${summaries_file}" "${sum_model_mode}"
     print_debug "$(cat "${summaries_file}" || true)"
 

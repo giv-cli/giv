@@ -18,10 +18,10 @@ teardown() {
     diff="$TESTDIR/diff.txt"
     echo "Summary: [SUMMARY]" > "$template"
     echo "This is a diff" > "$diff"
-    export GIV_TOKEN_SUMMARY=""
     run build_prompt "$template" "$diff"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Summary: This is a diff"* ]]
+    assert_output --partial "Summary: This is a diff"
+    assert_output --partial "Output just the final content—no extra commentary or code fencing. Use only information contained in this prompt and the summaries provided above."
 }
 
 @test "build_prompt: all flags replacement" {

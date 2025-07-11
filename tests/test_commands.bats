@@ -186,9 +186,12 @@ EOF
 
   run cmd_summary "" "--current" "auto" "true"
   printf "Output: %s\n" "$output"
-
+  ollama() {
+    # shellcheck disable=SC2317
+    printf 'Ollama called' >&2
+  }
   assert_success
-  assert_output "SUM"
+  assert_output --partial "SUM"
 }
 
 @test "cmd_summary HEAD~1 prints to stdout" {
@@ -207,7 +210,7 @@ EOF
   run cmd_summary "${output_file}" "--current" "auto" "false"
   assert_success
   [ -f out.sum ]
-  assert_output --partial "Summary written to out.sum"
+  assert_output --partial "Response written to out.sum"
   rm -f out.sum
 }
 

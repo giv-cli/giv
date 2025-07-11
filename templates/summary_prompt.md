@@ -50,10 +50,12 @@ Write a structured, Keep a Changelog–style summary of the provided git diff. D
    - Group related items together and maintain logical order.
    - Do not include groups with no related items.
    - Each list item should provide enough detail to understand the change.
+   - Include file paths and line numbers along when possible.
 
 4. Processing Instructions  
    - Parse the git diff to detect each change’s type.  
-   - Assign changes to the appropriate group above.  
+   - Assign changes to the appropriate group above.
+   - Ensure all changes are accounted for in the list.
    - Extract file paths or components when pertinent.  
    - If possible, explain "what" changed, "why," and the "impact."
    - Only use information provided in this content in your response.

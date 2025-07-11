@@ -81,28 +81,50 @@ print_error() {
 #   text"
 #   replace_tokens < template.md > output.md
 replace_tokens() {
-    awk '
-  BEGIN {
-    ORS = ""
-    # build map[name] = value for all GIV_TOKEN_* vars
-    for (v in ENVIRON) {
-      if (substr(v, 1, 10) == "GIV_TOKEN_") {
-        name = substr(v, 11)
-        map[name] = ENVIRON[v]
-      }
+    summary_file=$1
+    shift
+
+    awk -v summary_file="$summary_file" '
+    # ----- helpers --------------------------------------------------------
+    function emit_summary(   l) {
+        if (summary_file_read || summary_file == "") return
+        while ((getline l < summary_file) > 0) print l "\n"
+        close(summary_file)
+        summary_file_read = 1
     }
-  }
-  {
-    line = $0
-    # apply each replacement; order is arbitrary but harmless
-    for (n in map) {
-      # \[ and \] to match literal brackets
-      gsub("\\[" n "\\]", map[n], line)
+
+    # ----- build the map from env ----------------------------------------
+    BEGIN {
+        ORS = ""
+        for (v in ENVIRON) {
+            if (substr(v,1,10) == "GIV_TOKEN_" && v != "GIV_TOKEN_SUMMARY") {
+                name = substr(v,11)          # strip the prefix
+                map[name] = ENVIRON[v]
+            }
+        }
     }
-    print line "\n"
-  }
-  '
+
+    # ----- main loop ------------------------------------------------------
+    {
+        if (index($0, "[SUMMARY]")) {
+            # Split the line on the placeholder so we can inject the diff
+            n = split($0, parts, /\[SUMMARY\]/)
+            for (i = 1; i <= n; i++) {
+                fragment = parts[i]
+                for (k in map) gsub("\\[" k "\\]", map[k], fragment)
+                printf "%s", fragment
+                if (i < n) emit_summary()
+            }
+            print "\n"
+        } else {
+            line = $0
+            for (k in map) gsub("\\[" k "\\]", map[k], line)
+            print line "\n"
+        }
+    }
+    ' "$@"
 }
+
 
 # build_prompt [--project-title X] [--version V] [--example E] [--rules R] \
 #              <template_file> <diff_file>
@@ -150,6 +172,8 @@ build_prompt() {
     prompt_template=$1
     diff_file=$2
 
+    print_debug "Building prompt from template: ${prompt_template}, using diff file: ${diff_file}"
+
     # validate files
     if [ ! -f "${prompt_template}" ]; then
         printf 'template file not found: %s\n' "${prompt_template}" >&2
@@ -160,21 +184,21 @@ build_prompt() {
         return 1
     fi
     # export our tokens
-    # export our tokens
-    export GIV_TOKEN_SUMMARY
-    GIV_TOKEN_SUMMARY=$(cat "${diff_file}")
+    unset GIV_TOKEN_SUMMARY
+    # GIV_TOKEN_SUMMARY="$diff_file"
 
     export GIV_TOKEN_PROJECT_TITLE="${project_title:-${GIV_TOKEN_PROJECT_TITLE}}"
     export GIV_TOKEN_VERSION="${version:-${GIV_TOKEN_VERSION}}"
     export GIV_TOKEN_EXAMPLE="${example:-${GIV_TOKEN_EXAMPLE}}"
     export GIV_TOKEN_RULES="${rules:-${GIV_TOKEN_RULES}}"
 
+    summary_file="$diff_file"
     # Append the extra instructions to the prompt content before passing to replace_tokens
     {
         cat "${prompt_template}"
         printf '\nOutput just the final content—no extra commentary or code fencing. '
         printf 'Use only information contained in this prompt and the summaries provided above.'
-    } | replace_tokens
+    } | replace_tokens "$diff_file"
     return
 }
 

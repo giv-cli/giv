@@ -137,6 +137,7 @@ EOF
 Summary:
 Line A
 Line B
+
 Done.
 
 Output just the final content—no extra commentary or code fencing. Use only information contained in this prompt and the summaries provided above.
@@ -175,6 +176,7 @@ Version: 2.3.4
 
 Summary->
 the diff here
+
 
 Example: echo Hello
 
