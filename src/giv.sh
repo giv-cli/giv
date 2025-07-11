@@ -527,6 +527,7 @@ Examples:
   giv changelog --todo-files '*.ts' --todo-pattern 'TODO\\(\\w+\\):'
   giv release-notes v1.2.0..HEAD --model-mode remote --api-model gpt-4o --api-url https://api.example.com/v1/chat/completions
 EOF
+printf '\n%s\n' "For more information, see the documentation at ${DOCS_DIR:-}"
 }
 
 # # -------------------------------------------------------------------

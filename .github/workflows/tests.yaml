@@ -72,5 +72,6 @@ jobs:
         env:
           SHELLCHECK_OPTS: "--shell=sh --severity=warning"
         with:
-          ignore_paths: tests          
+          ignore_paths: tests build
+
 

@@ -4,7 +4,6 @@ GIV_TOKEN_PROJECT_TITLE=""
 GIV_TOKEN_VERSION=""
 GIV_TOKEN_EXAMPLE=""
 GIV_TOKEN_RULES=""
-GIV_TOKEN_SUMMARY=""
 
 is_valid_git_range() {
     git rev-list "$1" >/dev/null 2>&1
