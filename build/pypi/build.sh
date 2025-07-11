@@ -22,9 +22,9 @@ PIP_BUILD_TEMP="$2"
 # # Copy templates folder
 # cp -r templates/* "${TEMP_TEMPLATES}/"
 
-# Collect file lists for setup.py
-SH_FILES=$(find "${PIP_BUILD_TEMP}/package/src" -type f -name '*.sh' -print0 | xargs -0 -I{} bash -c 'printf "src/%s " "$(basename "{}")"')
-TEMPLATE_FILES=$(find "${PIP_BUILD_TEMP}/package/templates" -type f -print0 | xargs -0 -I{} bash -c 'printf "templates/%s " "$(basename "{}")"')
+# # Collect file lists for setup.py
+# SH_FILES=$(find "${PIP_BUILD_TEMP}/package/src" -type f -name '*.sh' -print0 | xargs -0 -I{} bash -c 'printf "src/%s " "$(basename "{}")"')
+# TEMPLATE_FILES=$(find "${PIP_BUILD_TEMP}/package/templates" -type f -print0 | xargs -0 -I{} bash -c 'printf "templates/%s " "$(basename "{}")"')
 
 # Copy built files to output directory
 rm -rf "${PIP_DIST_DIR}"
@@ -36,6 +36,7 @@ cp -r "${PIP_BUILD_TEMP}/package/"* "${PIP_DIST_DIR}"
 sed -e "s|{{VERSION}}|${VERSION}|g" \
     -e "s|{{SH_FILES}}|${SH_FILES}|g" \
     -e "s|{{TEMPLATE_FILES}}|${TEMPLATE_FILES}|g" \
+    -e "s|{{DOCS_FILES}}|${DOCS_FILES}|g" \
     build/pypi/setup.py > "${PIP_DIST_DIR}/setup.py"
 
 # Copy README if present

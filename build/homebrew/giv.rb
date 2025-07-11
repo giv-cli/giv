@@ -9,6 +9,7 @@ class Giv < Formula
     bin.install "src/giv" => "giv"
     libexec.install Dir["src/*.sh"]
     (share/"giv/templates").install Dir["templates/*"]
+    (share/"giv/docs").install Dir["docs/*"]
 
     # Move all .sh libs to /usr/local/lib/giv for compatibility
     lib.mkpath

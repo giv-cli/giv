@@ -10,5 +10,6 @@ setup(
     data_files=[
         ("src", ["{{SH_FILES}}"]),
         ("templates", ["templates/{{TEMPLATE_FILES}}"]),
+        ("docs", ["docs/{{DOCS_FILES}}"]),
     ],
 )

@@ -11,19 +11,10 @@
       "build-commands": [
         "install -D src/giv /app/bin/giv",
         "install -Dm644 src/*.sh /app/lib/giv/",
-        "install -Dm644 templates/* /app/share/giv/templates/"
+        "install -Dm644 templates/* /app/share/giv/templates/",
+        "install -Dm644 docs/* /app/share/giv/docs/"
       ],
-      "sources": [
-        { "type": "file", "path": "src/giv" },
-        { "type": "file", "path": "src/helpers.sh" },
-        { "type": "file", "path": "src/markdown.sh" },
-        { "type": "file", "path": "templates/changelog_prompt.md" },
-        { "type": "file", "path": "templates/message_prompt.md" },
-        { "type": "file", "path": "templates/post_example.md" },
-        { "type": "file", "path": "templates/post_prompt.md" },
-        { "type": "file", "path": "templates/release_notes_prompt.md" },
-        { "type": "file", "path": "templates/summary_prompt.md" },
-        { "type": "file", "path": "templates/announcement_prompt.md" }
+      "sources": [   
       ]
     }
   ]

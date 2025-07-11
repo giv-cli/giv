@@ -2,8 +2,10 @@
     "cSpell.words": [
         "changesish",
         "devstral",
+        "dotenv",
         "giv",
         "ollama",
+        "pypi",
         "subcmd"
     ],
     "[bats]": {

@@ -1,29 +1,33 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eu
 
 VERSION="$1"
-FLATPAK_BUILD_TEMP="$2/flatpak"
+FLATPAK_BUILD_TEMP="$2"
 FLATPAK_DIST_DIR="./dist/${VERSION}/flatpak"
 
-# Prepare staging dir
-rm -rf "$FLATPAK_BUILD_TEMP"
-mkdir -p "$FLATPAK_BUILD_TEMP/src" "$FLATPAK_BUILD_TEMP/templates"
-
-# Copy and rename main script
-cp src/giv.sh "$FLATPAK_BUILD_TEMP/src/giv"
-chmod +x "$FLATPAK_BUILD_TEMP/src/giv"
-# Copy libraries
-find src -type f -name '*.sh' ! -name 'giv.sh' -exec cp {} "$FLATPAK_BUILD_TEMP/src/" \;
-# Copy templates
-cp -r templates/* "$FLATPAK_BUILD_TEMP/templates/"
-
-# Copy and substitute version in manifest
-sed "s/{{VERSION}}/${VERSION}/g" build/flatpak/flatpak.json > "$FLATPAK_BUILD_TEMP/flatpak.json"
-
-# Move to dist dir
+rm -rf "${FLATPAK_DIST_DIR}"
 mkdir -p "${FLATPAK_DIST_DIR}"
-rm -rf "${FLATPAK_DIST_DIR:?}/"*
-mv "$FLATPAK_BUILD_TEMP"/* "${FLATPAK_DIST_DIR}/"
+
+# Ensure file lists are set
+SH_FILES="${SH_FILES:-}"
+TEMPLATE_FILES="${TEMPLATE_FILES:-}"
+DOCS_FILES="${DOCS_FILES:-}"
+
+# Build sources array as valid JSON
+SOURCES_JSON="["
+for f in $SH_FILES $TEMPLATE_FILES $DOCS_FILES; do
+    [ -n "$f" ] && SOURCES_JSON="$SOURCES_JSON{\"type\": \"file\", \"path\": \"$f\"},"
+done
+SOURCES_JSON="${SOURCES_JSON%,}]"  # Remove trailing comma, close array
+
+# Use jq to replace sources array in the template
+jq --argjson sources "$SOURCES_JSON" \
+   --arg version "$VERSION" \
+   '.sources = $sources | .version = $version' \
+   build/flatpak/flatpak.json > "$FLATPAK_DIST_DIR/flatpak.json"
+
+cp -r "${FLATPAK_BUILD_TEMP}/package/"* "${FLATPAK_DIST_DIR}/"
+
 
 printf "Flatpak build completed. Files are in %s\n" "${FLATPAK_DIST_DIR}"
 printf "To build the flatpak, run:\n  flatpak-builder build-dir flatpak.json --force-clean\n"

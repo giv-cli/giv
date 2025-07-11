@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eu
 
 VERSION="$1"
 BUILD_TEMP="$2"
@@ -26,7 +26,7 @@ cp -r templates/* "$SHARE_TEMPLATES_DIR/"
 
 # fpm build
 PKG_NAME="giv"
-DESC="Image and vector viewer CLI"
+DESC="Git history AI assistant CLI tool"
 MAINTAINER="itlackey <noreply@github.com>"
 
 OUT_DIR="./dist/${VERSION}/${TARGET}"

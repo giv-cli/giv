@@ -20,3 +20,4 @@ parts:
       src/giv: bin/giv
       src/*: lib/giv/
       templates/*: share/giv/templates/
+      docs/*: share/giv/docs/
