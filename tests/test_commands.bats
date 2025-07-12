@@ -184,7 +184,8 @@ EOF
 @test "cmd_summary prints to stdout" {
   summarize_target() { echo "SUM"; }
 
-  run cmd_summary "" "--current" "auto" "true"
+  
+  run cmd_document "summary" "--current" "" "auto" "0.7" ""
   printf "Output: %s\n" "$output"
   ollama() {
     # shellcheck disable=SC2317
@@ -195,19 +196,18 @@ EOF
 }
 
 @test "cmd_summary HEAD~1 prints to stdout" {
-
   ollama() {
     echo "SUM"
   }
-  run cmd_summary "" HEAD~1 "auto" "true"
-  [ "$status" -eq 0 ]
+  run cmd_document "summary" HEAD~1 "" "auto" "0.7"
+  assert_success
   assert_output --partial "SUM"
 }
 
 @test "cmd_summary writes to file when output_file set" {
   output_file="out.sum"
   summarize_target() { echo "SUM"; }
-  run cmd_summary "${output_file}" "--current" "auto" "false"
+  run cmd_document "summary" "--current" "${output_file}" "auto"
   assert_success
   [ -f out.sum ]
   assert_output --partial "Response written to out.sum"
@@ -219,13 +219,13 @@ EOF
 #----------------------------------------
 
 @test "cmd_release_notes writes to its default file" {
-  run cmd_release_notes
+  run cmd_document "release_notes" "" "RELEASE_NOTES.md"
   assert_success
   assert_output --partial "Response written to RELEASE_NOTES.md"
 }
 
 @test "cmd_announcement writes to its default file" {
-  run cmd_announcement
+  run cmd_document "announcement" "" "ANNOUNCEMENT.md"
   assert_success
   assert_output --partial "Response written to ANNOUNCEMENT.md"
 }

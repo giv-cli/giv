@@ -548,7 +548,7 @@ cmd_message() {
         build_history "${hist}" "${commit_id}" "${todo_pattern}" "${PATHSPEC}"
         print_debug "Generated history file ${hist}"
         pr=$(portable_mktemp "commit_message_prompt_XXXXXX.md")
-        build_prompt "${TEMPLATE_DIR}/message_prompt.md" "${hist}" >"${pr}"
+        build_prompt --template "${TEMPLATE_DIR}/message_prompt.md" --summary "${hist}" >"${pr}"
         print_debug "Generated prompt file ${pr}"
         res=$(generate_response "${pr}" "${model_mode}" "0.9" "32768")        
         if [ $? -ne 0 ]; then
@@ -592,73 +592,6 @@ cmd_message() {
     return
 }
 
-cmd_summary() {
-    sum_output_file="${1:-}"
-    sum_revision="${2:---current}"
-    sum_model_mode="${3:-auto}"
-    #sum_dry_run="${4:-}"
-
-    summaries_file=$(portable_mktemp "summary_summaries_XXXXXX.md")
-    print_debug "Generating summaries to: ${summaries_file}"
-    summarize_target "${sum_revision}" "${summaries_file}" "${sum_model_mode}"
-    print_debug "$(cat "${summaries_file}" || true)"
-
-    # Early exit if no summaries were produced
-    if [ ! -f "${summaries_file}" ]; then
-        printf 'Error: No summaries generated for %s.\n' "${sum_revision}" >&2
-        exit 1
-    fi
-
-    # Generate final summary from summaries
-    prompt_file_name="${TEMPLATE_DIR}/final_summary_prompt.md"
-    tmp_prompt_file=$(portable_mktemp "final_summary_prompt_XXXXXX.md")
-    build_prompt "${prompt_file_name}" "${summaries_file}" >"${tmp_prompt_file}"
-    print_debug "$(cat "${tmp_prompt_file}" || true)"
-    generate_from_prompt "${tmp_prompt_file}" "${sum_output_file}" \
-        "${sum_model_mode}" "0.7"
-}
-cmd_release_notes() {
-    summaries_file=$(portable_mktemp "release_notes_summaries_XXXXXX.md")
-    summarize_target "${REVISION}" "${summaries_file}" "${model_mode}"
-
-    # Early exit if no summaries were produced
-    if [ ! -s "${summaries_file}" ]; then
-        printf 'Error: No summaries generated for release notes.\n' >&2
-        exit 1
-    fi
-
-    prompt_file_name="${TEMPLATE_DIR}/release_notes_prompt.md"
-    tmp_prompt_file=$(portable_mktemp "release_notes_prompt_XXXXXX.md")
-    build_prompt "${prompt_file_name}" "${summaries_file}" >"${tmp_prompt_file}"
-    [ "${debug}" = "true" ] && printf 'Debug: Generated prompt file %s\n' "${tmp_prompt_file}"
-
-    generate_from_prompt "${tmp_prompt_file}" \
-        "${output_file:-${release_notes_file}}" \
-        "${model_mode}" "0.6" "65536"
-}
-
-cmd_announcement() {
-    summaries_file=$(portable_mktemp "announcement_summaries_XXXXXX.md")
-    summarize_target "${REVISION}" "${summaries_file}" "${model_mode}"
-
-    # Early exit if no summaries were produced
-    if [ ! -s "${summaries_file}" ]; then
-        printf 'Error: No summaries generated for announcements.\n' >&2
-        exit 1
-    fi
-
-    prompt_file_name="${TEMPLATE_DIR}/announcement_prompt.md"
-    tmp_prompt_file=$(portable_mktemp "announcement_prompt_XXXXXX.md")
-    project_title="$(parse_project_title "${summaries_file}")"
-    print_debug "Project title: ${project_title}"
-    build_prompt --project-title "${project_title}" "${prompt_file_name}" "${summaries_file}" >"${tmp_prompt_file}"
-
-    print_debug "Generated prompt file: ${tmp_prompt_file}"
-    print_info "$(cat "${tmp_prompt_file}" || true)"
-    generate_from_prompt "${tmp_prompt_file}" \
-        "${output_file:-${announce_file}}" \
-        "${model_mode}" "0.6" "65536"
-}
 
 # -------------------------------------------------------------------
 # cmd_changelog: generate or update CHANGELOG.md from Git history
@@ -694,7 +627,7 @@ cmd_changelog() {
         rm -f "$summaries_file"
         exit 1
     }
-    if ! build_prompt "$prompt_template" "$summaries_file" >"$tmp_prompt_file"; then
+    if ! build_prompt --template "$prompt_template" --summary "$summaries_file" >"$tmp_prompt_file"; then
         printf 'Error: build_prompt failed\n' >&2
         rm -f "$summaries_file" "$tmp_prompt_file"
         exit 1
@@ -776,10 +709,27 @@ if [ "${_is_sourced}" -eq 0 ]; then
 
     # Dispatch logic
     case "${subcmd}" in
-    summary) cmd_summary "${output_file}" "${REVISION}" "${model_mode}" "${dry_run}" ;;
-    release-notes) cmd_release_notes ;;
-    announcement) cmd_announcement ;;
     message) cmd_message "${REVISION}" ;;
+    summary) cmd_document \
+      summary \
+      "${REVISION}" \
+      "${output_file:-}" \
+      "${model_mode}" \
+      "0.7" "" ;;
+    release-notes) cmd_document \
+      release_notes \
+      "${REVISION}" \
+      "${output_file:-$release_notes_file}" \
+      "${model_mode}" \
+      "0.6" \
+      "65536" ;;
+    announcement)  cmd_document \
+      announcement \
+      "${REVISION}" \
+      "${output_file:-$announce_file}" \
+      "${model_mode}" \
+      "0.6" \
+      "65536" ;;
     changelog) cmd_changelog ;;
     help)
         show_help

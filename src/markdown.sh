@@ -11,6 +11,57 @@ normalize_blank_lines() {
   ' "$in" >"$in".norm && mv "$in".norm "$in"
 }
 
+# extract_section <section_name> <markdown_file> [<header_id>]
+#
+# Prints the matching section (including its heading) and its content
+# up to—but not including—the next heading of the same or higher level.
+#
+#   <section_name>  The literal text of the heading (e.g. "1.0.0" or "Unreleased")
+#   <markdown_file> Path to the file to search
+#   <header_id>     Heading marker (e.g. "##" or "###"); defaults to "##"
+#
+# Returns 0 always; prints nothing if file or section is missing.
+extract_section() {
+    section=$1
+    file=$2
+    header=${3:-"##"}
+
+    # nothing to do if file absent
+    [ ! -f "$file" ] && return 0
+
+    # escape section name for regex
+    esc=$(printf '%s' "$section" | sed 's/[][\\/.*^$]/\\&/g')
+
+    # build pattern to find the heading line
+    pat="^${header}[[:space:]]*\\[?${esc}\\]?"
+
+    # locate the first matching heading line number
+    start=$(grep -nE "$pat" "$file" 2>/dev/null | head -n1 | cut -d: -f1)
+    [ -z "$start" ] && return 0
+
+    # count how many "#" in header to get its level
+    HL=${#header}
+
+    # build a regex matching any heading of level ≤ HL
+    lvl_pat="^#{1,${HL}}[[:space:]]"
+
+    # find the next heading (same or higher level) after start
+    offset=$(tail -n +"$((start + 1))" "$file" |
+        grep -nE "$lvl_pat" |
+        head -n1 |
+        cut -d: -f1)
+
+    if [ -n "$offset" ]; then
+        end=$((start + offset - 1))
+    else
+        # no further heading: go to EOF
+        end=$(wc -l <"$file")
+    fi
+
+    # print from the header line through end
+    sed -n "${start},${end}p" "$file"
+}
+
 # manage_section <title> <file> <new_content_file> <mode> <section_id> [<header_id>]
 #   mode: append|prepend|update
 #   header_id: literal "#" string (e.g. "##" or "###"), defaults to "##"
@@ -201,3 +252,97 @@ append_link() {
   return 0
 }
 
+
+is_glow_installed() {
+    command -v glow >/dev/null 2>&1
+}
+
+install_pkg() {
+    echo "Checking package managers..."
+    if command -v brew >/dev/null 2>&1; then
+        brew install glow && return 0
+    elif command -v port >/dev/null 2>&1; then
+        sudo port install glow && return 0
+    elif command -v pacman >/dev/null 2>&1; then
+        sudo pacman -S --noconfirm glow && return 0
+    elif command -v xbps-install >/dev/null 2>&1; then
+        sudo xbps-install -Sy glow && return 0
+    elif command -v nix-shell >/dev/null 2>&1; then
+        nix-shell -p glow --run glow && return 0
+    elif command -v pkg >/dev/null 2>&1 && uname -s | grep -qi freebsd; then
+        sudo pkg install -y glow && return 0
+    elif command -v eopkg >/dev/null 2>&1; then
+        sudo eopkg install glow && return 0
+    elif command -v snap >/dev/null 2>&1; then
+        sudo snap install glow && return 0
+    elif command -v choco >/dev/null 2>&1; then
+        choco install glow -y && return 0
+    elif command -v scoop >/dev/null 2>&1; then
+        scoop install glow && return 0
+    elif command -v winget >/dev/null 2>&1; then
+        winget install --id=charmbracelet.glow -e && return 0
+    fi
+    return 1
+}
+
+install_from_github() {
+    echo "Installing glow binary from GitHub releases…"
+    os=$(uname -s | tr '[:upper:]' '[:lower:]')
+    arch=$(uname -m)
+    case "$arch" in
+    x86_64 | amd64) arch="x86_64" ;;
+    arm64 | aarch64) arch="arm64" ;;
+    *)
+        echo "Unsupported arch: $arch"
+        exit 1
+        ;;
+    esac
+
+    tag=$(curl -fsSL https://api.github.com/repos/charmbracelet/glow/releases/latest |
+        grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    file="glow_${tag#v}_${os}_${arch}.tar.gz"
+
+    tmpdir=$(mktemp -d)
+    curl -fsSL "https://github.com/charmbracelet/glow/releases/download/$tag/$file" -o "$tmpdir/glow.tar.gz"
+    curl -fsSL "https://github.com/charmbracelet/glow/releases/download/$tag/checksums.txt" -o "$tmpdir/checksums.txt"
+
+    cd "$tmpdir"
+    sha256sum -c checksums.txt --ignore-missing --quiet || {
+        echo "Checksum verification failed"
+        exit 1
+    }
+
+    tar -xzf glow.tar.gz
+    chmod +x glow
+
+    bindir="/usr/local/bin"
+    if [ -w "$bindir" ]; then
+        mv glow "$bindir"
+    else
+        sudo mv glow "$bindir"
+    fi
+
+    cd -
+    rm -rf "$tmpdir"
+
+    echo "glow installed to $bindir"
+}
+
+ensure_glow() {
+    if is_installed; then
+        echo "✔ glow already installed: $(command -v glow)"
+        return
+    fi
+
+    echo "✗ glow not found. Installing…"
+    if install_pkg; then
+        echo "Installed via package manager."
+    else
+        install_from_github
+    fi
+
+    if ! is_installed; then
+        echo "Installation failed. See https://github.com/charmbracelet/glow#installation"
+        exit 1
+    fi
+}

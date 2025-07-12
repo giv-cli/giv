@@ -124,81 +124,6 @@ replace_tokens() {
     ' "$@"
 }
 
-# build_prompt [--project-title X] [--version V] [--example E] [--rules R] \
-#              <template_file> <diff_file>
-#
-# Exports GIV_TOKEN_SUMMARY (and any of PROJECT_TITLE, VERSION, EXAMPLE, RULES
-# if passed) then runs replace_tokens on the template.
-build_prompt() {
-    project_title="$(parse_project_title)"
-
-    version="${output_version:-${GIV_TOKEN_VERSION:-}}"
-    if [ -z "${version}" ] || [ "${version}" = "auto" ]; then
-        print_debug "No version set or version is 'auto', trying to find it from version file"
-        # Try to find the version file and extract the version
-        version_file="$(find_version_file)"
-        version="$(get_version_info --current "${version_file:-}")"
-    fi
-    example=""
-    rules=""
-    # parse flags
-    while [ $# -gt 2 ]; do
-        case "$1" in
-        --project-title)
-            project_title=$2
-            shift 2
-            ;;
-        --version)
-            version=$2
-            shift 2
-            ;;
-        --example)
-            example=$2
-            shift 2
-            ;;
-        --rules)
-            rules=$2
-            shift 2
-            ;;
-        *)
-            printf 'unknown option: %s\n' "$1" >&2
-            return 1
-            ;;
-        esac
-    done
-
-    prompt_template=$1
-    diff_file=$2
-
-    print_debug "Building prompt from template: ${prompt_template}, using diff file: ${diff_file}"
-
-    # validate files
-    if [ ! -f "${prompt_template}" ]; then
-        printf 'template file not found: %s\n' "${prompt_template}" >&2
-        return 1
-    fi
-    if [ ! -f "${diff_file}" ]; then
-        printf 'diff file not found: %s\n' "${diff_file}" >&2
-        return 1
-    fi
-    # export our tokens
-    unset GIV_TOKEN_SUMMARY
-    # GIV_TOKEN_SUMMARY="$diff_file"
-
-    export GIV_TOKEN_PROJECT_TITLE="${project_title:-${GIV_TOKEN_PROJECT_TITLE}}"
-    export GIV_TOKEN_VERSION="${version:-${GIV_TOKEN_VERSION}}"
-    export GIV_TOKEN_EXAMPLE="${example:-${GIV_TOKEN_EXAMPLE}}"
-    export GIV_TOKEN_RULES="${rules:-${GIV_TOKEN_RULES}}"
-
-    summary_file="$diff_file"
-    # Append the extra instructions to the prompt content before passing to replace_tokens
-    {
-        cat "${prompt_template}"
-        printf '\nOutput just the final content—no extra commentary or code fencing. '
-        printf 'Use only information contained in this prompt and the summaries provided above.'
-    } | replace_tokens "$diff_file"
-    return
-}
 
 # Locate the project from the codebase. Looks for common project files
 # like package.json, pyproject.toml, setup.py, Cargo.toml, composer.json
@@ -410,8 +335,8 @@ run_local() {
 #     - Any other value: Calls the `run_local` function with the input file path as an argument, along with temperature and context window size if provided.
 generate_response() {
     gen_mode="${2:-$model_mode:-auto}"
-    temp="${3:-0.9}"  # Default to a neutral temperature of 1.0
-    ctx_window="${4:-32768}"  # Default context window size
+    temp="${3:-0.9}"         # Default to a neutral temperature of 1.0
+    ctx_window="${4:-32768}" # Default context window size
 
     print_debug "Generating response using $gen_mode mode with temperature=$temp and context window size=$ctx_window"
 
@@ -428,19 +353,29 @@ generate_response() {
     esac
 }
 
-# -------------------------------------------------------------------
-# generate_from_prompt: run AI on a built prompt and write or print result
+# Function to generate a response from a prompt file and write it to an output file.
 #
-#   $1 = path to the prompt file
-#   $2 = path to write the response into
-#   $3 = (optional) model mode override
-# -------------------------------------------------------------------
+# Parameters:
+#   $1 - Path to the prompt file (required).
+#   $2 - Path to the response output file (required).
+#   $3 - Generation mode. Defaults to GIV_MODEL_MODE or 'auto' if not set.
+#   $4 - Temperature for response generation. Default is 0.9.
+#   $5 - Context window size for response generation. Default is 32768.
+#
+# The function performs the following steps:
+# 1) Invokes the AI to generate a response based on the prompt file and parameters.
+# 2) If in dry-run mode or if no output file is specified, prints the response and exits.
+# 3) Otherwise, writes the generated response to the specified output file.
+#
+# Returns:
+#   0 - Success
+#   1 - Error (e.g., generate_response failed or unable to write to output file)
 generate_from_prompt() {
     prompt_file="$1"
     response_output_file="$2"
     gen_mode="${3:-${GIV_MODEL_MODE:-${model_mode:-auto}}}"
-    temperature="${4:-0.9}"  # Default value for temperature
-    context_window="${5:-32768}"  # Default value for context window
+    temperature="${4:-0.9}"      # Default value for temperature
+    context_window="${5:-32768}" # Default value for context window
 
     print_debug "Prompt file: $prompt_file"
     print_debug "Output file: $response_output_file"
@@ -697,6 +632,113 @@ build_history() {
     return 0
 }
 
+# build_prompt: fill a prompt template with tokens and diff content
+#
+# Usage:
+#   build_prompt \
+#     [--project-title X] \
+#     [--version V] \
+#     [--example E] \
+#     [--rules R] \
+#     --template TEMPLATE_FILE \
+#     --summary SUMMARY_FILE
+#
+# Exports:
+#   GIV_TOKEN_PROJECT_TITLE, GIV_TOKEN_VERSION,
+#   GIV_TOKEN_EXAMPLE, GIV_TOKEN_RULES, GIV_TOKEN_SUMMARY
+#
+# Reads TEMPLATE_FILE, appends instructions, then pipes through replace_tokens
+# using SUMMARY_FILE as the summary source.
+build_prompt() {
+    # default tokens
+    project_title="$(parse_project_title)"
+    version="${output_version:-${GIV_TOKEN_VERSION:-}}"
+    example=""
+    rules=""
+    template_file=""
+    summary_file=""
+
+    # resolve version if unset or 'auto'
+    if [ -z "${version}" ] || [ "${version}" = "auto" ]; then
+        print_debug "No version set or version is 'auto', trying to find it from version file"
+        version_file="$(find_version_file)"
+        version="$(get_version_info --current "${version_file:-}")"
+    fi
+
+    # parse named options
+    while [ $# -gt 0 ]; do
+        case "$1" in
+        --project-title)
+            project_title=$2
+            shift 2
+            ;;
+        --version)
+            version=$2
+            shift 2
+            ;;
+        --example)
+            example=$2
+            shift 2
+            ;;
+        --rules)
+            rules=$2
+            shift 2
+            ;;
+        --template)
+            template_file=$2
+            shift 2
+            ;;
+        --summary)
+            summary_file=$2
+            shift 2
+            ;;
+        *)
+            printf 'unknown option: %s\n' "$1" >&2
+            return 1
+            ;;
+        esac
+    done
+
+    # require both template and diff
+    if [ -z "${template_file}" ]; then
+        printf 'Error: --template TEMPLATE_FILE is required\n' >&2
+        return 1
+    fi
+    if [ -z "${summary_file}" ]; then
+        printf 'Error: --summary SUMMARY_FILE is required\n' >&2
+        return 1
+    fi
+
+    print_debug "Building prompt from template: ${template_file}, using diff file: ${summary_file}"
+
+    # validate files exist
+    if [ ! -f "${template_file}" ]; then
+        printf 'template file not found: %s\n' "${template_file}" >&2
+        return 1
+    fi
+    if [ ! -f "${summary_file}" ]; then
+        printf 'diff file not found: %s\n' "${summary_file}" >&2
+        return 1
+    fi
+
+    # export token env vars for replace_tokens
+    unset GIV_TOKEN_SUMMARY
+    export GIV_TOKEN_PROJECT_TITLE="${project_title:-${GIV_TOKEN_PROJECT_TITLE}}"
+    export GIV_TOKEN_VERSION="${version:-${GIV_TOKEN_VERSION}}"
+    export GIV_TOKEN_EXAMPLE="${example:-${GIV_TOKEN_EXAMPLE}}"
+    export GIV_TOKEN_RULES="${rules:-${GIV_TOKEN_RULES}}"
+
+    # combine template + instructions, then replace tokens using diff as summary
+    {
+        cat "${template_file}"
+        printf '\nOutput just the final content—no extra commentary or code fencing. '
+        printf 'Use only information contained in this prompt and the summaries provided above.\n'
+    } | replace_tokens "${summary_file}"
+
+    return
+}
+
+
 # -------------------------------------------------------------------
 # summarize_target: summarize a commit, or an inclusive two-/three-dot
 # range, or the working tree/index.
@@ -804,7 +846,8 @@ summarize_commit() {
     build_history "${hist}" "${commit}" "${todo_pattern}" "$PATHSPEC"
     sc_version_file=$(find_version_file)
     sc_version=$(get_version_info "${commit}" "${sc_version_file}")
-    summary_template=$(build_prompt --version "${sc_version}" "${TEMPLATE_DIR}/summary_prompt.md" "${hist}")
+    summary_template=$(build_prompt --version "${sc_version}" \
+        --template "${TEMPLATE_DIR}/summary_prompt.md" --summary "${hist}")
     print_debug "Using summary prompt: ${summary_template}"
     printf '%s\n' "${summary_template}" >"${pr}"
     res=$(generate_response "${pr}" "${gen_mode}" "0.9" "32768")
@@ -813,147 +856,60 @@ summarize_commit() {
     printf '%s\n' "${res}"
 }
 
-# extract_section <section_name> <markdown_file> [<header_id>]
+# -------------------------------------------------------------------
+# cmd_document: generic driver for summary/release_notes/announcement
 #
-# Prints the matching section (including its heading) and its content
-# up to—but not including—the next heading of the same or higher level.
+# Arguments:
+#   $1 = document type (e.g. "summary", "release_notes", "announcement")
+#   $2 = revision specifier  (e.g. "--current" or "$REVISION")
+#   $3 = output file path
+#   $4 = model mode (e.g. "auto", "your-model")
+#   $5 = temperature   (e.g. "0.7", "0.6")
+#   $6 = context window size (optional; e.g. "65536" or "")
+#   $7 = any extra flags to pass to build_prompt
 #
-#   <section_name>  The literal text of the heading (e.g. "1.0.0" or "Unreleased")
-#   <markdown_file> Path to the file to search
-#   <header_id>     Heading marker (e.g. "##" or "###"); defaults to "##"
+# Side-effects:
+#   - Summaries are written to a temp file
+#   - A prompt is built and written to another temp file
+#   - generate_from_prompt is invoked to create the final output
 #
-# Returns 0 always; prints nothing if file or section is missing.
-extract_section() {
-    section=$1
-    file=$2
-    header=${3:-"##"}
+cmd_document() {
+    doc_type="$1"
+    revision="${2:---current}"
+    out="${3:-}"
+    mode="${4:-auto}"
+    temp="${5:-0.9}"
+    ctx="${6:-32768}"
+    shift 6
 
-    # nothing to do if file absent
-    [ ! -f "$file" ] && return 0
+    # 1) Summarize
+    summaries=$(portable_mktemp "${doc_type}_summaries_XXXXXX.md")
+    print_debug "Generating ${doc_type} summaries to: ${summaries}"
+    summarize_target "${revision}" "${summaries}" "${mode}"
 
-    # escape section name for regex
-    esc=$(printf '%s' "$section" | sed 's/[][\\/.*^$]/\\&/g')
-
-    # build pattern to find the heading line
-    pat="^${header}[[:space:]]*\\[?${esc}\\]?"
-
-    # locate the first matching heading line number
-    start=$(grep -nE "$pat" "$file" 2>/dev/null | head -n1 | cut -d: -f1)
-    [ -z "$start" ] && return 0
-
-    # count how many "#" in header to get its level
-    HL=${#header}
-
-    # build a regex matching any heading of level ≤ HL
-    lvl_pat="^#{1,${HL}}[[:space:]]"
-
-    # find the next heading (same or higher level) after start
-    offset=$(tail -n +"$((start + 1))" "$file" |
-        grep -nE "$lvl_pat" |
-        head -n1 |
-        cut -d: -f1)
-
-    if [ -n "$offset" ]; then
-        end=$((start + offset - 1))
-    else
-        # no further heading: go to EOF
-        end=$(wc -l <"$file")
-    fi
-
-    # print from the header line through end
-    sed -n "${start},${end}p" "$file"
-}
-
-is_glow_installed() {
-    command -v glow >/dev/null 2>&1
-}
-
-install_pkg() {
-    echo "Checking package managers..."
-    if command -v brew >/dev/null 2>&1; then
-        brew install glow && return 0
-    elif command -v port >/dev/null 2>&1; then
-        sudo port install glow && return 0
-    elif command -v pacman >/dev/null 2>&1; then
-        sudo pacman -S --noconfirm glow && return 0
-    elif command -v xbps-install >/dev/null 2>&1; then
-        sudo xbps-install -Sy glow && return 0
-    elif command -v nix-shell >/dev/null 2>&1; then
-        nix-shell -p glow --run glow && return 0
-    elif command -v pkg >/dev/null 2>&1 && uname -s | grep -qi freebsd; then
-        sudo pkg install -y glow && return 0
-    elif command -v eopkg >/dev/null 2>&1; then
-        sudo eopkg install glow && return 0
-    elif command -v snap >/dev/null 2>&1; then
-        sudo snap install glow && return 0
-    elif command -v choco >/dev/null 2>&1; then
-        choco install glow -y && return 0
-    elif command -v scoop >/dev/null 2>&1; then
-        scoop install glow && return 0
-    elif command -v winget >/dev/null 2>&1; then
-        winget install --id=charmbracelet.glow -e && return 0
-    fi
-    return 1
-}
-
-install_from_github() {
-    echo "Installing glow binary from GitHub releases…"
-    os=$(uname -s | tr '[:upper:]' '[:lower:]')
-    arch=$(uname -m)
-    case "$arch" in
-    x86_64 | amd64) arch="x86_64" ;;
-    arm64 | aarch64) arch="arm64" ;;
-    *)
-        echo "Unsupported arch: $arch"
+    # Bail if nothing came back
+    if [ ! -f "${summaries}" ]; then
+        printf 'Error: No summaries generated for %s.\n' "${doc_type}" >&2
         exit 1
-        ;;
-    esac
+    fi
 
-    tag=$(curl -fsSL https://api.github.com/repos/charmbracelet/glow/releases/latest |
-        grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    file="glow_${tag#v}_${os}_${arch}.tar.gz"
+    # 2) Build prompt
+    prompt_tpl="${TEMPLATE_DIR}/${doc_type}_prompt.md"
+    prompt_tmp=$(portable_mktemp "${doc_type}_prompt_XXXXXX.md")
 
-    tmpdir=$(mktemp -d)
-    curl -fsSL "https://github.com/charmbracelet/glow/releases/download/$tag/$file" -o "$tmpdir/glow.tar.gz"
-    curl -fsSL "https://github.com/charmbracelet/glow/releases/download/$tag/checksums.txt" -o "$tmpdir/checksums.txt"
+    title=$(parse_project_title "${summaries}")
+    current_version=$(get_version_info "${revision}" "$(find_version_file)")
 
-    cd "$tmpdir"
-    sha256sum -c checksums.txt --ignore-missing --quiet || {
-        echo "Checksum verification failed"
-        exit 1
-    }
+    print_debug "Project title: ${title}"
+    build_prompt --project-title "${title}" --version "${current_version}" \
+       --template "${prompt_tpl}" --summary "${summaries}" >"${prompt_tmp}"
 
-    tar -xzf glow.tar.gz
-    chmod +x glow
+    print_debug "Built prompt file: ${prompt_tmp}"
 
-    bindir="/usr/local/bin"
-    if [ -w "$bindir" ]; then
-        mv glow "$bindir"
+    # 3) Generate final document
+    if [ -n "${ctx}" ]; then
+        generate_from_prompt "${prompt_tmp}" "${out}" "${mode}" "${temp}" "${ctx}"
     else
-        sudo mv glow "$bindir"
-    fi
-
-    cd -
-    rm -rf "$tmpdir"
-
-    echo "glow installed to $bindir"
-}
-
-ensure_glow() {
-    if is_installed; then
-        echo "✔ glow already installed: $(command -v glow)"
-        return
-    fi
-
-    echo "✗ glow not found. Installing…"
-    if install_pkg; then
-        echo "Installed via package manager."
-    else
-        install_from_github
-    fi
-
-    if ! is_installed; then
-        echo "Installation failed. See https://github.com/charmbracelet/glow#installation"
-        exit 1
+        generate_from_prompt "${prompt_tmp}" "${out}" "${mode}" "${temp}"
     fi
 }

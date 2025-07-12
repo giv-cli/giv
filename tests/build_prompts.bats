@@ -18,7 +18,7 @@ teardown() {
     diff="$TESTDIR/diff.txt"
     echo "Summary: [SUMMARY]" > "$template"
     echo "This is a diff" > "$diff"
-    run build_prompt "$template" "$diff"
+    run build_prompt --template "$template" --summary "$diff"
     [ "$status" -eq 0 ]
     assert_output --partial "Summary: This is a diff"
     assert_output --partial "Output just the final content—no extra commentary or code fencing. Use only information contained in this prompt and the summaries provided above."
@@ -35,7 +35,10 @@ Rules: [RULES]
 Summary: [SUMMARY]
 EOF
     echo "DIFF_CONTENT" > "$diff"
-    run build_prompt --project-title "MyProj" --version "1.2.3" --example "eg" --rules "rulez" "$template" "$diff"
+    run build_prompt --project-title "MyProj" --version "1.2.3" \
+        --example "eg" --rules "rulez" \
+        --template "$template" --summary "$diff"
+
     [ "$status" -eq 0 ]
     [[ "$output" == *"Project: MyProj"* ]]
     [[ "$output" == *"Version: 1.2.3"* ]]
@@ -47,7 +50,7 @@ EOF
 @test "build_prompt: missing template file fails" {
     diff="$TESTDIR/diff.txt"
     touch "$diff"
-    run build_prompt "no_such_template.md" "$diff"
+    run build_prompt --template "no_such_template.md" --summary "$diff"
     [ "$status" -ne 0 ]
     [[ "$output" == *"template file not found"* ]]
 }
@@ -55,7 +58,7 @@ EOF
 @test "build_prompt: missing diff file fails" {
     template="$TESTDIR/template.md"
     touch "$template"
-    run build_prompt "$template" "no_such_diff.txt"
+    run build_prompt --template "$template" --summary "no_such_diff.txt"
     [ "$status" -ne 0 ]
     [[ "$output" == *"diff file not found"* ]]
 }
@@ -66,7 +69,7 @@ EOF
     echo "Version: [VERSION]" > "$template"
     echo "irrelevant" > "$diff"
     export GIV_TOKEN_VERSION="9.9.9"
-    run build_prompt "$template" "$diff"
+    run build_prompt --template "$template" --summary "$diff"
     [ "$status" -eq 0 ]
     [[ "$output" == *"Version: 9.9.9"* ]]
 }

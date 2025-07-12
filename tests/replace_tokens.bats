@@ -110,14 +110,14 @@ EOF
 }
 
 @test "fails if template missing" {
-    run build_prompt missing.md diff.txt
+    run build_prompt --template missing.md --summary diff.txt
     [ "$status" -ne 0 ]
     assert_output "template file not found: missing.md"
 }
 
 @test "fails if diff missing" {
     write_file template.md "Hello"
-    run build_prompt template.md missing.txt
+    run build_prompt --template template.md --summary missing.txt
     [ "$status" -ne 0 ]
     assert_output "diff file not found: missing.txt"
 }
@@ -131,7 +131,7 @@ EOF
         "Line A" \
         "Line B"
 
-    run build_prompt template.md diff.txt
+    run build_prompt --template template.md --summary diff.txt
     assert_success
     assert_output <<EOF
 Summary:
@@ -167,7 +167,8 @@ EOF
         --version "2.3.4" \
         --example "$example" \
         --rules "$rules" \
-        template.md diff.txt
+        --template template.md \
+        --summary diff.txt
 
     assert_success
     assert_output <<EOF
