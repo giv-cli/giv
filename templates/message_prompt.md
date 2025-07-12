@@ -46,3 +46,4 @@ Write a git commit message for the provided git history following the Keep a Cha
 [EXAMPLE]
 
 [RULES]
+Do not include ``` code fencing in your response.

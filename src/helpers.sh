@@ -124,7 +124,6 @@ replace_tokens() {
     ' "$@"
 }
 
-
 # build_prompt [--project-title X] [--version V] [--example E] [--rules R] \
 #              <template_file> <diff_file>
 #
@@ -373,14 +372,24 @@ generate_remote() {
     #print_debug "Parsed response:$result"
     echo "${result}"
 }
-
 run_local() {
+    # Backup original values of OLLAMA_TEMPERATURE and OLLAMA_NUM_CTX
+    orig_ollama_temperature="${OLLAMA_TEMPERATURE:-}"
+    orig_ollama_num_ctx="${OLLAMA_NUM_CTX:-}"
+
+    export OLLAMA_TEMPERATURE="${3:-0.9}"
+    export OLLAMA_NUM_CTX="${4:-32768}"
+
     if [ "$debug" = "true" ]; then
         # shellcheck disable=SC2154
         ollama run "${model}" --verbose <"$1"
     else
         ollama run "${model}" <"$1"
     fi
+
+    # Reset to original values after the command completes
+    export OLLAMA_TEMPERATURE="${orig_ollama_temperature}"
+    export OLLAMA_NUM_CTX="${orig_ollama_num_ctx}"
 }
 
 # The `generate_response` function generates a response based on the specified mode.
@@ -388,22 +397,34 @@ run_local() {
 # Parameters:
 #   $1 - Path to the input file.
 #   $2 (optional) - Mode for generating the response. Possible values are 'remote', 'none', or any other value for local generation.
+#   $3 (optional) - Temperature setting for the model, if applicable.
+#   $4 (optional) - Context window size for the model, if applicable.
 #
 # Description:
 #   The function determines the mode of operation based on the second argument ($2), falling back to the `model_mode` environment variable, and finally defaulting to 'auto'.
 #   If debugging is enabled (via the `debug` environment variable), it prints a debug message indicating the chosen mode.
 #
 #   Depending on the mode:
-#     - 'remote': Calls the `generate_remote` function with the input file path as an argument.
+#     - 'remote': Calls the `generate_remote` function with the input file path as an argument, along with temperature and context window size if provided.
 #     - 'none': Outputs the content of the input file directly using `cat`.
-#     - Any other value: Calls the `run_local` function with the input file path as an argument.
+#     - Any other value: Calls the `run_local` function with the input file path as an argument, along with temperature and context window size if provided.
 generate_response() {
     gen_mode="${2:-$model_mode:-auto}"
-    print_debug "Generating response using $gen_mode mode"
+    temp="${3:-0.9}"  # Default to a neutral temperature of 1.0
+    ctx_window="${4:-32768}"  # Default context window size
+
+    print_debug "Generating response using $gen_mode mode with temperature=$temp and context window size=$ctx_window"
+
     case ${gen_mode} in
-    remote) generate_remote "$1" ;;
-    none) cat "$1" ;;
-    *) run_local "$1" ;;
+    remote)
+        generate_remote "$1" "$temp" "$ctx_window"
+        ;;
+    none)
+        cat "$1"
+        ;;
+    *)
+        run_local "$1" "$temp" "$ctx_window"
+        ;;
     esac
 }
 
@@ -418,13 +439,15 @@ generate_from_prompt() {
     prompt_file="$1"
     response_output_file="$2"
     gen_mode="${3:-${GIV_MODEL_MODE:-${model_mode:-auto}}}"
+    temperature="${4:-0.9}"  # Default value for temperature
+    context_window="${5:-32768}"  # Default value for context window
 
     print_debug "Prompt file: $prompt_file"
     print_debug "Output file: $response_output_file"
     print_debug "Model mode: $gen_mode"
 
     # 1) Invoke the AI
-    if ! res=$(generate_response "$prompt_file" "$gen_mode"); then
+    if ! res=$(generate_response "$prompt_file" "$gen_mode" "$temperature" "$context_window"); then
         printf 'Error: generate_response failed (mode=%s)\n' "$gen_mode" >&2
         exit 1
     fi
@@ -784,7 +807,7 @@ summarize_commit() {
     summary_template=$(build_prompt --version "${sc_version}" "${TEMPLATE_DIR}/summary_prompt.md" "${hist}")
     print_debug "Using summary prompt: ${summary_template}"
     printf '%s\n' "${summary_template}" >"${pr}"
-    res=$(generate_response "${pr}" "${gen_mode}")
+    res=$(generate_response "${pr}" "${gen_mode}" "0.9" "32768")
     echo "${res}" >"${res_file}"
 
     printf '%s\n' "${res}"
@@ -841,93 +864,96 @@ extract_section() {
     sed -n "${start},${end}p" "$file"
 }
 
-
 is_glow_installed() {
-  command -v glow >/dev/null 2>&1
+    command -v glow >/dev/null 2>&1
 }
 
 install_pkg() {
-  echo "Checking package managers..."
-  if command -v brew >/dev/null 2>&1; then
-    brew install glow && return 0
-  elif command -v port >/dev/null 2>&1; then
-    sudo port install glow && return 0
-  elif command -v pacman >/dev/null 2>&1; then
-    sudo pacman -S --noconfirm glow && return 0
-  elif command -v xbps-install >/dev/null 2>&1; then
-    sudo xbps-install -Sy glow && return 0
-  elif command -v nix-shell >/dev/null 2>&1; then
-    nix-shell -p glow --run glow && return 0
-  elif command -v pkg >/dev/null 2>&1 && uname -s | grep -qi freebsd; then
-    sudo pkg install -y glow && return 0
-  elif command -v eopkg >/dev/null 2>&1; then
-    sudo eopkg install glow && return 0
-  elif command -v snap >/dev/null 2>&1; then
-    sudo snap install glow && return 0
-  elif command -v choco >/dev/null 2>&1; then
-    choco install glow -y && return 0
-  elif command -v scoop >/dev/null 2>&1; then
-    scoop install glow && return 0
-  elif command -v winget >/dev/null 2>&1; then
-    winget install --id=charmbracelet.glow -e && return 0
-  fi
-  return 1
+    echo "Checking package managers..."
+    if command -v brew >/dev/null 2>&1; then
+        brew install glow && return 0
+    elif command -v port >/dev/null 2>&1; then
+        sudo port install glow && return 0
+    elif command -v pacman >/dev/null 2>&1; then
+        sudo pacman -S --noconfirm glow && return 0
+    elif command -v xbps-install >/dev/null 2>&1; then
+        sudo xbps-install -Sy glow && return 0
+    elif command -v nix-shell >/dev/null 2>&1; then
+        nix-shell -p glow --run glow && return 0
+    elif command -v pkg >/dev/null 2>&1 && uname -s | grep -qi freebsd; then
+        sudo pkg install -y glow && return 0
+    elif command -v eopkg >/dev/null 2>&1; then
+        sudo eopkg install glow && return 0
+    elif command -v snap >/dev/null 2>&1; then
+        sudo snap install glow && return 0
+    elif command -v choco >/dev/null 2>&1; then
+        choco install glow -y && return 0
+    elif command -v scoop >/dev/null 2>&1; then
+        scoop install glow && return 0
+    elif command -v winget >/dev/null 2>&1; then
+        winget install --id=charmbracelet.glow -e && return 0
+    fi
+    return 1
 }
 
 install_from_github() {
-  echo "Installing glow binary from GitHub releases…"
-  os=$(uname -s | tr '[:upper:]' '[:lower:]')
-  arch=$(uname -m)
-  case "$arch" in
-    x86_64|amd64) arch="x86_64" ;;
-    arm64|aarch64) arch="arm64" ;;
-    *) echo "Unsupported arch: $arch"; exit 1 ;;
-  esac
+    echo "Installing glow binary from GitHub releases…"
+    os=$(uname -s | tr '[:upper:]' '[:lower:]')
+    arch=$(uname -m)
+    case "$arch" in
+    x86_64 | amd64) arch="x86_64" ;;
+    arm64 | aarch64) arch="arm64" ;;
+    *)
+        echo "Unsupported arch: $arch"
+        exit 1
+        ;;
+    esac
 
-  tag=$(curl -fsSL https://api.github.com/repos/charmbracelet/glow/releases/latest \
-    | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-  file="glow_${tag#v}_${os}_${arch}.tar.gz"
+    tag=$(curl -fsSL https://api.github.com/repos/charmbracelet/glow/releases/latest |
+        grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    file="glow_${tag#v}_${os}_${arch}.tar.gz"
 
-  tmpdir=$(mktemp -d)
-  curl -fsSL "https://github.com/charmbracelet/glow/releases/download/$tag/$file" -o "$tmpdir/glow.tar.gz"
-  curl -fsSL "https://github.com/charmbracelet/glow/releases/download/$tag/checksums.txt" -o "$tmpdir/checksums.txt"
+    tmpdir=$(mktemp -d)
+    curl -fsSL "https://github.com/charmbracelet/glow/releases/download/$tag/$file" -o "$tmpdir/glow.tar.gz"
+    curl -fsSL "https://github.com/charmbracelet/glow/releases/download/$tag/checksums.txt" -o "$tmpdir/checksums.txt"
 
-  cd "$tmpdir"
-  sha256sum -c checksums.txt --ignore-missing --quiet || {
-    echo "Checksum verification failed"; exit 1;
-  }
+    cd "$tmpdir"
+    sha256sum -c checksums.txt --ignore-missing --quiet || {
+        echo "Checksum verification failed"
+        exit 1
+    }
 
-  tar -xzf glow.tar.gz
-  chmod +x glow
+    tar -xzf glow.tar.gz
+    chmod +x glow
 
-  bindir="/usr/local/bin"
-  if [ -w "$bindir" ]; then
-    mv glow "$bindir"
-  else
-    sudo mv glow "$bindir"
-  fi
+    bindir="/usr/local/bin"
+    if [ -w "$bindir" ]; then
+        mv glow "$bindir"
+    else
+        sudo mv glow "$bindir"
+    fi
 
-  cd -
-  rm -rf "$tmpdir"
+    cd -
+    rm -rf "$tmpdir"
 
-  echo "glow installed to $bindir"
+    echo "glow installed to $bindir"
 }
 
 ensure_glow() {
-  if is_installed; then
-    echo "✔ glow already installed: $(command -v glow)"
-    return
-  fi
+    if is_installed; then
+        echo "✔ glow already installed: $(command -v glow)"
+        return
+    fi
 
-  echo "✗ glow not found. Installing…"
-  if install_pkg; then
-    echo "Installed via package manager."
-  else
-    install_from_github
-  fi
+    echo "✗ glow not found. Installing…"
+    if install_pkg; then
+        echo "Installed via package manager."
+    else
+        install_from_github
+    fi
 
-  if ! is_installed; then
-    echo "Installation failed. See https://github.com/charmbracelet/glow#installation"
-    exit 1
-  fi
+    if ! is_installed; then
+        echo "Installation failed. See https://github.com/charmbracelet/glow#installation"
+        exit 1
+    fi
 }

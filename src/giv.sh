@@ -550,7 +550,7 @@ cmd_message() {
         pr=$(portable_mktemp "commit_message_prompt_XXXXXX.md")
         build_prompt "${TEMPLATE_DIR}/message_prompt.md" "${hist}" >"${pr}"
         print_debug "Generated prompt file ${pr}"
-        res=$(generate_response "${pr}" "${model_mode}")        
+        res=$(generate_response "${pr}" "${model_mode}" "0.9" "32768")        
         if [ $? -ne 0 ]; then
             printf 'Error: Failed to generate AI response.\n' >&2
             exit 1
@@ -614,7 +614,8 @@ cmd_summary() {
     tmp_prompt_file=$(portable_mktemp "final_summary_prompt_XXXXXX.md")
     build_prompt "${prompt_file_name}" "${summaries_file}" >"${tmp_prompt_file}"
     print_debug "$(cat "${tmp_prompt_file}" || true)"
-    generate_from_prompt "${tmp_prompt_file}" "${sum_output_file}" "${sum_model_mode}"
+    generate_from_prompt "${tmp_prompt_file}" "${sum_output_file}" \
+        "${sum_model_mode}" "0.7"
 }
 cmd_release_notes() {
     summaries_file=$(portable_mktemp "release_notes_summaries_XXXXXX.md")
@@ -632,7 +633,8 @@ cmd_release_notes() {
     [ "${debug}" = "true" ] && printf 'Debug: Generated prompt file %s\n' "${tmp_prompt_file}"
 
     generate_from_prompt "${tmp_prompt_file}" \
-        "${output_file:-${release_notes_file}}" "${model_mode}"
+        "${output_file:-${release_notes_file}}" \
+        "${model_mode}" "0.6" "65536"
 }
 
 cmd_announcement() {
@@ -654,7 +656,8 @@ cmd_announcement() {
     print_debug "Generated prompt file: ${tmp_prompt_file}"
     print_info "$(cat "${tmp_prompt_file}" || true)"
     generate_from_prompt "${tmp_prompt_file}" \
-        "${output_file:-${announce_file}}" "${model_mode}"
+        "${output_file:-${announce_file}}" \
+        "${model_mode}" "0.6" "65536"
 }
 
 # -------------------------------------------------------------------
@@ -703,7 +706,8 @@ cmd_changelog() {
         rm -f "$summaries_file" "$tmp_prompt_file"
         exit 1
     }
-    if ! generate_from_prompt "$tmp_prompt_file" "$response_file" "$model_mode"; then
+    if ! generate_from_prompt "$tmp_prompt_file" "$response_file" \
+        "$model_mode" "0.7"; then
         printf 'Error: generate_from_prompt failed\n' >&2
         rm -f "$summaries_file" "$tmp_prompt_file" "$response_file"
         exit 1
@@ -735,16 +739,18 @@ cmd_changelog() {
         printf 'Error: manage_section failed\n' >&2
         exit 1
     }
+    cat "$updated" >"$tmp_out"
+    append_link "$tmp_out" "Managed by giv" "https://github.com/giv-cli/giv"
 
     # 8) Dry‐run?
     if [ "$dry_run" = "true" ]; then
         print_debug "Dry run: updated changelog content:"
-        cat "$updated"
+        cat "$tmp_out"
         return 0
     fi
 
     # 9) Write back to real changelog
-    if cat "$updated" >"$output_file"; then
+    if cat "$tmp_out" >"$output_file"; then
         printf 'Changelog written to %s\n' "$output_file"
     else
         printf 'Error: Failed to write %s\n' "$output_file" >&2
