@@ -855,18 +855,17 @@ summarize_commit() {
 
     printf '%s\n' "${res}"
 }
-
 # -------------------------------------------------------------------
-# cmd_document: generic driver for summary/release_notes/announcement
+# cmd_document: generic driver for any prompt template
 #
 # Arguments:
-#   $1 = document type (e.g. "summary", "release_notes", "announcement")
-#   $2 = revision specifier  (e.g. "--current" or "$REVISION")
+#   $1 = full path to prompt template file
+#   $2 = revision specifier     (e.g. "--current" or "$REVISION")
 #   $3 = output file path
-#   $4 = model mode (e.g. "auto", "your-model")
-#   $5 = temperature   (e.g. "0.7", "0.6")
-#   $6 = context window size (optional; e.g. "65536" or "")
-#   $7 = any extra flags to pass to build_prompt
+#   $4 = model mode             (e.g. "auto", "your-model")
+#   $5 = temperature            (e.g. "0.7", "0.6")
+#   $6 = context window size    (optional; e.g. "65536")
+#   $7… = extra flags for build_prompt (e.g. --example, --rules)
 #
 # Side-effects:
 #   - Summaries are written to a temp file
@@ -874,7 +873,7 @@ summarize_commit() {
 #   - generate_from_prompt is invoked to create the final output
 #
 cmd_document() {
-    doc_type="$1"
+    prompt_tpl="$1"
     revision="${2:---current}"
     out="${3:-}"
     mode="${4:-auto}"
@@ -882,27 +881,38 @@ cmd_document() {
     ctx="${6:-32768}"
     shift 6
 
+    # validate template exists
+    if [ ! -f "${prompt_tpl}" ]; then
+        printf 'template file not found: %s\n' "${prompt_tpl}" >&2
+        exit 1
+    fi
+
+    # derive base name for temp file prefixes
+    doc_base=$(basename "${prompt_tpl%.*}")
+
     # 1) Summarize
-    summaries=$(portable_mktemp "${doc_type}_summaries_XXXXXX.md")
-    print_debug "Generating ${doc_type} summaries to: ${summaries}"
+    summaries=$(portable_mktemp "${doc_base}_summaries_XXXXXX.md")
+    print_debug "Generating summaries to: ${summaries}"
     summarize_target "${revision}" "${summaries}" "${mode}"
 
-    # Bail if nothing came back
+    # bail if no summaries
     if [ ! -f "${summaries}" ]; then
-        printf 'Error: No summaries generated for %s.\n' "${doc_type}" >&2
+        printf 'Error: No summaries generated for %s.\n' "${revision}" >&2
         exit 1
     fi
 
     # 2) Build prompt
-    prompt_tpl="${TEMPLATE_DIR}/${doc_type}_prompt.md"
-    prompt_tmp=$(portable_mktemp "${doc_type}_prompt_XXXXXX.md")
-
+    prompt_tmp=$(portable_mktemp "${doc_base}_prompt_XXXXXX.md")
     title=$(parse_project_title "${summaries}")
-    current_version=$(get_version_info "${revision}" "$(find_version_file)")
+    current_version="$(get_version_info --current "$(find_version_file)" )"
 
-    print_debug "Project title: ${title}"
-    build_prompt --project-title "${title}" --version "${current_version}" \
-       --template "${prompt_tpl}" --summary "${summaries}" >"${prompt_tmp}"
+    print_debug "Building prompt from ${prompt_tpl} using ${summaries}"
+    build_prompt \
+      --project-title "${title}" \
+      --version "${current_version}" \
+      --template "${prompt_tpl}" \
+      --summary "${summaries}" \
+      "$@" >"${prompt_tmp}"
 
     print_debug "Built prompt file: ${prompt_tmp}"
 
@@ -913,3 +923,4 @@ cmd_document() {
         generate_from_prompt "${prompt_tmp}" "${out}" "${mode}" "${temp}"
     fi
 }
+

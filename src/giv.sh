@@ -711,20 +711,20 @@ if [ "${_is_sourced}" -eq 0 ]; then
     case "${subcmd}" in
     message) cmd_message "${REVISION}" ;;
     summary) cmd_document \
-      summary \
+      "${TEMPLATE_DIR}/final_summary_prompt.md" \
       "${REVISION}" \
       "${output_file:-}" \
       "${model_mode}" \
       "0.7" "" ;;
     release-notes) cmd_document \
-      release_notes \
+      "${TEMPLATE_DIR}/release_notes_prompt.md" \
       "${REVISION}" \
       "${output_file:-$release_notes_file}" \
       "${model_mode}" \
       "0.6" \
       "65536" ;;
     announcement)  cmd_document \
-      announcement \
+      "${TEMPLATE_DIR}/announcement_prompt.md" \
       "${REVISION}" \
       "${output_file:-$announce_file}" \
       "${model_mode}" \

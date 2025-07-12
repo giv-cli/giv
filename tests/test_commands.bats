@@ -11,6 +11,8 @@ BATS_TEST_START_TIME="$(date +%s)"
 SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
 # shellcheck source=../src/giv.sh
 HELPERS="$BATS_TEST_DIRNAME/../src/helpers.sh"
+# shellcheck source=../src/giv.sh
+TEMPLATES_DIR="$BATS_TEST_DIRNAME/../templates"
 
 setup() {
   # create a temp git repo
@@ -185,7 +187,7 @@ EOF
   summarize_target() { echo "SUM"; }
 
   
-  run cmd_document "summary" "--current" "" "auto" "0.7" ""
+  run cmd_document "$TEMPLATES_DIR/final_summary_prompt.md" "--current" "" "auto" "0.7" ""
   printf "Output: %s\n" "$output"
   ollama() {
     # shellcheck disable=SC2317
@@ -199,7 +201,7 @@ EOF
   ollama() {
     echo "SUM"
   }
-  run cmd_document "summary" HEAD~1 "" "auto" "0.7"
+  run cmd_document "$TEMPLATES_DIR/final_summary_prompt.md" HEAD~1 "" "auto" "0.7"
   assert_success
   assert_output --partial "SUM"
 }
@@ -207,7 +209,7 @@ EOF
 @test "cmd_summary writes to file when output_file set" {
   output_file="out.sum"
   summarize_target() { echo "SUM"; }
-  run cmd_document "summary" "--current" "${output_file}" "auto"
+  run cmd_document "$TEMPLATES_DIR/final_summary_prompt.md" "--current" "${output_file}" "auto"
   assert_success
   [ -f out.sum ]
   assert_output --partial "Response written to out.sum"
@@ -219,13 +221,13 @@ EOF
 #----------------------------------------
 
 @test "cmd_release_notes writes to its default file" {
-  run cmd_document "release_notes" "" "RELEASE_NOTES.md"
+  run cmd_document "$TEMPLATES_DIR/release_notes_prompt.md" "" "RELEASE_NOTES.md"
   assert_success
   assert_output --partial "Response written to RELEASE_NOTES.md"
 }
 
 @test "cmd_announcement writes to its default file" {
-  run cmd_document "announcement" "" "ANNOUNCEMENT.md"
+  run cmd_document "$TEMPLATES_DIR/announcement_prompt.md" "" "ANNOUNCEMENT.md"
   assert_success
   assert_output --partial "Response written to ANNOUNCEMENT.md"
 }
