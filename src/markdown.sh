@@ -282,30 +282,30 @@ install_pkg() {
   echo "Checking package managers..."
   if command -v brew >/dev/null 2>&1; then
     brew install glow && return 0
-  elif command -v port >/dev/null 2>&1; then
-    sudo port install glow && return 0
   elif command -v pacman >/dev/null 2>&1; then
     sudo pacman -S --noconfirm glow && return 0
-  elif command -v xbps-install >/dev/null 2>&1; then
-    sudo xbps-install -Sy glow && return 0
-  elif command -v nix-shell >/dev/null 2>&1; then
-    nix-shell -p glow --run glow && return 0
-  elif command -v pkg >/dev/null 2>&1 && uname -s | grep -qi freebsd; then
-    sudo pkg install -y glow && return 0
-  elif command -v eopkg >/dev/null 2>&1; then
-    sudo eopkg install glow && return 0
   elif command -v snap >/dev/null 2>&1; then
-    sudo snap install glow && return 0
-  elif command -v choco >/dev/null 2>&1; then
-    choco install glow -y && return 0
+    sudo snap install glow && return 0 
   elif command -v scoop >/dev/null 2>&1; then
     scoop install glow && return 0
-  elif command -v winget >/dev/null 2>&1; then
-    winget install --id=charmbracelet.glow -e && return 0
   fi
   return 1
 }
 
+# This function installs the 'glow' binary from GitHub releases.
+#
+# It performs the following steps:
+# 1. Determines the operating system and architecture.
+# 2. Fetches the latest release tag from the charmbracelet/glow repository.
+# 3. Downloads the appropriate tarball and checksum file for the detected OS and architecture.
+# 4. Verifies the integrity of the downloaded file using SHA-256 checksums.
+# 5. Extracts the binary, makes it executable, and moves it to /usr/local/bin.
+#
+# Parameters:
+#   None
+#
+# Returns:
+#   0 on success, non-zero on failure
 install_from_github() {
   echo "Installing glow binary from GitHub releases…"
   os=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -349,6 +349,14 @@ install_from_github() {
   echo "glow installed to $bindir"
 }
 
+
+# ensure_glow - Ensures that the 'glow' command-line tool is installed.
+#
+# This function checks if 'glow' is already installed on the system. If it is not,
+# it attempts to install it using a package manager first, and if that fails, it
+# installs it from GitHub. It then verifies whether the installation was successful.
+#
+# Exits with status 1 if the installation fails.
 ensure_glow() {
   if is_installed; then
     echo "✔ glow already installed: $(command -v glow)"
@@ -368,6 +376,15 @@ ensure_glow() {
   fi
 }
 
+# This function prints a markdown file using the 'glow' command.
+#
+# Usage: print_md_file <file>
+#
+# Arguments:
+#   <file> - The path to the markdown file to be printed.
+#
+# Returns:
+#   0 on success, 1 if no argument is provided or the file does not exist.
 print_md_file() {
   ensure_glow
   if [ -z "$1" ]; then
@@ -383,11 +400,13 @@ print_md_file() {
   glow "$1"
 }
 
-# print_md: print Markdown content to stdout
-# Usage: echo "# Markdown" | print_md
+# This function prints markdown content.
+#
+# It first checks if the 'glow' command is available on the system.
+# If 'glow' is installed, it uses 'glow' to render the markdown content without numbering and with zero width.
+# If 'glow' is not installed, it falls back to calling the 'strip_markdown' function.
 print_md() {
 
-  glow() { return 1; }
   #if is_glow_installed >/dev/null 2>&1; then
   if [ "$(command -v glow)" ]; then
     glow -n -w 0

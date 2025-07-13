@@ -74,86 +74,86 @@ EOF
     [[ "$output" == *"Version: 9.9.9"* ]]
 }
 
-@test "parse_project_title: package.json" {
+@test "get_project_title: package.json" {
     cd "$TESTDIR"
     echo '{ "name": "my-npm-project" }' > package.json
-    run parse_project_title
+    run get_project_title
     [ "$status" -eq 0 ]
     [ "$output" = "my-npm-project" ]
 }
 
-@test "parse_project_title: pyproject.toml" {
+@test "get_project_title: pyproject.toml" {
     cd "$TESTDIR"
     echo 'name = "my-python-project"' > pyproject.toml
-    run parse_project_title
+    run get_project_title
     [ "$status" -eq 0 ]
     [ "$output" = "my-python-project" ]
 }
 
-@test "parse_project_title: setup.py (double quotes)" {
+@test "get_project_title: setup.py (double quotes)" {
     cd "$TESTDIR"
     echo 'name = "my-setup-project"' > setup.py
-    run parse_project_title
+    run get_project_title
     [ "$status" -eq 0 ]
     [ "$output" = "my-setup-project" ]
 }
 
-@test "parse_project_title: setup.py (single quotes)" {
+@test "get_project_title: setup.py (single quotes)" {
     cd "$TESTDIR"
     echo "name = 'my-setup-single'" > setup.py
-    run parse_project_title
+    run get_project_title
     [ "$status" -eq 0 ]
     [ "$output" = "my-setup-single" ]
 }
 
-@test "parse_project_title: Cargo.toml" {
+@test "get_project_title: Cargo.toml" {
     cd "$TESTDIR"
     echo 'name = "my-cargo-project"' > Cargo.toml
-    run parse_project_title
+    run get_project_title
     [ "$status" -eq 0 ]
     [ "$output" = "my-cargo-project" ]
 }
 
-@test "parse_project_title: composer.json" {
+@test "get_project_title: composer.json" {
     cd "$TESTDIR"
     echo '{ "name": "my-composer-project" }' > composer.json
-    run parse_project_title
+    run get_project_title
     [ "$status" -eq 0 ]
     [ "$output" = "my-composer-project" ]
 }
 
-@test "parse_project_title: build.gradle (double quotes)" {
+@test "get_project_title: build.gradle (double quotes)" {
     cd "$TESTDIR"
     echo 'rootProject.name = "my-gradle-project"' > build.gradle
-    run parse_project_title
+    run get_project_title
     [ "$status" -eq 0 ]
     [ "$output" = "my-gradle-project" ]
 }
 
-@test "parse_project_title: build.gradle (single quotes)" {
+@test "get_project_title: build.gradle (single quotes)" {
     cd "$TESTDIR"
     echo "rootProject.name = 'my-gradle-single'" > build.gradle
-    run parse_project_title
+    run get_project_title
     [ "$status" -eq 0 ]
     [ "$output" = "my-gradle-single" ]
 }
 
-@test "parse_project_title: pom.xml" {
+@test "get_project_title: pom.xml" {
     cd "$TESTDIR"
     cat > pom.xml <<EOF
 <project>
   <name>my-maven-project</name>
 </project>
 EOF
-    run parse_project_title
+    run get_project_title
     [ "$status" -eq 0 ]
     [ "$output" = "my-maven-project" ]
 }
 
-@test "parse_project_title: no project file returns empty" {
+@test "get_project_title: no project file returns empty" {
     cd "$TESTDIR"
     rm -f package.json pyproject.toml setup.py Cargo.toml composer.json build.gradle pom.xml
-    run parse_project_title
+    run get_project_title
     [ "$status" -eq 0 ]
     [ -z "$output" ]
 }

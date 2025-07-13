@@ -71,119 +71,18 @@ print_error() {
     printf 'ERROR: %s\n' "$*" >&2
 }
 
-# Replaces every “[NAME]” in stdin with the contents of
-# the environment variable GIV_TOKEN_NAME (if set).
+# json_escape - Reads stdin and outputs JSON-escaped string (with surrounding quotes)
 #
-# Usage:
-#   export GIV_TOKEN_FOO="multi
-#   line
-#   text"
-#   replace_tokens < template.md > output.md
-replace_tokens() {
-    summary_file=$1
-    shift
-
-    awk -v summary_file="$summary_file" '
-    # ----- helpers --------------------------------------------------------
-    function emit_summary(   l) {
-        if (summary_file_read || summary_file == "") return
-        while ((getline l < summary_file) > 0) print l "\n"
-        close(summary_file)
-        summary_file_read = 1
-    }
-
-    # ----- build the map from env ----------------------------------------
-    BEGIN {
-        ORS = ""
-        for (v in ENVIRON) {
-            if (substr(v,1,10) == "GIV_TOKEN_" && v != "GIV_TOKEN_SUMMARY") {
-                name = substr(v,11)          # strip the prefix
-                map[name] = ENVIRON[v]
-            }
-        }
-    }
-
-    # ----- main loop ------------------------------------------------------
-    {
-        if (index($0, "[SUMMARY]")) {
-            # Split the line on the placeholder so we can inject the diff
-            n = split($0, parts, /\[SUMMARY\]/)
-            for (i = 1; i <= n; i++) {
-                fragment = parts[i]
-                for (k in map) gsub("\\[" k "\\]", map[k], fragment)
-                printf "%s", fragment
-                if (i < n) emit_summary()
-            }
-            print "\n"
-        } else {
-            line = $0
-            for (k in map) gsub("\\[" k "\\]", map[k], line)
-            print line "\n"
-        }
-    }
-    ' "$@"
-}
-
-
-# Locate the project from the codebase. Looks for common project files
-# like package.json, pyproject.toml, setup.py, Cargo.toml, composer.json
-# build.gradle, pom.xml, etc. and extracts the project name.
-# If no project file is found, returns an empty string.
-# If a project name is found, it is printed to stdout.
-parse_project_title() {
-    # Look for common project files
-    for file in package.json pyproject.toml setup.py Cargo.toml composer.json build.gradle pom.xml; do
-        if [ -f "${file}" ]; then
-            # Extract project name based on file type
-            case "${file}" in
-            package.json)
-                awk -F'"' '/"name"[[:space:]]*:/ {print $4; exit}' "${file}"
-                ;;
-            pyproject.toml)
-                awk -F' = ' '/^name/ {gsub(/"/, "", $2); print $2; exit}' "${file}"
-                ;;
-            setup.py)
-                # Double quotes
-                grep -E '^[[:space:]]*name[[:space:]]*=[[:space:]]*"[^"]+"' "${file}" | sed -E 's/^[[:space:]]*name[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/' | head -n1 &&
-                    # Single quotes
-                    grep -E "^[[:space:]]*name[[:space:]]*=[[:space:]]*'[^']+'" "${file}" | sed -E "s/^[[:space:]]*name[[:space:]]*=[[:space:]]*'([^']+)'.*/\1/" | head -n1
-                ;;
-            Cargo.toml)
-                awk -F' = ' '/^name/ {gsub(/"/, "", $2); print $2; exit}' "${file}"
-                ;;
-            composer.json)
-                awk -F'"' '/"name"[[:space:]]*:/ {print $4; exit}' "${file}"
-                ;;
-            build.gradle)
-                # Double quotes
-                grep -E '^[[:space:]]*rootProject\.name[[:space:]]*=[[:space:]]*"[^"]+"' "${file}" | sed -E 's/^[[:space:]]*rootProject\.name[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/' | head -n1 &&
-                    # Single quotes
-                    grep -E "^[[:space:]]*rootProject\.name[[:space:]]*=[[:space:]]*'[^']+'" "${file}" | sed -E "s/^[[:space:]]*rootProject\.name[[:space:]]*=[[:space:]]*'([^']+)'.*/\1/" | head -n1
-                ;;
-            pom.xml)
-                awk -F'[<>]' '/<name>/ {print $3; exit}' "${file}"
-                ;;
-            *)
-                echo "Unknown project file type: ${file}" >&2
-                return 1
-                ;;
-            esac
-            return
-        fi
-    done
-}
-
-# Extract version string from a line (preserving v if present)
-parse_version() {
-    #printf 'Parsing version from: %s\n' "$1" >&2
-    # Accepts a string, returns version like v1.2.3 or 1.2.3
-    out=$(echo "$1" | sed -n -E 's/.*([vV][0-9]+\.[0-9]+\.[0-9]+).*/\1/p')
-    if [ -z "$out" ]; then
-        out=$(echo "$1" | sed -n -E 's/.*([0-9]+\.[0-9]+\.[0-9]+).*/\1/p')
-    fi
-    printf '%s' "$out"
-}
-
+# This function handles the following characters:
+#   - backslash (\)
+#   - double quote (" )
+#   - newlines (\n) replaced with \n using tr
+#   - tabs (\t)
+#   - carriage returns (\r)
+#   - form feeds (\f)
+#   - backspaces (\b)
+#
+# Usage: echo "input string" | json_escape
 json_escape() {
     # Reads stdin, outputs JSON-escaped string (with surrounding quotes)
     # Handles: backslash, double quote, newlines, tabs, carriage returns, form feeds, backspaces
@@ -197,6 +96,23 @@ json_escape() {
         awk 'BEGIN{printf "\""} {printf "%s", $0} END{print "\""}'
 }
 
+# extract_content_from_response - Extracts content from a JSON string.
+#
+# Usage:
+#   extract_content_from_response "$json_string"
+#
+# Parameters:
+#   $1 (json) - The JSON string containing the "content" property to be extracted.
+#
+# Description:
+#   This function extracts all lines from the "content" property of a given JSON string,
+#   handling multi-line content and interpreting backslash-escapes into real characters.
+#   It uses `awk` to parse the JSON string and extract the content, then processes it
+#   to replace escape sequences with their corresponding characters.
+#
+# Example:
+#   json='{"content": "This is a line.\nThis is another line."}'
+#   extract_content_from_response "$json"
 extract_content_from_response() {
     # Usage: extract_content_from_response "$json_string"
     json=$1
@@ -297,6 +213,7 @@ generate_remote() {
     #print_debug "Parsed response:$result"
     echo "${result}"
 }
+
 run_local() {
     # Backup original values of OLLAMA_TEMPERATURE and OLLAMA_NUM_CTX
     orig_ollama_temperature="${OLLAMA_TEMPERATURE:-}"
@@ -433,6 +350,79 @@ get_message_header() {
     esac
 }
 
+# Locate the project from the codebase. Looks for common project files
+# like package.json, pyproject.toml, setup.py, Cargo.toml, composer.json
+# build.gradle, pom.xml, etc. and extracts the project name.
+# If no project file is found, returns an empty string.
+# If a project name is found, it is printed to stdout.
+get_project_title() {
+    # Look for common project files
+    for file in src/giv.sh package.json pyproject.toml setup.py Cargo.toml composer.json build.gradle pom.xml; do
+        if [ -f "${file}" ]; then
+            # Extract project name based on file type
+            case "${file}" in
+            "src/giv.sh")
+                printf 'giv'
+                ;;
+            package.json)
+                awk -F'"' '/"name"[[:space:]]*:/ {print $4; exit}' "${file}"
+                ;;
+            pyproject.toml)
+                awk -F' = ' '/^name/ {gsub(/"/, "", $2); print $2; exit}' "${file}"
+                ;;
+            setup.py)
+                # Double quotes
+                grep -E '^[[:space:]]*name[[:space:]]*=[[:space:]]*"[^"]+"' "${file}" | sed -E 's/^[[:space:]]*name[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/' | head -n1 &&
+                    # Single quotes
+                    grep -E "^[[:space:]]*name[[:space:]]*=[[:space:]]*'[^']+'" "${file}" | sed -E "s/^[[:space:]]*name[[:space:]]*=[[:space:]]*'([^']+)'.*/\1/" | head -n1
+                ;;
+            Cargo.toml)
+                awk -F' = ' '/^name/ {gsub(/"/, "", $2); print $2; exit}' "${file}"
+                ;;
+            composer.json)
+                awk -F'"' '/"name"[[:space:]]*:/ {print $4; exit}' "${file}"
+                ;;
+            build.gradle)
+                # Double quotes
+                grep -E '^[[:space:]]*rootProject\.name[[:space:]]*=[[:space:]]*"[^"]+"' "${file}" | sed -E 's/^[[:space:]]*rootProject\.name[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/' | head -n1 &&
+                    # Single quotes
+                    grep -E "^[[:space:]]*rootProject\.name[[:space:]]*=[[:space:]]*'[^']+'" "${file}" | sed -E "s/^[[:space:]]*rootProject\.name[[:space:]]*=[[:space:]]*'([^']+)'.*/\1/" | head -n1
+                ;;
+            pom.xml)
+                awk -F'[<>]' '/<name>/ {print $3; exit}' "${file}"
+                ;;
+            *)
+                echo "Unknown project file type: ${file}" >&2
+                return 1
+                ;;
+            esac
+            return
+        fi
+    done
+}
+
+# parse_version - Extracts version information from a string.
+#
+# This function takes a single argument (a string) and attempts to extract a version number
+# in the format of v1.2.3 or 1.2.3. It uses sed to match patterns that include an optional 'v' or 'V'
+# followed by three numbers separated by dots.
+#
+# Arguments:
+#   $1 - The input string from which to extract the version number.
+#
+# Returns:
+#   A string representing the extracted version number, or an empty string if no valid version
+#   is found in the input.
+parse_version() {
+    #printf 'Parsing version from: %s\n' "$1" >&2
+    # Accepts a string, returns version like v1.2.3 or 1.2.3
+    out=$(echo "$1" | sed -n -E 's/.*([vV][0-9]+\.[0-9]+\.[0-9]+).*/\1/p')
+    if [ -z "$out" ]; then
+        out=$(echo "$1" | sed -n -E 's/.*([0-9]+\.[0-9]+\.[0-9]+).*/\1/p')
+    fi
+    printf '%s' "$out"
+}
+
 # Finds and returns the path to a version file in the current directory.
 # The function checks if the variable 'version_file' is set and points to an existing file.
 # If not, it searches for common version files (package.json, pyproject.toml, setup.py, Cargo.toml, composer.json, build.gradle, pom.xml).
@@ -535,6 +525,82 @@ get_version_info() {
     }
 }
 
+# get_commit_date - Retrieves the date of a given commit, or the current date for special cases.
+#
+# Arguments:
+#   $1 - The commit hash or identifier to retrieve the date from (e.g., SHA, --current, --cached).
+#
+# Description:
+#   This function returns the date associated with a specific git commit. If the commit is
+#   "--current" or "--cached", it returns the current date.
+#
+# Outputs:
+#   Prints the date of the specified commit to stdout.
+get_commit_date() {
+    commit="$1"
+
+    if [ "$commit" = "--current" ] || [ "$commit" = "--cached" ]; then
+        # Return the current date for special cases
+        date +"%Y-%m-%d"
+    else
+        # Get the date of the specified commit
+        git show -s --format=%ci "$commit" | cut -d' ' -f1
+    fi
+}
+
+# Replaces every “[NAME]” in stdin with the contents of
+# the environment variable GIV_TOKEN_NAME (if set).
+#
+# Usage:
+#   export GIV_TOKEN_FOO="multi
+#   line
+#   text"
+#   replace_tokens < template.md > output.md
+replace_tokens() {
+    summary_file=$1
+    shift
+
+    awk -v summary_file="$summary_file" '
+    # ----- helpers --------------------------------------------------------
+    function emit_summary(   l) {
+        if (summary_file_read || summary_file == "") return
+        while ((getline l < summary_file) > 0) print l "\n"
+        close(summary_file)
+        summary_file_read = 1
+    }
+
+    # ----- build the map from env ----------------------------------------
+    BEGIN {
+        ORS = ""
+        for (v in ENVIRON) {
+            if (substr(v,1,10) == "GIV_TOKEN_" && v != "GIV_TOKEN_SUMMARY") {
+                name = substr(v,11)          # strip the prefix
+                map[name] = ENVIRON[v]
+            }
+        }
+    }
+
+    # ----- main loop ------------------------------------------------------
+    {
+        if (index($0, "[SUMMARY]")) {
+            # Split the line on the placeholder so we can inject the diff
+            n = split($0, parts, /\[SUMMARY\]/)
+            for (i = 1; i <= n; i++) {
+                fragment = parts[i]
+                for (k in map) gsub("\\[" k "\\]", map[k], fragment)
+                printf "%s", fragment
+                if (i < n) emit_summary()
+            }
+            print "\n"
+        } else {
+            line = $0
+            for (k in map) gsub("\\[" k "\\]", map[k], line)
+            print line "\n"
+        }
+    }
+    ' "$@"
+}
+
 # helper: builds main diff output (tracked + optional untracked)
 build_diff() {
     commit="$1"
@@ -573,7 +639,7 @@ build_diff() {
             *) continue ;;
             esac
         fi
-        
+
         extra=$(git --no-pager diff --no-prefix --unified=0 --no-color -b -w \
             --minimal --compact-summary --color-moved=no \
             --no-index /dev/null "$f" 2>/dev/null || true)
@@ -611,6 +677,8 @@ build_history() {
     fi
 
     # header
+    printf '**Commit ID:*** %s\n' "$commit" >>"$hist"
+    printf '**Date:** %s\n' "$(get_commit_date "$commit")" >>"$hist"
     msg=$(get_message_header "$commit")
     printf '**Message:** %s\n' "$msg" >>"$hist"
 
@@ -655,7 +723,7 @@ build_history() {
 # using SUMMARY_FILE as the summary source.
 build_prompt() {
     # default tokens
-    project_title="$(parse_project_title)"
+    project_title="$(get_project_title)"
     version="${output_version:-${GIV_TOKEN_VERSION:-}}"
     example=""
     rules=""
@@ -741,7 +809,6 @@ build_prompt() {
 
     return
 }
-
 
 # -------------------------------------------------------------------
 # summarize_target: summarize a commit, or an inclusive two-/three-dot
@@ -855,10 +922,22 @@ summarize_commit() {
     print_debug "Using summary prompt: ${summary_template}"
     printf '%s\n' "${summary_template}" >"${pr}"
     res=$(generate_response "${pr}" "${gen_mode}" "0.9" "32768")
-    echo "${res}" >"${res_file}"
+    # header
+
+    printf '**Project Title:*** %s\n' "$(get_project_title)" >"$res_file"
+    {
+        printf '**Version:*** %s\n' "${sc_version}"
+        printf '**Commit ID:*** %s\n' "$commit"
+        printf '**Date:** %s\n' "$(get_commit_date "$commit")"
+        printf '**Message:** %s\n' "$(get_message_header "$commit")"
+        printf '========================\n\n'
+    } >>"$res_file"
+
+    echo "${res}" >>"${res_file}"
 
     printf '%s\n' "${res}"
 }
+
 # -------------------------------------------------------------------
 # cmd_document: generic driver for any prompt template
 #
@@ -907,16 +986,16 @@ cmd_document() {
 
     # 2) Build prompt
     prompt_tmp=$(portable_mktemp "${doc_base}_prompt_XXXXXX.md")
-    title=$(parse_project_title "${summaries}")
-    current_version="$(get_version_info --current "$(find_version_file)" )"
+    title=$(get_project_title "${summaries}")
+    current_version="$(get_version_info --current "$(find_version_file)")"
 
     print_debug "Building prompt from ${prompt_tpl} using ${summaries}"
     build_prompt \
-      --project-title "${title}" \
-      --version "${current_version}" \
-      --template "${prompt_tpl}" \
-      --summary "${summaries}" \
-      "$@" >"${prompt_tmp}"
+        --project-title "${title}" \
+        --version "${current_version}" \
+        --template "${prompt_tpl}" \
+        --summary "${summaries}" \
+        "$@" >"${prompt_tmp}"
 
     print_debug "Built prompt file: ${prompt_tmp}"
 
@@ -927,4 +1006,3 @@ cmd_document() {
         generate_from_prompt "${prompt_tmp}" "${out}" "${mode}" "${temp}"
     fi
 }
-

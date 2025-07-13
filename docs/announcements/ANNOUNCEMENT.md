@@ -544,7 +544,7 @@ Change Groups
 ### Fixed
 - Corrected file existence checks in src/helpers.sh (lines 32, 64, 110, 147, 165) to ensure proper variable expansion, preventing script errors.
 - Fixed response handling in src/giv.sh (lines 478-529) to check $? after generate_response calls, ensuring errors are caught and reported.
-- Updated parse_project_title tests to cover various project files including package.json, pyproject.toml, setup.py, Cargo.toml, composer.json, build.gradle, pom.xml, with specific line corrections.
+- Updated get_project_title tests to cover various project files including package.json, pyproject.toml, setup.py, Cargo.toml, composer.json, build.gradle, pom.xml, with specific line corrections.
 - Rectified cleanup commands in test scripts to remove temporary directories correctly, avoiding leftover test artifacts.
 - Amended test assertions to reflect expected output strings and error handling for missing files.
 
@@ -563,7 +563,7 @@ Change Groups
 - Modularized version info retrieval to allow flexible version parsing from various project files.
 
 ### Tests
-- Created new tests in tests/parse_project_title.ats to verify project name extraction from multiple file formats.
+- Created new tests in tests/get_project_title.ats to verify project name extraction from multiple file formats.
 - Added test coverage for version parsing, including handling of pre-fix versions and missing version info.
 - Developed new tests in tests/build_prompts.ats to validate prompt template processing with all tokens replaced properly.
 - Updated existing tests for different scenarios and error conditions, ensuring robustness.
