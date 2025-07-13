@@ -198,7 +198,7 @@ json_escape() {
 }
 
 extract_content_from_response() {
-    # Usage: extract_content "$json_string"
+    # Usage: extract_content_from_response "$json_string"
     json=$1
 
     # 1) Extract all lines from the "content" property (handles multi-line content)

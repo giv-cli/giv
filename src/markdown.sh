@@ -327,7 +327,7 @@ install_from_github() {
   curl -fsSL "https://github.com/charmbracelet/glow/releases/download/$tag/$file" -o "$tmpdir/glow.tar.gz"
   curl -fsSL "https://github.com/charmbracelet/glow/releases/download/$tag/checksums.txt" -o "$tmpdir/checksums.txt"
 
-  cd "$tmpdir"
+  cd "$tmpdir" || exit 1
   sha256sum -c checksums.txt --ignore-missing --quiet || {
     echo "Checksum verification failed"
     exit 1
@@ -343,7 +343,7 @@ install_from_github() {
     sudo mv glow "$bindir"
   fi
 
-  cd -
+  cd - || exit 1
   rm -rf "$tmpdir"
 
   echo "glow installed to $bindir"

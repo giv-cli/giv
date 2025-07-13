@@ -387,7 +387,7 @@ EOF
 @test "Env API key required for remote" {
   unset GIV_API_KEY
   gen_commits
-  run "$GIV_SCRIPT" changelog HEAD --model-provider remote --api-url http://fake --api-model dummy
+  run "$GIV_SCRIPT" changelog HEAD --model-mode remote --api-url http://fake --api-model dummy
   assert_output --partial "GIV_API_KEY"
 }
 

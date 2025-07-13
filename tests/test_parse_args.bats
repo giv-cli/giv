@@ -147,7 +147,7 @@ setup_git_range() {
 }
 
 @test "subcommand 'document' is accepted and printed" {
-  run parse_args document --verbose
+  run parse_args document --verbose --prompt-file "TEST"
   assert_success
   assert_output --partial "Subcommand: document"
 }
@@ -274,12 +274,7 @@ setup_git_range() {
   assert_output --partial "Pathspec: "
 }
 
-# Insert the new test cases for the 'document' subcommand
-@test "subcommand 'document' is accepted and printed" {
-  run parse_args document --verbose --prompt-file PROMPT
-  assert_success
-  assert_output --partial "Subcommand: document"
-}
+
 
 @test "document subcommand without --prompt-file errors out" {
   run parse_args document --verbose
