@@ -13,5 +13,8 @@ rm -rf "${SNAP_DIST_DIR:?}/"*
 sed "s/{{VERSION}}/${VERSION}/g" build/snap/snapcraft.yaml >"$SNAP_DIST_DIR/snapcraft.yaml"
 cp -r "${SNAP_BUILD_TEMP}/package/"* "${SNAP_DIST_DIR}/"
 
+# TODO: Build snap package
+
+
 printf "Snap build completed. Files are in %s\n" "${SNAP_DIST_DIR}"
 printf "To build the snap, run:\n  cd %s && snapcraft\n" "${SNAP_DIST_DIR}"

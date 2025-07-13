@@ -1,0 +1,26 @@
+name: Build and Validate Packages
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'templates/**'
+      - 'build/**'
+
+jobs:
+  build-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t giv-build -f build/Dockerfile.packages .
+
+      - name: Build packages inside container
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/workspace giv-build /workspace/build/build.sh
+
+      - name: Validate installs inside container
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/workspace giv-build /workspace/ci/install-validate.sh

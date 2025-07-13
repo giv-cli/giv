@@ -103,6 +103,13 @@ setup_git_range() {
   assert_output --partial "Subcommand: message"
 }
 
+# 5. valid subcommands
+@test "subcommand 'msg' is accepted and printed" {
+  run parse_args msg --verbose
+  assert_success
+  assert_output --partial "Subcommand: msg"
+}
+
 @test "subcommand 'summary' is accepted and printed" {
   run parse_args summary --verbose
   assert_success
@@ -137,6 +144,18 @@ setup_git_range() {
   run parse_args update --verbose
   assert_success
   assert_output --partial "Subcommand: update"
+}
+
+@test "subcommand 'document' is accepted and printed" {
+  run parse_args document --verbose
+  assert_success
+  assert_output --partial "Subcommand: document"
+}
+
+@test "subcommand 'doc' is accepted and printed" {
+  run parse_args doc --verbose
+  assert_success
+  assert_output --partial "Subcommand: doc"
 }
 
 # 6. early --config-file parsing (nonexistent)
@@ -253,4 +272,24 @@ setup_git_range() {
   assert_output --partial "Subcommand: changelog"
   assert_output --partial "Revision: HEAD"
   assert_output --partial "Pathspec: "
+}
+
+# Insert the new test cases for the 'document' subcommand
+@test "subcommand 'document' is accepted and printed" {
+  run parse_args document --verbose --prompt-file PROMPT
+  assert_success
+  assert_output --partial "Subcommand: document"
+}
+
+@test "document subcommand without --prompt-file errors out" {
+  run parse_args document --verbose
+  [ "$status" -eq 1 ]
+  assert_output --partial "Error: --prompt-file is required for the document subcommand."
+}
+
+@test "document subcommand with --prompt-file is accepted" {
+  run parse_args document --prompt-file PROMPT --verbose
+  assert_success
+  assert_output --partial "Subcommand: document"
+  assert_output --partial "Prompt File: PROMPT"
 }

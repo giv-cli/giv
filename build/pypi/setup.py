@@ -8,8 +8,8 @@ setup(
     author_email="noreply@github.com",
     scripts=["src/giv"],
     data_files=[
-        ("src", ["{{SH_FILES}}"]),
-        ("templates", ["templates/{{TEMPLATE_FILES}}"]),
-        ("docs", ["docs/{{DOCS_FILES}}"]),
+        ("src", [{{SH_FILES}}]),
+        ("templates", [{{TEMPLATE_FILES}}]),
+        ("docs", [{{DOCS_FILES}}]),
     ],
 )

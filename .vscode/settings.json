@@ -21,7 +21,12 @@
         "[ ]",
         "[x]",
         "ENHANCEMENT",
-        "CHORE"
+        "CHORE",
+        "FEAT",
+        "FEATURE",
+        "DOC:",
+        "DOCUMENTATION",
+        "TEST:"
     ],
     "shellcheck.customArgs": [
         "-x"

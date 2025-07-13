@@ -60,6 +60,9 @@ if [ "${FPM_INSTALLED}" = "true" ]; then
 fi
 ./build/snap/build.sh "${VERSION}" "${BUILD_TEMP}"
 ./build/flatpak/build.sh "${VERSION}" "${BUILD_TEMP}"
+./build/docker/build.sh "${VERSION}" "${BUILD_TEMP}"
 
 #rm -rf "${BUILD_TEMP}"
 printf "Build completed. Files are in %s\n" "${DIST_DIR}"
+
+rm -rf "${BUILD_TEMP}"

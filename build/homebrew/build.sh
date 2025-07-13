@@ -23,6 +23,10 @@ sed -e "s|{{VERSION}}|${VERSION}|g" \
     -e "s|{{SHA256}}|$SHA256|g" \
     build/homebrew/giv.rb > "$HOMEBREW_DIST_DIR/giv.rb"
 
+sed -e "s|{{VERSION}}|${VERSION}|g" \
+    -e "s|{{SHA256}}|$SHA256|g" \
+    build/homebrew/giv.local.rb > "$HOMEBREW_DIST_DIR/giv.local.rb"
+
 rm -rf "$HOMEBREW_DIST_DIR/package"
 printf "Homebrew build completed. Files are in %s\n" "${HOMEBREW_DIST_DIR}"
 printf "Upload %s to your releases, and update your tap with the new formula.\n" "$TARBALL_NAME"

@@ -197,7 +197,7 @@ json_escape() {
         awk 'BEGIN{printf "\""} {printf "%s", $0} END{print "\""}'
 }
 
-extract_content() {
+extract_content_from_response() {
     # Usage: extract_content "$json_string"
     json=$1
 
@@ -292,7 +292,7 @@ generate_remote() {
     fi
 
     # Extract the content field from the response
-    result=$(extract_content "${response}")
+    result=$(extract_content_from_response "${response}")
 
     #print_debug "Parsed response:$result"
     echo "${result}"
@@ -573,7 +573,11 @@ build_diff() {
             *) continue ;;
             esac
         fi
-        extra=$(git --no-pager diff --no-prefix --unified=0 --no-color -b -w --minimal --compact-summary --color-moved=no --no-index /dev/null "$f" 2>/dev/null || true)
+        
+        extra=$(git --no-pager diff --no-prefix --unified=0 --no-color -b -w \
+            --minimal --compact-summary --color-moved=no \
+            --no-index /dev/null "$f" 2>/dev/null || true)
+
         if [ -n "$diff_output" ] && [ -n "$extra" ]; then
             diff_output="${diff_output}
             ${extra}"
@@ -623,7 +627,7 @@ build_history() {
     # shellcheck disable=SC2016
     printf '```diff\n%s\n```\n' "$diff_out" >>"$hist"
 
-    # TODO diff
+    # diff for todos
     td=$(extract_todo_changes "$commit" "$todo_pattern")
     print_debug "TODO changes: $td"
     # shellcheck disable=SC2016

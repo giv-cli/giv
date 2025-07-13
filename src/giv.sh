@@ -45,11 +45,11 @@ GIV_DOCS_DIR="${GIV_DOCS_DIR:-}"
 # Library location (.sh files)
 if [ -n "$GIV_LIB_DIR" ]; then
     LIB_DIR="$GIV_LIB_DIR"
+elif [ -d "/usr/local/lib/giv" ]; then
+    LIB_DIR="/usr/local/lib/giv"
 elif [ -d "$SCRIPT_DIR" ]; then
     # Local or system install: helpers in same dir
     LIB_DIR="$SCRIPT_DIR"
-elif [ -d "/usr/local/lib/giv" ]; then
-    LIB_DIR="/usr/local/lib/giv"
 elif [ -n "${SNAP:-}" ] && [ -d "$SNAP/lib/giv" ]; then
     LIB_DIR="$SNAP/lib/giv"
 else
@@ -85,9 +85,9 @@ else
 fi
 
 # shellcheck source=helpers.sh
-. "${SCRIPT_DIR}/helpers.sh"
+. "${LIB_DIR}/helpers.sh"
 # shellcheck source=markdown.sh
-. "${SCRIPT_DIR}/markdown.sh"
+. "${LIB_DIR}/markdown.sh"
 
 # Detect if sourced (works in bash, zsh, dash, sh)
 _is_sourced=0
@@ -172,7 +172,9 @@ parse_args() {
         show_version
         exit 0
         ;;
-    message | summary | changelog | release-notes | announcement | available-releases | update)
+    message | msg | summary | changelog \
+        | document | doc | release-notes | announcement \
+        | available-releases | update)
         subcmd=$1
         shift
         ;;
@@ -378,6 +380,12 @@ parse_args() {
         esac
     done
 
+    # If subcommand is document, ensure we have a prompt file
+    if [ "${subcmd}" = "document" ] && [ -z "${prompt_file}" ]; then
+        printf 'Error: --prompt-file is required for the document subcommand.\n' >&2
+        exit 1
+    fi
+
     # Determine ollama/remote mode once before parsing args
     if [ "${model_mode}" = "auto" ] || [ "${model_mode}" = "local" ]; then
         if ! command -v ollama >/dev/null 2>&1; then
@@ -437,6 +445,7 @@ parse_args() {
     print_debug "  Output Version: ${output_version}"
     print_debug "  Prompt File: ${prompt_file}"
 }
+
 # -------------------------------------------------------------------
 # Helper Functions
 # -------------------------------------------------------------------
@@ -475,60 +484,61 @@ pathspec        Standard Git pathspec to narrow scope—supports magic prefixes,
 Option Groups
 
 General
-  -h, --help            Show help and exit
+  -h, --help            Show this help and exit
   -v, --version         Show giv version
-  --verbose             Debug / trace output
-  --dry-run             Preview only; write nothing
-  --config-file PATH    Shell config sourced before run
+  --verbose             Enable debug/trace output
+  --dry-run             Preview only; don't write any files
+  --config-file PATH    Shell config file to source before running
 
 Revision & Path Selection (what to read)
   (positional) revision   Git revision or range
   (positional) pathspec   Git pathspec filter
 
 Diff & Content Filters (what to keep)
-  --todo-files PATHSPEC   Pathspec that marks files to scan for TODOs
-  --todo-pattern REGEX    Regex evaluated inside files matched by --todo-files
+  --todo-files PATHSPEC   Pathspec for files to scan for TODOs
+  --todo-pattern REGEX    Regex to match TODO lines
   --version-file PATHSPEC Pathspec of file(s) to inspect for version bumps
-  --version-pattern REGEX Custom regex that identifies version strings
+  --version-pattern REGEX Custom regex to identify version strings
 
 AI / Model (how to think)
   --model MODEL          Local Ollama model name
   --model-mode MODE      auto (default), local, remote, none
-  --api-model MODEL      Remote model when --model-mode remote
-  --api-url URL          Remote API endpoint
+  --api-model MODEL      Remote model name when in remote mode
+  --api-url URL          Remote API endpoint URL
+  --api-key KEY          API key for remote mode
 
 Output Behaviour (where to write)
   --output-mode MODE     auto, prepend, append, update, none
-  --output-version NAME  Overrides section header / tag
-  --output-file PATH     Destination file (default depends on subcommand)
-  --prompt-file PATH     Markdown prompt template to use
+  --output-version NAME  Override section header/tag name
+  --output-file PATH     Destination file (defaults per subcommand)
+  --prompt-file PATH     Markdown prompt template to use (required for 'document')
 
 Maintenance Subcommands
-  available-releases     List script versions
-  update                 Self-update giv
-
-Environment Variables
-  GIV_API_KEY            API key for remote model
-  GIV_API_URL            Endpoint default if --api-url is omitted
-  GIV_MODEL              Default local model
-  GIV_MODEL_MODE         auto, local, remote, none (overrides flag)
+  available-releases     List available script versions
+  update                 Self-update giv to latest or specified version
 
 Subcommands
   message                Draft an AI commit message (default)
   summary                Human-readable summary of changes
   changelog              Create or update CHANGELOG.md
-  release-notes          Longer notes for a tagged release
-  announcement           Marketing-style release announcement
+  release-notes          Generate release notes for a tagged release
+  announcement           Create a marketing-style announcement
+  document               Generate custom content using your own prompt template
   available-releases     List script versions
   update                 Self-update giv
 
 Examples:
   giv message HEAD~3..HEAD src/
-  giv changelog --todo-files '*.ts' --todo-pattern 'TODO\\(\\w+\\):'
-  giv release-notes v1.2.0..HEAD --model-mode remote --api-model gpt-4o --api-url https://api.example.com/v1/chat/completions
+  giv summary --output-file SUMMARY.md --model-mode remote
+  giv changelog v1.0.0..HEAD --todo-files '*.js' --todo-pattern 'TODO:'
+  giv release-notes v1.2.0..HEAD --api-model gpt-4o --api-url https://api.example.com
+  giv announcement --output-file ANNOUNCE.md --model-mode remote
+  giv document --prompt-file templates/my_custom_prompt.md --output-file REPORT.md HEAD
 EOF
-printf '\n%s\n' "For more information, see the documentation at ${DOCS_DIR:-}"
+    printf '\nFor more information, see the documentation at %s\n' "${DOCS_DIR:-<no docs dir>}"
 }
+
+
 
 # # -------------------------------------------------------------------
 # # Subcommand Implementations
@@ -709,7 +719,13 @@ if [ "${_is_sourced}" -eq 0 ]; then
 
     # Dispatch logic
     case "${subcmd}" in
-    message) cmd_message "${REVISION}" ;;
+    message | msg) cmd_message "${REVISION}" ;;
+    document | doc) cmd_document \
+      "${prompt_file}" \
+      "${REVISION}" \
+      "${output_file:-}" \
+      "${model_mode}" \
+      "0.7" "" ;;
     summary) cmd_document \
       "${TEMPLATE_DIR}/final_summary_prompt.md" \
       "${REVISION}" \

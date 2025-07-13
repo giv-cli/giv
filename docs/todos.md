@@ -4,25 +4,57 @@
 
 - CHORE: write doc on using external APIs
 - CHORE: Add examples of using giv with various workflows. ie. npm run giv
-- ADDED: --summary option to provide summary of changes
-- ADDED: --type "annoucement" option to generate a release announcement
-- ADDED: --type "commit" option to generate commit message `git commit -m "$(giv -t commit)"
 - ENHANCEMENT: add git config user.name to output
-- ENHANCEMENT: add project name to summaries(?)
 - ENHANCEMENT: add README to summaries/prompt(?)
-- 
+- ENHANCEMENT: add date token to summary
+- FEATURE: ollama, glow, and gh cli included in docker image
+- FEATURE: add option to install glow during install
+- FEATURE: use glow for output if available
+- FEATURE: GIV_USE_GLOW config setting
+- FEATURE: .giv folder to hold config and prompts
+- FEATURE: init commnand to create folder and basic setup
+- FEATURE: enhanced help command
+  - milvous cli indexes docs folder, project tree, and usage text
+  - allow `giv help "some question here"`
+  - use milvious data to provide command suggestions when command fails
+- FEATURE: chat with code/history
+- FEATURE: improve section updating (ie merge lists, update headers), improve date and header management
+- FEATURE: include [SAMPLE] token to provide current or previous section in the prompt
+- FEATURE: markdown lint and fixing before output
+- FEATURE: option to review and update before saving
+- FEATURE: option to use LLM to automatically review before final output
+- DOCUMENTATION: Add example of using custom prompt and rules with document subcommand
+- DOCUMENTATION: Add example of adding a new document type subcommand
+- DOCUMENTATION: Add example of sourcing giv functions in other scripts
+- FEATURE: add --no-pager option for when writing to stdout (ie. review or no output-file), default to true for message
 
 - CHORE: Add more "real-world" tests with more detailed output validation
+  - long commit histories and summaries
 - ENHANCEMENT: allow user to specify (regex?) patterns for matching sections, headers, versions, todos
 - ENHANCEMENT: improve prompt with more specific todo rules. ie. BUG->FIXED changes go in ### Fixed sub section
 
+## Known Issues
+
+- BUG: Docker permissions issues
+- BUG: Flatpak does not build
+- BUG: Snap does not build
+- BUG: RPM, snap, and flatpak are not validated
+
 ## In Progress
 
-- Improve installer to support copying default templates to APP_DIR
-- Pending updating script to look for templates in APP_DIR if not specified and APP_DIR exists. Otherwise throw an error saying template is required
+- TEST: test packages in dist folder in a docker container
+  - Add flatpak to docker for building packages
+  - Try to fix snap so that it is available in docker to build snap package
+- ENHANCEMENT: add project name to summaries(?)
+- Publish script that will bump version, build packages, push built packages and create Github release
+  - create repos for homebrew and flatpk?
+- FEATURE: document command to use prompt file 
 
 ## Completed
 
+- ADDED: --summary option to provide summary of changes
+- ADDED: --type "annoucement" option to generate a release announcement
+- ADDED: --type "commit" option to generate commit message `git commit -m "$(giv -t commit)"
 - ADDED: Provide default version file for python and node
 - ADDED: Provide a version file arg to override the defaults
 - DONE: Refactor code to use functions

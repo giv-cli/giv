@@ -13,6 +13,7 @@ RUN apt-get update && \
     snapd \
     python3 \
     python3-pip \
+    python3.12-venv \
     ruby \
     ruby-dev \
     flatpak-builder \
@@ -30,6 +31,8 @@ RUN locale-gen en_US.UTF-8
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
+
+
 # Install snapd (for snap builds; install snaps at runtime)
 #RUN apt-get update && apt-get install -y --no-install-recommends snapd && rm -rf /var/lib/apt/lists/*
 # NOTE: To use snapcraft, start the container and run:
@@ -41,10 +44,6 @@ RUN gem install --no-document fpm
 # Install bats (for shell testing)
 RUN npm install -g bats
 
-# Install Homebrew (for homebrew builds, on Linux)
-RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
-ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:$PATH"
-RUN brew update || true
 
 # Install GitHub CLI (gh)
 RUN type -p gh || (curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
@@ -53,6 +52,31 @@ RUN type -p gh || (curl -fsSL https://cli.github.com/packages/githubcli-archive-
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | \
     tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
     apt-get update && apt-get install -y gh)
+
+# Install Homebrew (for homebrew builds, on Linux)
+
+# 2) Ensure UTF-8 locale (prevents brew warnings)
+RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+
+# 3) Create a non-root user for Homebrew
+RUN useradd -m -s /bin/bash linuxbrew && \
+    echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+# 4) Switch to that user and install Homebrew (non-interactively)
+USER linuxbrew
+ENV CI=1 NONINTERACTIVE=1
+RUN /bin/bash -c \
+      "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
+
+# 6) Verify brew works
+RUN brew --version && brew update --quiet
+
+# # 5) Switch back to root, expose brew on PATH
+USER root
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
+
 
 # Set workdir
 WORKDIR /workspace

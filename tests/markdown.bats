@@ -32,12 +32,6 @@ teardown() {
     rm -rf "$TESTDIR"
 }
 
-# Source the functions for testing
-load() {
-
-    # Load the script under test
-    . "$SCRIPT"
-}
 
 # Helper to write a file with given content
 write_file() {
@@ -91,9 +85,12 @@ write_file() {
     content="$(cat "$tmp")"
 
     # Content order: title, blank, new section, then original intro
+    # shellcheck disable=SC3030
     expected_order=("# Release Notes" "" "## v2.0" "" "Alpha")
-    index=0
+    # shellcheck disable=SC2068
+    # shellcheck disable=SC3054
     for line in ${expected_order[@]}; do
+        # shellcheck disable=SC3010
         [[ "$content" =~ $line ]]
     done
 }
@@ -356,3 +353,32 @@ EOF
 Last
 EOF
 }
+
+# Test strip_markdown function
+@test "strip_markdown removes Markdown formatting" {
+    input="This is a **bold** text and this is an *italic* text."
+    expected="This is a bold text and this is an italic text."
+
+    result=$(echo "$input" | strip_markdown)
+
+    [ "$result" = "$expected" ]
+}
+
+@test "strip_markdown handles empty input" {
+    input=""
+    expected=""
+
+    result=$(echo "$input" | strip_markdown)
+
+    [ "$result" = "$expected" ]
+}
+
+@test "strip_markdown handles complex Markdown" {
+    input="# Heading\n\nThis is a **bold** text and this is an *italic* text.\n\n- List item 1\n- List item 2"
+    expected="Heading\n\nThis is a bold text and this is an italic text.\n\n- List item 1\n- List item 2"
+
+    result=$(echo "$input" | strip_markdown)
+    output="$result"
+    assert_output "$expected"
+}
+
