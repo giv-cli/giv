@@ -1,7 +1,8 @@
 #! /bin/bash
 
 VERSION="$1"
-IMAGE="giv-cli/giv"
+IMAGE="itlackey/giv"
+
 
 # 2) Login to Docker Hub
 echo "$DOCKER_HUB_PASSWORD" | docker login \

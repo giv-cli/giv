@@ -21,8 +21,9 @@
 - FEATURE: improve section updating (ie merge lists, update headers), improve date and header management
 - FEATURE: include [SAMPLE] token to provide current or previous section in the prompt
 - FEATURE: markdown lint and fixing before output
-- FEATURE: option to review and update before saving
+- FEATURE: option to manually review and update before saving
 - FEATURE: option to use LLM to automatically review before final output
+  - reviews format and attempts to correct it or sends for a retry
 - DOCUMENTATION: Add example of using custom prompt and rules with document subcommand
 - DOCUMENTATION: Add example of adding a new document type subcommand
 - DOCUMENTATION: Add example of sourcing giv functions in other scripts
@@ -32,9 +33,17 @@
   - long commit histories and summaries
 - ENHANCEMENT: allow user to specify (regex?) patterns for matching sections, headers, versions, todos
 - ENHANCEMENT: improve prompt with more specific todo rules. ie. BUG->FIXED changes go in ### Fixed sub section
-
+- FEATURE: Add roadmap document type
+- FEATURE: chat with TODOs
+- FEATURE: Improve rules and examples handling
+  - --rules-file
+  - --example-file - if "auto" attempt to extract section from output-file
+  - 
 ## Known Issues
 
+- BUG: Announcement needs more project specific context for things like homepage, name, date
+- BUG: Changelog including front matter and incorrect header
+- BUG: Release notes has incorrect date
 - BUG: Docker permissions issues
 - BUG: Flatpak does not build
 - BUG: Snap does not build

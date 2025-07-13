@@ -1,7 +1,7 @@
 #! /bin/bash
 
 VERSION="$1"
-IMAGE="giv-cli/giv"
+IMAGE="itlackey/giv"
 
 docker build -f build/docker/Dockerfile \
     -t "${IMAGE}:$VERSION" \

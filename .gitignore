@@ -9,3 +9,4 @@ tests/.tmp
 .tmp
 dist
 .DS_Store
+.backup.env
