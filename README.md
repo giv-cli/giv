@@ -8,7 +8,7 @@
 * **Flexible AI engine** – Offline with Ollama or remote via Chat-Completions API, switchable through `--model-mode`.
 * **Native Git targeting** – Accepts any revision specifier or range defined in *gitrevisions*, and any pathspec (including `:(exclude)` and `!*.md`). ([revision selection][7], [git revisions][5], [gitglossary][8])
 * **Version & TODO intelligence** – Detects SemVer bumps and scans only the files you specify for TODOs using regex patterns. ([semver.org][2])
-* **Zero-dependency, cross-platform** – Runs in Bash, Zsh, Dash, or Ash on Linux, macOS, and Windows (WSL / Git Bash).
+* **Cross-platform** – Runs in Bash, Zsh, Dash, or Ash on Linux, macOS, and Windows (WSL / Git Bash).
 * **One-line install & self-update** – Secure `curl | sh` installer; rerun `giv --update` anytime for the newest release.
 
 ---
@@ -52,6 +52,13 @@ curl -fsSL https://raw.githubusercontent.com/giv-cli/giv/main/install.sh | sh
 
 The script downloads the latest binary links it in `$PATH`
 
+### Requirements
+
+* Git ≥ 2.25 ([git-scm.com][3])
+* curl
+* POSIX-compliant shell (Bash, Zsh, Dash, Ash)
+* *(Optional)* Ollama for offline LLMs ([github.com][6])
+
 ---
 
 ## Usage Overview
@@ -60,75 +67,6 @@ The script downloads the latest binary links it in `$PATH`
 giv <subcommand> [revision] [pathspec] [OPTIONS]
 ```
 
-| Element        | Meaning                                                                                                                                                                  |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **`revision`** | Any Git *revision* or *revision-range* (`HEAD`, `v1.2.3`, `abc123`, `HEAD~2..HEAD`, `origin/main...HEAD`, `--cached`, `--current`). ([revision selection][7], [git revisions][5]) |
-| **`pathspec`** | Standard Git *pathspec* to narrow scope—supports magic prefixes, negation (`!` or `:(exclude)`), and case-insensitive `:(icase)`. ([git pathspec][12], [gitglossary][8])  |
-
----
-
-## Option Groups
-
-### 1  General
-
-| Flag                 | Description                     |
-| -------------------- | ------------------------------- |
-| `-h`, `--help`       | Show help and exit              |
-| `-v`, `--version`    | Show giv version                |
-| `--verbose`          | Debug / trace output            |
-| `--dry-run`          | Preview only; write nothing     |
-| `--config-file PATH` | Shell config sourced before run |
-
-### 2  Revision & Path Selection (*what to read*)
-
-| Flag                      | Description           |
-| ------------------------- | --------------------- |
-| *(positional)* `revision` | Git revision or range |
-| *(positional)* `pathspec` | Git pathspec filter   |
-
-### 3  Diff & Content Filters (*what to keep*)
-
-| Flag                      | Description                                            |
-| ------------------------- | ------------------------------------------------------ |
-| `--todo-files PATHSPEC`   | Pathspec that marks files to scan for TODOs            |
-| `--todo-pattern REGEX`    | Regex evaluated inside files matched by `--todo-files` |
-| `--version-file PATHSPEC` | Pathspec of file(s) to inspect for version bumps       |
-| `--version-pattern REGEX` | Custom regex that identifies version strings           |
-
-### 4  AI / Model (*how to think*)
-
-| Flag                | Description                                 |
-| ------------------- | ------------------------------------------- |
-| `--model MODEL`     | Local Ollama model name                     |
-| `--model-mode MODE` | `auto` (default), `local`, `remote`, `none` |
-| `--api-model MODEL` | Remote model when `--model-mode remote`     |
-| `--api-url URL`     | Remote API endpoint                         |
-
-### 5  Output Behaviour (*where to write*)
-
-| Flag                    | Description                                      |
-| ----------------------- | ------------------------------------------------ |
-| `--output-mode MODE`    | `auto`, `prepend`, `append`, `update`, `none`    |
-| `--output-version NAME` | Overrides section header / tag                   |
-| `--output-file PATH`    | Destination file (default depends on subcommand) |
-| `--prompt-file PATH`    | Markdown prompt template to use                  |
-
-### 6  Maintenance Subcommands
-
-`available-releases` · `update`
-
----
-
-## Environment Variables
-
-| Variable         | Purpose                                            |
-| ---------------- | -------------------------------------------------- |
-| `GIV_API_KEY`    | API key for remote model                           |
-| `GIV_API_URL`    | Endpoint default if `--api-url` is omitted         |
-| `GIV_MODEL`      | Default local model                                |
-| `GIV_MODEL_MODE` | `auto`, `local`, `remote`, `none` (overrides flag) |
-
----
 
 ## Subcommands
 
@@ -144,25 +82,75 @@ giv <subcommand> [revision] [pathspec] [OPTIONS]
 
 ---
 
+## Revision & Path Selection
 
-## Requirements
 
-* Git ≥ 2.25 ([git-scm.com][3])
-* curl
-* POSIX-compliant shell (Bash, Zsh, Dash, Ash)
-* *(Optional)* Ollama for offline LLMs ([github.com][6])
+| Element        | Meaning                                                                                                                                                                           |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`revision`** | Any Git *revision* or *revision-range* (`HEAD`, `v1.2.3`, `abc123`, `HEAD~2..HEAD`, `origin/main...HEAD`, `--cached`, `--current`). ([revision selection][7], [git revisions][5]) |
+| **`pathspec`** | Standard Git *pathspec* to narrow scope—supports magic prefixes, negation (`!` or `:(exclude)`), and case-insensitive `:(icase)`. ([git pathspec][12], [gitglossary][8])          |
 
 ---
+
+
+## Option Groups
+
+### General
+
+| Flag                 | Description                     |
+| -------------------- | ------------------------------- |
+| `-h`, `--help`       | Show help and exit              |
+| `-v`, `--version`    | Show giv version                |
+| `--verbose`          | Debug / trace output            |
+| `--dry-run`          | Preview only; write nothing     |
+| `--config-file PATH` | Shell config sourced before run |
+
+### Output Behaviour
+
+| Flag                    | Description                                      |
+| ----------------------- | ------------------------------------------------ |
+| `--output-mode MODE`    | `auto`, `prepend`, `append`, `update`, `none`    |
+| `--output-version NAME` | Overrides section header / tag                   |
+| `--output-file PATH`    | Destination file (default depends on subcommand) |
+| `--prompt-file PATH`    | Markdown prompt template to use                  |
+
+### Diff & Content Filters
+
+| Flag                      | Description                                            |
+| ------------------------- | ------------------------------------------------------ |
+| `--todo-files PATHSPEC`   | Pathspec that marks files to scan for TODOs            |
+| `--todo-pattern REGEX`    | Regex evaluated inside files matched by `--todo-files` |
+| `--version-file PATHSPEC` | Pathspec of file(s) to inspect for version bumps       |
+| `--version-pattern REGEX` | Custom regex that identifies version strings           |
+
+### AI / Model
+
+| Flag                | Description                                 |
+| ------------------- | ------------------------------------------- |
+| `--model MODEL`     | Local Ollama model name                     |
+| `--model-mode MODE` | `auto` (default), `local`, `remote`, `none` |
+| `--api-model MODEL` | Remote model when `--model-mode remote`     |
+| `--api-url URL`     | Remote API endpoint                         |
+
+
+---
+
+## Environment Variables
+
+| Variable         | Purpose                                            |
+| ---------------- | -------------------------------------------------- |
+| `GIV_API_KEY`    | API key for remote model                           |
+| `GIV_API_URL`    | Endpoint default if `--api-url` is omitted         |
+| `GIV_MODEL`      | Default local model                                |
+| `GIV_MODEL_MODE` | `auto`, `local`, `remote`, `none` (overrides flag) |
+
+---
+
+
 
 ## License
 
 CC-BY. If **giv** helps you *give* better releases, please ⭐ the repo and spread the word!
-
-## Contributing
-
-I'll help you fill in the "Contributing" section with the requested information. Here's a suggestion:
-
----
 
 ## Contributing
 
@@ -199,7 +187,6 @@ We welcome contributions from everyone! If you'd like to contribute, please foll
 5. **Create a pull request on GitHub.**
 
 Please ensure that your contributions adhere to the existing code style and include appropriate tests if necessary.
-
 
 
 [1]: https://keepachangelog.com/en/1.1.0/ "Keep a Changelog"
