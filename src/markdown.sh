@@ -84,9 +84,21 @@ extract_section() {
   sed -n "${start},${end}p" "$file"
 }
 
-# manage_section <title> <file> <new_content_file> <mode> <section_id> [<header_id>]
-#   mode: append|prepend|update
-#   header_id: literal "#" string (e.g. "##" or "###"), defaults to "##"
+# manage_section - Manages sections within a markdown file.
+#
+# This function allows for appending, prepending, or updating a section within a markdown file.
+# It takes care of handling the header and content insertion while preserving the original structure.
+#
+# Parameters:
+#   title (string)       : The title to be used in the markdown file.
+#   file (string)        : Path to the existing markdown file.
+#   newf (string)        : Path to the new content file to be inserted.
+#   mode (string)        : Mode of operation: 'append', 'prepend', or 'update'.
+#   section (string)     : The section header to manage within the markdown file.
+#   header (string, opt) : The header level for the section. Defaults to "##".
+#
+# Returns:
+#   Path to a temporary file containing the modified markdown content.
 manage_section() {
   title=$1
   file=$2

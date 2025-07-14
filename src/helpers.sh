@@ -252,7 +252,7 @@ run_local() {
 #     - Any other value: Calls the `run_local` function with the input file path as an argument, along with temperature and context window size if provided.
 generate_response() {
     gen_mode="${2:-$model_mode:-auto}"
-    temp="${3:-0.9}"         # Default to a neutral temperature of 1.0
+    temp="${3:-0.5}"         # Default to a neutral temperature of 0.5
     ctx_window="${4:-32768}" # Default context window size
 
     print_debug "Generating response using $gen_mode mode with temperature=$temp and context window size=$ctx_window"
@@ -936,7 +936,7 @@ summarize_commit() {
     printf '\n\n' >>"$res_file"
     echo "${res}" >>"${res_file}"
 
-    printf '%s\n' "${res}"
+    cat "${res_file}"
 }
 
 # -------------------------------------------------------------------

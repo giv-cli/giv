@@ -342,6 +342,10 @@ parse_args() {
             api_url=$2
             shift 2
             ;;
+        --api-key)
+            api_key=$2
+            shift 2
+            ;;
         --version-file)
             version_file=$2
             shift 2
@@ -392,12 +396,12 @@ parse_args() {
             print_debug "ollama not found, forcing remote mode (local model unavailable)"
             model_mode="remote"
             if [ -z "${api_key}" ]; then
-                print_warn "ollama not found, so remote mode is required, but GIV_API_KEY is not set"
+                print_warn "No local model and no API configured; outputting prompt template only."
                 model_mode="none"
                 dry_run=true
             fi
             if [ -z "${api_url}" ]; then
-                print_warn "ollama not found, so remote mode is required, but no API URL provided (use --api-url or GIV_API_URL)"
+                print_warn "No local model and no API configured; outputting prompt template only."
                 model_mode="none"
                 dry_run=true
             fi
@@ -415,7 +419,7 @@ parse_args() {
         fi
     fi
 
-    [ "${model_mode}" = "none" ] && print_warn "Model mode set to \"none\", no model will be used."
+    [ "${model_mode}" = "none" ] && print_warn "Model mode set to \"none\", only prompt templates will be returned."
 
     print_debug "Environment variables:"
     print_debug "  GIV_TMPDIR: ${GIV_TMPDIR:-}"
@@ -558,7 +562,8 @@ cmd_message() {
         build_history "${hist}" "${commit_id}" "${todo_pattern}" "${PATHSPEC}"
         print_debug "Generated history file ${hist}"
         pr=$(portable_mktemp "commit_message_prompt_XXXXXX.md")
-        build_prompt --template "${TEMPLATE_DIR}/message_prompt.md" --summary "${hist}" >"${pr}"
+        build_prompt --template "${TEMPLATE_DIR}/message_prompt.md" \
+            --summary "${hist}" >"${pr}"
         print_debug "Generated prompt file ${pr}"
         res=$(generate_response "${pr}" "${model_mode}" "0.9" "32768")        
         if [ $? -ne 0 ]; then
@@ -632,7 +637,7 @@ cmd_changelog() {
     # 4) Build the AI prompt
     prompt_template="${TEMPLATE_DIR}/changelog_prompt.md"
     print_debug "Building prompt from template: $prompt_template"
-    tmp_prompt_file=$(portable_mktemp "prompt.XXXXXXX.md") || {
+    tmp_prompt_file=$(portable_mktemp "changelog_prompt.XXXXXXX.md") || {
         printf 'Error: cannot create temp file for prompt\n' >&2
         rm -f "$summaries_file"
         exit 1
@@ -644,7 +649,7 @@ cmd_changelog() {
     fi
 
     # 5) Generate AI response
-    response_file=$(portable_mktemp "response.XXXXXXX.md") || {
+    response_file=$(portable_mktemp "changelog_response.XXXXXXX.md") || {
         printf 'Error: cannot create temp file for AI response\n' >&2
         rm -f "$summaries_file" "$tmp_prompt_file"
         exit 1
@@ -657,7 +662,7 @@ cmd_changelog() {
     fi
 
     # 6) Prepare a working copy of the changelog
-    tmp_out=$(portable_mktemp "changelog.XXXXXXX.md") || {
+    tmp_out=$(portable_mktemp "changelog_output.XXXXXXX.md") || {
         printf 'Error: cannot create temp file for changelog update\n' >&2
         exit 1
     }
@@ -744,7 +749,7 @@ if [ "${_is_sourced}" -eq 0 ]; then
       "${REVISION}" \
       "${output_file:-$announce_file}" \
       "${model_mode}" \
-      "0.6" \
+      "0.5" \
       "65536" ;;
     changelog) cmd_changelog ;;
     help)
