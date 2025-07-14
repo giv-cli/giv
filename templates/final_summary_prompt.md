@@ -1,6 +1,13 @@
-[PROJECT_TITLE] [VERSION]
+# Summary Request
+Project: [PROJECT_TITLE] 
+
+
+## Recent Changes
 [SUMMARY]
-Write a structured, Keep a Changelog–style summary of the provided change summaries.
+
+## Instructions
+
+Write a structured, summary of the recent changes.
 
 1. Overview  
    - Begin with a section summarizing all of the changes, and the purpose and scope of these changes.

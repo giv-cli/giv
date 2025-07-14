@@ -1,5 +1,11 @@
-[PROJECT_TITLE] [VERSION]
+# Summary Request
+Project: [PROJECT_TITLE] 
+
+## Git Diff
 [SUMMARY]
+
+## Instructions
+
 Write a structured, Keep a Changelog–style summary of the provided git diff. Do not include any version headings or other releases—just one section of grouped changes with type prefixes for each list item.
 
 1. Overview  

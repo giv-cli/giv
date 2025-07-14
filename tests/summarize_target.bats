@@ -5,11 +5,11 @@ setup() {
     TMP_REPO="$BATS_TEST_DIRNAME/.tmp/tmp_repo"
     rm -rf "$TMP_REPO"
     mkdir -p "$TMP_REPO"
-    cd "$TMP_REPO"
+    cd "$TMP_REPO" || exit 1
     git init -q
     git config user.name "Test"
     git config user.email "test@example.com"
-    
+
     # Make two commits
     echo "first" >a.txt
     git add a.txt
@@ -54,7 +54,7 @@ teardown() {
     run cat "$summaries"
     # lines: SUMMARIZE:--current MODE:mymode  then blank
     [ "${lines[0]}" = "SUMMARIZE:--current MODE:mymode" ]
-    [ -z "${lines[1]}" ]
+    [ -z "${lines[2]}" ]
 }
 
 @test "summarize single commit writes exactly that commit" {
@@ -63,7 +63,7 @@ teardown() {
     [ "$status" -eq 0 ]
     run cat "$summaries"
     [ "${lines[0]}" = "SUMMARIZE:$FIRST_SHA MODE:xyz" ]
-    [ -z "${lines[1]}" ]
+    [ -z "${lines[2]}" ]
 }
 @test "summarize two-dot range writes both commits" {
     summaries=$(mktemp)
@@ -151,9 +151,9 @@ teardown() {
     [ "$status" -eq 0 ]
 
     run grep -v '^$' "$summaries"
-
+    printf '%s\n' "$output"
     [ "$status" -eq 0 ]
-    [ "${#lines[@]}" -eq 1 ]
+    [ "${#lines[@]}" -eq 2 ]
     [ "${lines[0]}" = "SUMMARIZE:HEAD~1 MODE:x" ]
 }
 

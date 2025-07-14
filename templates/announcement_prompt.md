@@ -1,8 +1,14 @@
-# Summary of Changes
+# Announcement Request
 
+## Recent Changes
+
+```markdown
 [SUMMARY]
+```
 
-Write one engaging blog post announcing the [VERSION] release of [PROJECT_TITLE], using the following guidelines:
+## Instructions
+
+Write one engaging blog post announcing the recent changes to [PROJECT_TITLE], using the information in the [Recent Changes](#recent-changes) section and the following guidelines:
 
 1. Audience & Tone  
    • General audience interested in the software  
@@ -40,3 +46,4 @@ Write one engaging blog post announcing the [VERSION] release of [PROJECT_TITLE]
    • Ensure all technical details are translated into user-friendly language  
 
 [RULES]
+[EXAMPLE]

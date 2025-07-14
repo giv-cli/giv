@@ -548,6 +548,16 @@ get_commit_date() {
     fi
 }
 
+print_commit_metadata() {
+    commit="$1"
+    commit_version="$(get_version_info "$commit" "$(find_version_file)")"
+    printf '**Project Title:*** %s\n' "$(get_project_title)"
+    printf '**Version:*** %s\n' "${commit_version}"
+    printf '**Commit ID:*** %s\n' "$commit"
+    printf '**Date:** %s\n' "$(get_commit_date "$commit")"
+    printf '**Message:** %s\n' "$(get_message_header "$commit")"
+}
+
 # Replaces every “[NAME]” in stdin with the contents of
 # the environment variable GIV_TOKEN_NAME (if set).
 #
@@ -677,11 +687,8 @@ build_history() {
     fi
 
     # header
-    printf '**Commit ID:*** %s\n' "$commit" >>"$hist"
+    printf '### Commit ID %s\n' "$commit" >>"$hist"
     printf '**Date:** %s\n' "$(get_commit_date "$commit")" >>"$hist"
-    msg=$(get_message_header "$commit")
-    printf '**Message:** %s\n' "$msg" >>"$hist"
-
     # version
     vf=$(find_version_file)
     [ -n "$vf" ] && print_debug "Found version file: $vf"
@@ -689,6 +696,8 @@ build_history() {
         ver=$(get_version_info "$commit" "$vf")
         [ -n "$ver" ] && printf '**Version:** %s\n' "$ver" >>"$hist"
     }
+    msg=$(get_message_header "$commit")
+    printf '**Message:** %s\n' "$msg" >>"$hist"
 
     # diff
     diff_out=$(build_diff "$commit" "$diff_pattern" "$debug")
@@ -876,7 +885,7 @@ summarize_target() {
     if git rev-parse --verify "$target" >/dev/null 2>&1; then
         print_debug "Summarizing single commit: $target"
         summarize_commit "$target" "$gen_mode" >>"$summaries_file"
-        printf '\n' >>"$summaries_file"
+        printf '\n========================\n\n'  >>"$summaries_file"
         return
     fi
 
@@ -922,17 +931,9 @@ summarize_commit() {
     print_debug "Using summary prompt: ${summary_template}"
     printf '%s\n' "${summary_template}" >"${pr}"
     res=$(generate_response "${pr}" "${gen_mode}" "0.9" "32768")
-    # header
 
-    printf '**Project Title:*** %s\n' "$(get_project_title)" >"$res_file"
-    {
-        printf '**Version:*** %s\n' "${sc_version}"
-        printf '**Commit ID:*** %s\n' "$commit"
-        printf '**Date:** %s\n' "$(get_commit_date "$commit")"
-        printf '**Message:** %s\n' "$(get_message_header "$commit")"
-        printf '========================\n\n'
-    } >>"$res_file"
-
+    print_commit_metadata "$commit" >"$res_file"
+    printf '\n\n' >>"$res_file"
     echo "${res}" >>"${res_file}"
 
     printf '%s\n' "${res}"
