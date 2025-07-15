@@ -5,7 +5,7 @@ export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/error.log"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
-SCRIPT="$BATS_TEST_DIRNAME/../src/helpers.sh"
+SCRIPT="$BATS_TEST_DIRNAME/../src/llm.sh"
 
 setup() {
     # adjust the path as needed

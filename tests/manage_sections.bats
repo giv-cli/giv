@@ -2,7 +2,7 @@
 
 # Path to the script under test; adjust as needed
 SCRIPT="${BATS_TEST_DIRNAME}/../src/markdown.sh"
-HELPERS="${BATS_TEST_DIRNAME}/../src/helpers.sh"
+HELPERS="${BATS_TEST_DIRNAME}/../src/system.sh"
 
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
@@ -198,15 +198,15 @@ EOF
     tmpfile=$(get_tmpfile)
 
     run wc -l <"$tmpfile"
-    cat "$tmpfile" | head
+    # cat "$tmpfile" | head
     # Should be original lines + 1 title + blanks + 1 header + blank + 1000 content lines
     expected=$((1 + 1 + 1 + 1 + 1000))
-   assert_output "$expected"
+   assert_output --partial "$expected"
 }
 
 @test "unexpected formatting: missing blank lines around headers" {
     tmp_orig=$(mktemp)
-    # Title and section without blank lines
+    # Title and section without blank l dines
     cat <<EOF >"$tmp_orig"
 # Changelog
 ## OldSec

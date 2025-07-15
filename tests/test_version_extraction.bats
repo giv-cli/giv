@@ -1,6 +1,9 @@
 #!/usr/bin/env bats
 
-load "$BATS_TEST_DIRNAME/../src/helpers.sh"
+
+load "$BATS_TEST_DIRNAME/../src/configuration.sh"
+load "$BATS_TEST_DIRNAME/../src/project.sh"
+load "$BATS_TEST_DIRNAME/../src/system.sh"
 
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'

@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+load "$BATS_TEST_DIRNAME/../src/configuration.sh"
+load "$BATS_TEST_DIRNAME/../src/system.sh"
 setup() {
     # Move into a brand-new repo
     TMP_REPO="$BATS_TEST_DIRNAME/.tmp/tmp_repo"
@@ -23,7 +25,7 @@ setup() {
 
     # Source the script under test
     # Adjust this path if your script lives elsewhere
-    source "${BATS_TEST_DIRNAME}/../src/helpers.sh"
+    source "${BATS_TEST_DIRNAME}/../src/history.sh"
 
     # Stub out summarize_commit to record its inputs
     summarize_commit() {

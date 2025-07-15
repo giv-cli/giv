@@ -6,7 +6,8 @@ export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/error.log"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
-SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
+load "$BATS_TEST_DIRNAME/../src/system.sh"
+SCRIPT="$BATS_TEST_DIRNAME/../src/configuration.sh"
 OG_DIR="$(pwd)"
 
 setup() {
@@ -261,7 +262,7 @@ setup_git_range() {
   assert_output --partial "Unknown option or argument: --"
 }
 
-@test "no pattern corectly sets target and pattern" {
+@test "no pattern correctly sets target and pattern" {
   debug=1
   setup_git_range
   ollama() { echo "ollama called"; }

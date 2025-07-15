@@ -2,7 +2,9 @@
 
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
-load '../src/helpers.sh'
+
+load "$BATS_TEST_DIRNAME/../src/configuration.sh"
+
 export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/main.error.log"
 
 setup_file() {

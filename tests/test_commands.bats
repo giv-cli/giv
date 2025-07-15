@@ -5,12 +5,14 @@ export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/commands.log"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
+load "$BATS_TEST_DIRNAME/../src/configuration.sh"
+
 BATS_TEST_START_TIME="$(date +%s)"
 
 # shellcheck source=../src/giv.sh
 SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
 # shellcheck source=../src/giv.sh
-HELPERS="$BATS_TEST_DIRNAME/../src/helpers.sh"
+HELPERS="$BATS_TEST_DIRNAME/../src/commands.sh"
 # shellcheck source=../src/giv.sh
 TEMPLATES_DIR="$BATS_TEST_DIRNAME/../templates"
 

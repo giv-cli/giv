@@ -10,6 +10,8 @@ set -eu
 
 IFS='
 '
+
+
 # -------------------------------------------------------------------
 # Path detection for libraries, templates, and docs (POSIX compatible)
 # -------------------------------------------------------------------
@@ -25,6 +27,26 @@ get_script_dir() {
     else
         cd "$(dirname "${target}")" 2>/dev/null && pwd
     fi
+}
+get_is_sourced(){
+    # Detect if sourced (works in bash, zsh, dash, sh)
+    _is_sourced=0
+    # shellcheck disable=SC2296
+    # if [ "${BATS_TEST_FILENAME:-}" ]; then
+    #     _is_sourced=1
+    # el
+    if [ "$(basename -- "$0")" = "sh" ] || [ "$(basename -- "$0")" = "-sh" ]; then
+        _is_sourced=1
+    elif [ "${0##*/}" = "dash" ] || [ "${0##*/}" = "-dash" ]; then
+        _is_sourced=1
+    elif [ -n "${ZSH_EVAL_CONTEXT:-}" ] && case $ZSH_EVAL_CONTEXT in *:file) true;; *) false;; esac; then
+        _is_sourced=1
+    elif [ -n "${KSH_VERSION:-}" ] && [ -n "${.sh.file:-}" ] && [ "${.sh.file}" != "" ] && [ "${.sh.file}" != "$0" ]; then
+        _is_sourced=1
+    elif [ -n "${BASH_VERSION:-}" ] && [ -n "${BASH_SOURCE:-}" ] && [ "${BASH_SOURCE}" != "$0" ]; then
+        _is_sourced=1
+    fi
+    echo "${_is_sourced}"
 }
 
 # Try to detect the actual script path
@@ -43,672 +65,66 @@ GIV_TEMPLATE_DIR="${GIV_TEMPLATE_DIR:-}"
 GIV_DOCS_DIR="${GIV_DOCS_DIR:-}"
 
 # Library location (.sh files)
-if [ -n "$GIV_LIB_DIR" ]; then
-    LIB_DIR="$GIV_LIB_DIR"
+if [ -n "${GIV_LIB_DIR}" ]; then
+    LIB_DIR="${GIV_LIB_DIR}"
 elif [ -d "/usr/local/lib/giv" ]; then
     LIB_DIR="/usr/local/lib/giv"
-elif [ -d "$SCRIPT_DIR" ]; then
+elif [ -d "${SCRIPT_DIR}" ]; then
     # Local or system install: helpers in same dir
-    LIB_DIR="$SCRIPT_DIR"
-elif [ -n "${SNAP:-}" ] && [ -d "$SNAP/lib/giv" ]; then
-    LIB_DIR="$SNAP/lib/giv"
+    LIB_DIR="${SCRIPT_DIR}"
+elif [ -n "${SNAP:-}" ] && [ -d "${SNAP}/lib/giv" ]; then
+    LIB_DIR="${SNAP}/lib/giv"
 else
-    printf 'Error: Could not find giv lib directory.\n' >&2
+    printf 'Error: Could not find giv lib directory. %s\n' "$SCRIPT_PATH" >&2
     exit 1
 fi
 
+
 # Template location
-if [ -n "$GIV_TEMPLATE_DIR" ]; then
-    TEMPLATE_DIR="$GIV_TEMPLATE_DIR"
-elif [ -d "$LIB_DIR/../templates" ]; then
-    TEMPLATE_DIR="$LIB_DIR/../templates"
+if [ -n "${GIV_TEMPLATE_DIR}" ]; then
+    TEMPLATE_DIR="${GIV_TEMPLATE_DIR}"
+elif [ -d "${LIB_DIR}/../templates" ]; then
+    TEMPLATE_DIR="${LIB_DIR}/../templates"
 elif [ -d "/usr/local/share/giv/templates" ]; then
     TEMPLATE_DIR="/usr/local/share/giv/templates"
-elif [ -n "${SNAP:-}" ] && [ -d "$SNAP/share/giv/templates" ]; then
-    TEMPLATE_DIR="$SNAP/share/giv/templates"
+elif [ -n "${SNAP:-}" ] && [ -d "${SNAP}/share/giv/templates" ]; then
+    TEMPLATE_DIR="${SNAP}/share/giv/templates"
 else
     printf 'Error: Could not find giv template directory.\n' >&2
     exit 1
 fi
 
 # Docs location (optional)
-if [ -n "$GIV_DOCS_DIR" ]; then
-    DOCS_DIR="$GIV_DOCS_DIR"
-elif [ -d "$LIB_DIR/../docs" ]; then
-    DOCS_DIR="$LIB_DIR/../docs"
+if [ -n "${GIV_DOCS_DIR}" ]; then
+    DOCS_DIR="${GIV_DOCS_DIR}"
+elif [ -d "${LIB_DIR}/../docs" ]; then
+    DOCS_DIR="${LIB_DIR}/../docs"
 elif [ -d "/usr/local/share/giv/docs" ]; then
     DOCS_DIR="/usr/local/share/giv/docs"
-elif [ -n "${SNAP:-}" ] && [ -d "$SNAP/share/giv/docs" ]; then
-    DOCS_DIR="$SNAP/share/giv/docs"
+elif [ -n "${SNAP:-}" ] && [ -d "${SNAP}/share/giv/docs" ]; then
+    DOCS_DIR="${SNAP}/share/giv/docs"
 else
     DOCS_DIR=""  # It's optional; do not fail if not found
 fi
 
-# shellcheck source=helpers.sh
-. "${LIB_DIR}/helpers.sh"
+# shellcheck source=./system.sh
+. "${LIB_DIR}/system.sh"
+# shellcheck source=./configuration.sh
+. "${LIB_DIR}/configuration.sh"
 # shellcheck source=markdown.sh
 . "${LIB_DIR}/markdown.sh"
-
-# Detect if sourced (works in bash, zsh, dash, sh)
-_is_sourced=0
-# shellcheck disable=SC2296
-# if [ "${BATS_TEST_FILENAME:-}" ]; then
-#     _is_sourced=1
-# el
-if [ "$(basename -- "$0")" = "sh" ] || [ "$(basename -- "$0")" = "-sh" ]; then
-    _is_sourced=1
-elif [ "${0##*/}" = "dash" ] || [ "${0##*/}" = "-dash" ]; then
-    _is_sourced=1
-elif [ -n "${ZSH_EVAL_CONTEXT:-}" ] && case $ZSH_EVAL_CONTEXT in *:file) true;; *) false;; esac; then
-    _is_sourced=1
-elif [ -n "${KSH_VERSION:-}" ] && [ -n "${.sh.file:-}" ] && [ "${.sh.file}" != "" ] && [ "${.sh.file}" != "$0" ]; then
-    _is_sourced=1
-elif [ -n "${BASH_VERSION:-}" ] && [ -n "${BASH_SOURCE:-}" ] && [ "${BASH_SOURCE}" != "$0" ]; then
-    _is_sourced=1
-fi
-
-GIV_TMPDIR=""
-REVISION=""
-PATHSPEC=""
-
-config_file=""
-is_config_loaded=false
-debug=false
-dry_run=""
-template_dir="${TEMPLATE_DIR}"
-output_file=''
-todo_pattern=''
-todo_files="*todo*"
-
-# Subcommand & templates
-subcmd=''
-output_mode='auto'
-output_version='auto'
-version_file=''
-version_pattern=''
-prompt_file=''
-
-# Model settings
-model=${GIV_MODEL:-'devstral'}
-model_mode=${GIV_MODEL_MODE:-'auto'}
-api_model=${GIV_API_MODEL:-}
-api_url=${GIV_API_URL:-}
-api_key=${GIV_API_KEY:-}
-
-# Changelog & release defaults
-changelog_file='CHANGELOG.md'
-release_notes_file='RELEASE_NOTES.md'
-announce_file='ANNOUNCEMENT.md'
-
-# Parses command-line arguments passed to the script and sets corresponding
-# variables or flags based on the provided options. Handles validation and
-# error reporting for invalid or missing arguments.
-#
-# Usage:
-#   parse_args "$@"
-#
-# Globals:
-#   May set or modify global variables depending on parsed arguments.
-#
-# Arguments:
-#   All command-line arguments passed to the script.
-#
-# Returns:
-#   0 if parsing is successful, non-zero on error.
-parse_args() {
-
-    # Restore original arguments for main parsing
-    # 1. Subcommand or help/version must be first
-    if [ $# -eq 0 ]; then
-        printf 'No arguments provided.\n'
-        exit 1
-    fi
-    case "$1" in
-    -h | --help | help)
-        show_help
-        exit 0
-        ;;
-    -v | --version)
-        show_version
-        exit 0
-        ;;
-    message | msg | summary | changelog \
-        | document | doc | release-notes | announcement \
-        | available-releases | update)
-        subcmd=$1
-        shift
-        ;;
-    *)
-        echo "First argument must be a subcommand or -h/--help/-v/--version"
-        show_help
-        exit 1
-        ;;
-    esac
-
-    # Preserve original arguments for later parsing
-    set -- "$@"
-
-    # Early config file parsing (handle both --config-file and --config-file=)
-    config_file="${PWD}/.env"
-    i=1
-    while [ $i -le $# ]; do
-        eval "arg=\${$i}"
-        # shellcheck disable=SC2154
-        case "$arg" in
-        --config-file)
-            next=$((i + 1))
-            if [ $next -le $# ]; then
-                eval "config_file=\${$next}"
-                print_debug "Debug: Found config file argument: --config-file ${config_file}"
-                break
-            else
-                printf 'Error: --config-file requires a file path argument.\n'
-                exit 1
-            fi
-            ;;
-        --config-file=*)
-            config_file="${arg#--config-file=}"
-            print_debug "Found config file argument: --config-file=${config_file}"
-            break
-            ;;
-        *)
-            # Not a config file argument, continue parsing
-            ;;
-        esac
-        i=$((i + 1))
-    done
-
-    # -------------------------------------------------------------------
-    # Config file handling (early parse)
-    # -------------------------------------------------------------------
-
-    # Always attempt to source config file if it exists; empty config_file is a valid state.
-    if [ -n "${config_file}" ] && [ -f "${config_file}" ]; then
-        # shellcheck disable=SC1090
-        . "${config_file}"
-        is_config_loaded=true
-        print_debug "Loaded config file: ${config_file}"
-        # Override defaults with config file values
-        model=${GIV_MODEL:-${model}}
-        model_mode=${GIV_MODEL_MODE:-${model_mode}}
-        api_model=${GIV_API_MODEL:-${api_model}}
-        api_url=${GIV_API_URL:-${api_url}}
-        api_key=${GIV_API_KEY:-${api_key}}
-    elif [ ! -f "${config_file}" ] && [ "${config_file}" != "${PWD}/.env" ]; then
-        print_warn "config file ${config_file} not found."
-    fi
-
-    # 2. Next arg: revision (if present and not option)
-    if [ $# -gt 0 ]; then
-        case "$1" in
-        --current | --staged | --cached)
-            if [ "$1" = "--staged" ]; then
-                REVISION="--cached"
-            else
-                REVISION="$1"
-            fi
-            shift
-            ;;
-        -*)
-            : # skip, no target
-            ;;
-        *)
-            print_debug "Parsing revision: $1"
-            # Check if $1 is a valid commit range or commit id
-            if echo "$1" | grep -q '\.\.'; then
-                if git rev-list "$1" >/dev/null 2>&1; then
-                    REVISION="$1"
-                    # If it's a valid commit ID, shift it
-                    print_debug "Valid commit range: $1"
-                    shift
-                else
-                    printf 'Error: Invalid commit range: %s\n' "$1" >&2
-                    exit 1
-                fi
-            elif git rev-parse --verify "$1" >/dev/null 2>&1; then
-                REVISION="$1"
-                # If it's a valid commit ID, shift it
-                print_debug "Valid commit ID: $1"
-                shift
-            else
-                printf 'Error: Invalid target: %s\n' "$1" >&2
-                exit 1
-            fi
-            # else: do not shift, let it fall through to pattern parsing
-            ;;
-        esac
-    fi
-
-    if [ -z "${REVISION}" ]; then
-        # If no target specified, default to current working tree
-        print_debug "Debug: No target specified, defaulting to current working tree."
-        REVISION="--current"
-    fi
-    # 3. Collect all non-option args as pattern (until first option or end)
-    PATHSPEC=""
-    while [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; do
-        # If the first argument is a pattern, collect it
-        print_debug "Collecting pattern: $1"
-        if [ -z "${PATHSPEC}" ]; then
-            PATHSPEC="$1"
-        else
-            PATHSPEC="${PATHSPEC} $1"
-        fi
-        shift
-    done
-
-    print_debug "Target and pattern parsed: ${REVISION}, ${PATHSPEC}"
-
-    # 4. Remaining args: global options
-    while [ $# -gt 0 ]; do
-        case "$1" in
-        --verbose)
-            debug="true"
-            shift
-            ;;
-        --dry-run)
-            dry_run="true"
-            shift
-            ;;
-        --config-file)
-            config_file=$2
-            shift 2
-            ;;
-        --todo-files)
-            todo_files=$2
-            shift 2
-            ;;
-        --todo-pattern)
-            todo_pattern=$2
-            shift 2
-            ;;
-        --prompt-file)
-            prompt_file=$2
-            shift 2
-            ;;
-        --model-mode)
-            model_mode=$2
-            shift 2
-            ;;
-        --model)
-            model=$2
-            shift 2
-            ;;
-        --api-model)
-            api_model=$2
-            shift 2
-            ;;
-        --api-url)
-            api_url=$2
-            shift 2
-            ;;
-        --api-key)
-            api_key=$2
-            shift 2
-            ;;
-        --version-file)
-            version_file=$2
-            shift 2
-            ;;
-        --version-pattern)
-            version_pattern=$2
-            shift 2
-            ;;
-        --output-version)
-            output_version=$2
-            shift 2
-            ;;
-        --output-mode)
-            output_mode=$2
-            shift 2
-            ;;
-        --output-file)
-            output_file=$2
-            shift 2
-            ;;
-        --)
-            echo "Unknown option or argument: $1" >&2
-            show_help
-            exit 1
-            ;;
-        --*)
-            echo "Unknown option or argument: $1" >&2
-            show_help
-            exit 1
-            ;;
-        *)
-            echo "Unknown argument: $1" >&2
-            show_help
-            exit 1
-            ;;
-        esac
-    done
-
-    # If subcommand is document, ensure we have a prompt file
-    if [ "${subcmd}" = "document" ] && [ -z "${prompt_file}" ]; then
-        printf 'Error: --prompt-file is required for the document subcommand.\n' >&2
-        exit 1
-    fi
-
-    # Determine ollama/remote mode once before parsing args
-    if [ "${model_mode}" = "auto" ] || [ "${model_mode}" = "local" ]; then
-        if ! command -v ollama >/dev/null 2>&1; then
-            print_debug "ollama not found, forcing remote mode (local model unavailable)"
-            model_mode="remote"
-            if [ -z "${api_key}" ]; then
-                print_warn "No local model and no API configured; outputting prompt template only."
-                model_mode="none"
-                dry_run=true
-            fi
-            if [ -z "${api_url}" ]; then
-                print_warn "No local model and no API configured; outputting prompt template only."
-                model_mode="none"
-                dry_run=true
-            fi
-        else
-            model_mode="local"
-        fi
-    elif [ "${model_mode}" = "remote" ]; then
-        if [ -z "${api_key}" ]; then
-            printf 'Error: Remote mode is enabled, but no API key provided (use --api-key or GIV_API_KEY).\n' >&2
-            exit 1
-        fi
-        if [ -z "${api_url}" ]; then
-            printf 'Error: Remote mode is enabled, but no API URL provided (use --api-url or GIV_API_URL).\n' >&2
-            exit 1
-        fi
-    fi
-
-    [ "${model_mode}" = "none" ] && print_warn "Model mode set to \"none\", only prompt templates will be returned."
-
-    print_debug "Environment variables:"
-    print_debug "  GIV_TMPDIR: ${GIV_TMPDIR:-}"
-    print_debug "  GIV_MODEL_MODE: ${GIV_MODEL_MODE:-}"
-    print_debug "  GIV_MODEL: ${GIV_MODEL:-}"
-    print_debug "  GIV_API_MODEL: ${GIV_API_MODEL:-}"
-    print_debug "  GIV_API_URL: ${GIV_API_URL:-}"
-    print_debug "Parsed options:"
-    print_debug "  Debug: ${debug}"
-    print_debug "  Dry Run: ${dry_run}"
-    print_debug "  Subcommand: ${subcmd}"
-    print_debug "  Revision: ${REVISION}"
-    print_debug "  Pathspec: ${PATHSPEC}"
-    print_debug "  Template Directory: ${template_dir}"
-    print_debug "  Config File: ${config_file}"
-    print_debug "  Config Loaded: ${is_config_loaded}"
-    print_debug "  TODO Files: ${todo_files}"
-    print_debug "  TODO Pattern: ${todo_pattern}"
-    print_debug "  Version File: ${version_file}"
-    print_debug "  Version Pattern: ${version_pattern}"
-    print_debug "  Model: ${model}"
-    print_debug "  Model Mode: ${model_mode}"
-    print_debug "  API Model: ${api_model}"
-    print_debug "  API URL: ${api_url}"
-    print_debug "  Output File: ${output_file}"
-    print_debug "  Output Mode: ${output_mode}"
-    print_debug "  Output Version: ${output_version}"
-    print_debug "  Prompt File: ${prompt_file}"
-}
-
-# -------------------------------------------------------------------
-# Helper Functions
-# -------------------------------------------------------------------
-show_version() {
-    printf '%s\n' "${__VERSION}"
-}
-# Show all available release tags
-get_available_releases() {
-    curl -s https://api.github.com/repos/giv-cli/giv/releases | awk -F'"' '/"tag_name":/ {print $4}'
-    exit 0
-}
-# Update the script to a specific release version (or latest if not specified)
-run_update() {
-    version="${1:-latest}"
-    if [ "${version}" = "latest" ]; then
-        latest_version=$(get_available_releases | head -n 1)
-        printf 'Updating giv to version %s...\n' "${latest_version}"
-        curl -fsSL https://raw.githubusercontent.com/giv-cli/giv/main/install.sh | sh -- --version "${latest_version}"
-    else
-        printf 'Updating giv to version %s...\n' "${version}"
-        curl -fsSL "https://raw.githubusercontent.com/giv-cli/giv/main/install.sh" | sh -- --version "${version}"
-    fi
-    printf 'Update complete.\n'
-    exit 0
-}
-
-show_help() {
-    cat <<EOF
-Usage: giv <subcommand> [revision] [pathspec] [OPTIONS]
-
-Argument        Meaning
---------------- ------------------------------------------------------------------------------
-revision        Any Git revision or revision-range (HEAD, v1.2.3, abc123, HEAD~2..HEAD, origin/main...HEAD, --cached, --current)
-pathspec        Standard Git pathspec to narrow scope—supports magic prefixes, negation (! or :(exclude)), and case-insensitive :(icase)
-
-Option Groups
-
-General
-  -h, --help            Show this help and exit
-  -v, --version         Show giv version
-  --verbose             Enable debug/trace output
-  --dry-run             Preview only; don't write any files
-  --config-file PATH    Shell config file to source before running
-
-Revision & Path Selection (what to read)
-  (positional) revision   Git revision or range
-  (positional) pathspec   Git pathspec filter
-
-Diff & Content Filters (what to keep)
-  --todo-files PATHSPEC   Pathspec for files to scan for TODOs
-  --todo-pattern REGEX    Regex to match TODO lines
-  --version-file PATHSPEC Pathspec of file(s) to inspect for version bumps
-  --version-pattern REGEX Custom regex to identify version strings
-
-AI / Model (how to think)
-  --model MODEL          Local Ollama model name
-  --model-mode MODE      auto (default), local, remote, none
-  --api-model MODEL      Remote model name when in remote mode
-  --api-url URL          Remote API endpoint URL
-  --api-key KEY          API key for remote mode
-
-Output Behaviour (where to write)
-  --output-mode MODE     auto, prepend, append, update, none
-  --output-version NAME  Override section header/tag name
-  --output-file PATH     Destination file (defaults per subcommand)
-  --prompt-file PATH     Markdown prompt template to use (required for 'document')
-
-Maintenance Subcommands
-  available-releases     List available script versions
-  update                 Self-update giv to latest or specified version
-
-Subcommands
-  message                Draft an AI commit message (default)
-  summary                Human-readable summary of changes
-  changelog              Create or update CHANGELOG.md
-  release-notes          Generate release notes for a tagged release
-  announcement           Create a marketing-style announcement
-  document               Generate custom content using your own prompt template
-  available-releases     List script versions
-  update                 Self-update giv
-
-Examples:
-  giv message HEAD~3..HEAD src/
-  giv summary --output-file SUMMARY.md --model-mode remote
-  giv changelog v1.0.0..HEAD --todo-files '*.js' --todo-pattern 'TODO:'
-  giv release-notes v1.2.0..HEAD --api-model gpt-4o --api-url https://api.example.com
-  giv announcement --output-file ANNOUNCE.md --model-mode remote
-  giv document --prompt-file templates/my_custom_prompt.md --output-file REPORT.md HEAD
-EOF
-    printf '\nFor more information, see the documentation at %s\n' "${DOCS_DIR:-<no docs dir>}"
-}
+# shellcheck source=llm.sh
+. "${LIB_DIR}/llm.sh"
+# shellcheck source=project.sh
+. "${LIB_DIR}/project.sh"
+# shellcheck source=history.sh
+. "${LIB_DIR}/history.sh"
+# shellcheck source=commands.sh
+. "${LIB_DIR}/commands.sh"
 
 
-
-# # -------------------------------------------------------------------
-# # Subcommand Implementations
-# # -------------------------------------------------------------------
-
-cmd_message() {
-    commit_id="${1:-}"
-    if [ -z "${commit_id}" ]; then
-        commit_id="--current"
-    fi
-
-    print_debug "Generating commit message for ${commit_id}"
-
-    # Handle both --current and --cached (see argument parsing section for details).
-    if [ "${commit_id}" = "--current" ] || [ "${commit_id}" = "--cached" ]; then
-        hist=$(portable_mktemp "commit_history_XXXXXX.md")
-        build_history "${hist}" "${commit_id}" "${todo_pattern}" "${PATHSPEC}"
-        print_debug "Generated history file ${hist}"
-        pr=$(portable_mktemp "commit_message_prompt_XXXXXX.md")
-        build_prompt --template "${TEMPLATE_DIR}/message_prompt.md" \
-            --summary "${hist}" >"${pr}"
-        print_debug "Generated prompt file ${pr}"
-        res=$(generate_response "${pr}" "${model_mode}" "0.9" "32768")        
-        if [ $? -ne 0 ]; then
-            printf 'Error: Failed to generate AI response.\n' >&2
-            exit 1
-        fi
-        printf '%s\n' "${res}"
-        return
-    fi
-    # Detect exactly two- or three-dot ranges (A..B or A...B)
-    if echo "${commit_id}" | grep -qE '\.\.\.?'; then
-        print_debug "Detected commit range syntax: ${commit_id}"
-
-        # Confirm Git accepts it as a valid range
-        if ! git rev-list "${commit_id}" >/dev/null 2>&1; then
-            print_error "Invalid commit range: ${commit_id}"
-            exit 1
-        fi
-
-        # Use symmetric-difference for three-dot, exclusion for two-dot
-        case "${commit_id}" in
-        *...*)
-            print_debug "Processing three-dot range: ${commit_id}"
-            git --no-pager log --pretty=%B --left-right "${commit_id}" | sed '${/^$/d;}'
-            ;;
-        *..*)
-            print_debug "Processing two-dot range: ${commit_id}"
-            git --no-pager log --reverse --pretty=%B "${commit_id}" | sed '${/^$/d;}'
-            ;;
-        *) ;;
-        esac
-        return
-    fi
-
-    print_debug "Processing single commit: ${commit_id}"
-    if ! git rev-parse --verify "${commit_id}" >/dev/null 2>&1; then
-        printf 'Error: Invalid commit ID: %s\n' "${commit_id}" >&2
-        exit 1
-    fi
-    git --no-pager log -1 --pretty=%B "${commit_id}" | sed '${/^$/d;}'
-    return
-}
-
-
-# -------------------------------------------------------------------
-# cmd_changelog: generate or update CHANGELOG.md from Git history
-# -------------------------------------------------------------------
-cmd_changelog() {
-    # 1) Determine output file
-    output_file="${output_file:-$changelog_file}"
-    print_debug "Changelog file: $output_file"
-
-    # 2) Summarize Git history
-    summaries_file=$(portable_mktemp "summaries.XXXXXXX.md") || {
-        printf 'Error: cannot create temp file for summaries\n' >&2
-        exit 1
-    }
-    if ! summarize_target "$REVISION" "$summaries_file" "$model_mode"; then
-        printf 'Error: summarize_target failed\n' >&2
-        rm -f "$summaries_file"
-        exit 1
-    fi
-
-    # 3) Require non-empty summaries
-    if [ ! -s "$summaries_file" ]; then
-        printf 'Error: No summaries generated for changelog.\n' >&2
-        rm -f "$summaries_file"
-        exit 1
-    fi
-
-    # 4) Build the AI prompt
-    prompt_template="${TEMPLATE_DIR}/changelog_prompt.md"
-    print_debug "Building prompt from template: $prompt_template"
-    tmp_prompt_file=$(portable_mktemp "changelog_prompt.XXXXXXX.md") || {
-        printf 'Error: cannot create temp file for prompt\n' >&2
-        rm -f "$summaries_file"
-        exit 1
-    }
-    if ! build_prompt --template "$prompt_template" --summary "$summaries_file" >"$tmp_prompt_file"; then
-        printf 'Error: build_prompt failed\n' >&2
-        rm -f "$summaries_file" "$tmp_prompt_file"
-        exit 1
-    fi
-
-    # 5) Generate AI response
-    response_file=$(portable_mktemp "changelog_response.XXXXXXX.md") || {
-        printf 'Error: cannot create temp file for AI response\n' >&2
-        rm -f "$summaries_file" "$tmp_prompt_file"
-        exit 1
-    }
-    if ! generate_from_prompt "$tmp_prompt_file" "$response_file" \
-        "$model_mode" "0.7"; then
-        printf 'Error: generate_from_prompt failed\n' >&2
-        rm -f "$summaries_file" "$tmp_prompt_file" "$response_file"
-        exit 1
-    fi
-
-    # 6) Prepare a working copy of the changelog
-    tmp_out=$(portable_mktemp "changelog_output.XXXXXXX.md") || {
-        printf 'Error: cannot create temp file for changelog update\n' >&2
-        exit 1
-    }
-    # ensure the file exists so cp won't fail
-    [ -f "$output_file" ] || : >"$output_file"
-    cp "$output_file" "$tmp_out"
-
-    print_debug "Updating changelog (version=$output_version, mode=$output_mode)"
-
-    # 7) Map "auto" → "update" for manage_section
-    mode_arg=$output_mode
-    [ "$mode_arg" = auto ] && mode_arg=update
-
-    # call our helper; it returns the path to the new file
-    updated=$(manage_section \
-        "# Changelog" \
-        "$tmp_out" \
-        "$response_file" \
-        "$mode_arg" \
-        "$output_version" \
-        "##") || {
-        printf 'Error: manage_section failed\n' >&2
-        exit 1
-    }
-    cat "$updated" >"$tmp_out"
-    append_link "$tmp_out" "Managed by giv" "https://github.com/giv-cli/giv"
-
-    # 8) Dry‐run?
-    if [ "$dry_run" = "true" ]; then
-        print_debug "Dry run: updated changelog content:"
-        cat "$tmp_out"
-        return 0
-    fi
-
-    # 9) Write back to real changelog
-    if cat "$tmp_out" >"$output_file"; then
-        printf 'Changelog written to %s\n' "$output_file"
-    else
-        printf 'Error: Failed to write %s\n' "$output_file" >&2
-        exit 1
-    fi
-
-    print_debug "Changelog generated successfully."
-}
-
-if [ "${_is_sourced}" -eq 0 ]; then
+is_sourced="$(get_is_sourced)"
+if [ "${is_sourced}" -eq 0 ]; then
     portable_mktemp_dir
     parse_args "$@"
 

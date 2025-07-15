@@ -5,7 +5,10 @@ export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/error.log"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
-SCRIPT="$BATS_TEST_DIRNAME/../src/helpers.sh"
+load "$BATS_TEST_DIRNAME/../src/configuration.sh"
+load "$BATS_TEST_DIRNAME/../src/system.sh"
+load "$BATS_TEST_DIRNAME/../src/project.sh"
+SCRIPT="$BATS_TEST_DIRNAME/../src/history.sh"
 
 setup() {
     # Create a temporary git repo

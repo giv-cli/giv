@@ -1,5 +1,6 @@
 #!/usr/bin/env bats
-load '../src/helpers.sh'
+load '../src/project.sh'
+load '../src/llm.sh'
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
