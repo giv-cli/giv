@@ -121,11 +121,11 @@ generate_remote() {
 
     # shellcheck disable=SC2154
     body=$(printf '{"model":"%s","messages":[{"role":"user","content":%s}],"max_completion_tokens":8192}' \
-        "${api_model}" "${escaped_content}")
+        "${GIV_API_MODEL}" "${escaped_content}")
 
     # shellcheck disable=SC2154
-    response=$(curl -s -X POST "${api_url}" \
-        -H "Authorization: Bearer ${api_key}" \
+    response=$(curl -s -X POST "${GIV_API_URL}" \
+        -H "Authorization: Bearer ${GIV_API_KEY}" \
         -H "Content-Type: application/json" \
         -d "${body}")
 
@@ -147,14 +147,14 @@ run_local() {
     orig_ollama_temperature="${OLLAMA_TEMPERATURE:-}"
     orig_ollama_num_ctx="${OLLAMA_NUM_CTX:-}"
 
-    export OLLAMA_TEMPERATURE="${3:-0.9}"
-    export OLLAMA_NUM_CTX="${4:-32768}"
+    export OLLAMA_TEMPERATURE="${2:-0.9}"
+    export OLLAMA_NUM_CTX="${3:-32768}"
 
     if [ "$debug" = "true" ]; then
         # shellcheck disable=SC2154
-        ollama run "${model}" --verbose <"$1"
+        ollama run "${GIV_MODEL}" --verbose <"$1"
     else
-        ollama run "${model}" <"$1"
+        ollama run "${GIV_MODEL}" <"$1"
     fi
 
     # Reset to original values after the command completes
@@ -171,7 +171,7 @@ run_local() {
 #   $4 (optional) - Context window size for the model, if applicable.
 #
 # Description:
-#   The function determines the mode of operation based on the second argument ($2), falling back to the `model_mode` environment variable, and finally defaulting to 'auto'.
+#   The function determines the mode of operation based on the second argument ($2), falling back to the `GIV_MODEL_MODE` environment variable, and finally defaulting to 'auto'.
 #   If debugging is enabled (via the `debug` environment variable), it prints a debug message indicating the chosen mode.
 #
 #   Depending on the mode:
@@ -179,7 +179,7 @@ run_local() {
 #     - 'none': Outputs the content of the input file directly using `cat`.
 #     - Any other value: Calls the `run_local` function with the input file path as an argument, along with temperature and context window size if provided.
 generate_response() {
-    gen_mode="${2:-$model_mode:-auto}"
+    gen_mode="${2:-$GIV_MODEL_MODE:-auto}"
     temp="${3:-0.5}"         # Default to a neutral temperature of 0.5
     ctx_window="${4:-32768}" # Default context window size
 
@@ -378,7 +378,7 @@ build_prompt() {
 generate_from_prompt() {
     prompt_file="$1"
     response_output_file="$2"
-    gen_mode="${3:-${GIV_MODEL_MODE:-${model_mode:-auto}}}"
+    gen_mode="${3:-${GIV_MODEL_MODE:-${GIV_MODEL_MODE:-auto}}}"
     temperature="${4:-0.9}"      # Default value for temperature
     context_window="${5:-32768}" # Default value for context window
 
@@ -393,7 +393,7 @@ generate_from_prompt() {
     fi
 
     # 2) Dry‐run?  Just print and exit
-    if [ "${dry_run:-}" = "true" ] || [ -z "${response_output_file}" ]; then
+    if [ "${GIV_DRY_RUN:-}" = "true" ] || [ -z "${response_output_file}" ]; then
         printf '%s\n' "$res"
         return 0
     fi

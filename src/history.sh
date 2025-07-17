@@ -176,13 +176,13 @@ build_history() {
 #   $1 = target (SHA, range, --current, --cached, or "")
 #   $2 = path to write summaries into
 #   $3 = pathspec to limit changes
-#   $4 = (optional) override for model_mode
+#   $4 = (optional) override for GIV_MODEL_MODE
 # -------------------------------------------------------------------
 summarize_target() {
     target="$1"
     summaries_file="$2"
     pathspec="$3"
-    gen_mode="${4:-$model_mode}"
+    gen_mode="${4:-$GIV_MODEL_MODE:-auto}"
 
     # 1) Special "current" / "cached" / empty
     if [ -z "$target" ] || [ "$target" = "--current" ] || [ "$target" = "--cached" ]; then
@@ -250,7 +250,7 @@ summarize_target() {
 #
 # Arguments:
 #   $1 - The commit hash or identifier to summarize.
-#   $2 - (Optional) The generation mode to use; defaults to the value of $model_mode.
+#   $2 - (Optional) The generation mode to use; defaults to the value of $GIV_MODEL_MODE.
 #
 # Description:
 #   This function creates temporary files to store commit history, prompt, and summary results.
@@ -271,16 +271,16 @@ summarize_target() {
 summarize_commit() {
     commit="$1"
     pathspec="$2"
-    gen_mode="${3:-${model_mode}}"
+    gen_mode="${3:-${GIV_MODEL_MODE:-auto}}"
     hist=$(portable_mktemp "hist.${commit}.XXXXXX.md")
     pr=$(portable_mktemp "prompt.${commit}.XXXXXX.md")
     res_file=$(portable_mktemp "summary.${commit}.XXXXXX.md")
     print_debug "summarize_commit ${commit} ${hist} ${pr}"
-    build_history "${hist}" "${commit}" "${todo_pattern}" "$pathspec"
+    build_history "${hist}" "${commit}" "${GIV_TODO_PATTERN}" "$pathspec"
     sc_version_file=$(find_version_file)
     sc_version=$(get_version_info "${commit}" "${sc_version_file}")
     summary_template=$(build_prompt --version "${sc_version}" \
-        --template "${TEMPLATE_DIR}/summary_prompt.md" --summary "${hist}")
+        --template "${GIV_TEMPLATE_DIR}/summary_prompt.md" --summary "${hist}")
     print_debug "Using summary prompt: ${summary_template}"
     printf '%s\n' "${summary_template}" >"${pr}"
     res=$(generate_response "${pr}" "${gen_mode}" "0.9" "32768")

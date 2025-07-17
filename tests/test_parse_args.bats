@@ -1,19 +1,21 @@
 #!/usr/bin/env bats
-set +u
+set -u
 BATS_TEST_START_TIME="$(date +%s)"
 mkdir -p "$BATS_TEST_DIRNAME/.logs"
 export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/error.log"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
+load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
 SCRIPT="$BATS_TEST_DIRNAME/../src/args.sh"
 OG_DIR="$(pwd)"
-
+export GIV_TEMPLATE_DIR="${BATS_TEST_DIRNAME}/../templates"
+export __VERSION="1.0.0"
 setup() {
   # stub out external commands so parse_args doesn't actually exec them
   show_help() { printf 'HELP\n'; }
-  show_version() { printf 'VERSION\n'; }
+  show_version() { printf '%s\n' "$__VERSION"; }
   #is_valid_git_range() { return 0; }
 
   # stub ollama/command-v checks so we never fall into the remote-mode branches
@@ -262,14 +264,13 @@ setup_git_range() {
   assert_output --partial "Unknown option or argument: --"
 }
 
-@test "no pattern correctly sets target and pattern" {
-  debug=1
+@test "no pattern correctly sets target and pattern" {  
   setup_git_range
   ollama() { echo "ollama called"; }
-  debug="true"
+  export GIV_DEBUG="true"
   run parse_args changelog HEAD
-  assert_success
   echo "$output"
+  assert_success
   assert_output --partial "Subcommand: changelog"
   assert_output --partial "Revision: HEAD"
   assert_output --partial "Pathspec: "

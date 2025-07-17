@@ -60,12 +60,12 @@ fi
 SCRIPT_DIR="$(get_script_dir "${SCRIPT_PATH}")"
 
 # Allow overrides for advanced/testing/dev
-GIV_LIB_DIR="${GIV_LIB_DIR:-}"
-GIV_TEMPLATE_DIR="${GIV_TEMPLATE_DIR:-}"
-GIV_DOCS_DIR="${GIV_DOCS_DIR:-}"
+LIB_DIR=""
+TEMPLATE_DIR=""
+DOCS_DIR=""
 
 # Library location (.sh files)
-if [ -n "${GIV_LIB_DIR}" ]; then
+if [ -n "${GIV_LIB_DIR:-}" ]; then
     LIB_DIR="${GIV_LIB_DIR}"
 elif [ -d "/usr/local/lib/giv" ]; then
     LIB_DIR="/usr/local/lib/giv"
@@ -78,10 +78,10 @@ else
     printf 'Error: Could not find giv lib directory. %s\n' "$SCRIPT_PATH" >&2
     exit 1
 fi
-
+GIV_LIB_DIR="${LIB_DIR}"
 
 # Template location
-if [ -n "${GIV_TEMPLATE_DIR}" ]; then
+if [ -n "${GIV_TEMPLATE_DIR:-}" ]; then
     TEMPLATE_DIR="${GIV_TEMPLATE_DIR}"
 elif [ -d "${LIB_DIR}/../templates" ]; then
     TEMPLATE_DIR="${LIB_DIR}/../templates"
@@ -93,9 +93,10 @@ else
     printf 'Error: Could not find giv template directory.\n' >&2
     exit 1
 fi
+GIV_TEMPLATE_DIR="${TEMPLATE_DIR}"
 
 # Docs location (optional)
-if [ -n "${GIV_DOCS_DIR}" ]; then
+if [ -n "${GIV_DOCS_DIR:-}" ]; then
     DOCS_DIR="${GIV_DOCS_DIR}"
 elif [ -d "${LIB_DIR}/../docs" ]; then
     DOCS_DIR="${LIB_DIR}/../docs"
@@ -106,6 +107,7 @@ elif [ -n "${SNAP:-}" ] && [ -d "${SNAP}/share/giv/docs" ]; then
 else
     DOCS_DIR=""  # It's optional; do not fail if not found
 fi
+GIV_DOCS_DIR="${DOCS_DIR}"
 
 # shellcheck source=./config.sh
 . "${LIB_DIR}/config.sh"
@@ -142,38 +144,41 @@ if [ "${is_sourced}" -eq 0 ]; then
 
     # Dispatch logic
     case "${subcmd}" in
-    message | msg) cmd_message "${GIV_REVISION}" ;;
+    message | msg) cmd_message "${GIV_REVISION}" \
+        "${GIV_PATHSPEC}" \
+        "${GIV_TODO_PATTERN}" \
+        "${GIV_MODEL_MODE}" ;;
     document | doc) cmd_document \
       "${prompt_file}" \
       "${GIV_REVISION}" \
-      "${PATHSPEC}" \
+      "${GIV_PATHSPEC}" \
       "${output_file:-}" \
-      "${model_mode}" \
+      "${GIV_MODEL_MODE}" \
       "0.7" "" ;;
     summary) cmd_document \
-      "${TEMPLATE_DIR}/final_summary_prompt.md" \
+      "${GIV_TEMPLATE_DIR}/final_summary_prompt.md" \
       "${GIV_REVISION}" \
-      "${PATHSPEC}" \
+      "${GIV_PATHSPEC}" \
       "${output_file:-}" \
-      "${model_mode}" \
+      "${GIV_MODEL_MODE}" \
       "0.7" "" ;;
     release-notes) cmd_document \
-      "${TEMPLATE_DIR}/release_notes_prompt.md" \
+      "${GIV_TEMPLATE_DIR}/release_notes_prompt.md" \
       "${GIV_REVISION}" \
-      "${PATHSPEC}" \
+      "${GIV_PATHSPEC}" \
       "${output_file:-$release_notes_file}" \
-      "${model_mode}" \
+      "${GIV_MODEL_MODE}" \
       "0.6" \
       "65536" ;;
     announcement)  cmd_document \
-      "${TEMPLATE_DIR}/announcement_prompt.md" \
+      "${GIV_TEMPLATE_DIR}/announcement_prompt.md" \
       "${GIV_REVISION}" \
-      "${PATHSPEC}" \
+      "${GIV_PATHSPEC}" \
       "${output_file:-$announce_file}" \
-      "${model_mode}" \
+      "${GIV_MODEL_MODE}" \
       "0.5" \
       "65536" ;;
-    changelog) cmd_changelog "${GIV_REVISION}" "${PATHSPEC}" ;;
+    changelog) cmd_changelog "${GIV_REVISION}" "${GIV_PATHSPEC}" ;;
     help)
         show_help
         exit 0

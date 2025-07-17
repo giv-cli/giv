@@ -45,6 +45,10 @@ run_update() {
 
 cmd_message() {
     commit_id="${1:-}"
+    pathspec="${2:-GIV_PATHSPEC}" # New argument for PATHSPEC
+    todo_pattern="${3:-GIV_TODO_PATTERN}" # New argument for todo_pattern
+    model_mode="${4:-}" # New argument for model_mode
+
     if [ -z "${commit_id}" ]; then
         commit_id="--current"
     fi
@@ -54,10 +58,10 @@ cmd_message() {
     # Handle both --current and --cached (see argument parsing section for details).
     if [ "${commit_id}" = "--current" ] || [ "${commit_id}" = "--cached" ]; then
         hist=$(portable_mktemp "commit_history_XXXXXX.md")
-        build_history "${hist}" "${commit_id}" "${todo_pattern}" "${PATHSPEC}"
+        build_history "${hist}" "${commit_id}" "${todo_pattern}" "${pathspec}"
         print_debug "Generated history file ${hist}"
         pr=$(portable_mktemp "commit_message_prompt_XXXXXX.md")
-        build_prompt --template "${TEMPLATE_DIR}/message_prompt.md" \
+        build_prompt --template "${GIV_TEMPLATE_DIR}/message_prompt.md" \
             --summary "${hist}" >"${pr}"
         print_debug "Generated prompt file ${pr}"
         res=$(generate_response "${pr}" "${model_mode}" "0.9" "32768")        
@@ -68,6 +72,7 @@ cmd_message() {
         printf '%s\n' "${res}"
         return
     fi
+
     # Detect exactly two- or three-dot ranges (A..B or A...B)
     if echo "${commit_id}" | grep -qE '\.\.\.?'; then
         print_debug "Detected commit range syntax: ${commit_id}"
@@ -112,12 +117,15 @@ cmd_changelog() {
     output_file="${output_file:-$changelog_file}"
     print_debug "Changelog file: $output_file"
 
+    output_version="$GIV_OUTPUT_VERSION"
+    output_mode="$GIV_OUTPUT_MODE"
+
     # 2) Summarize Git history
     summaries_file=$(portable_mktemp "summaries.XXXXXXX.md") || {
         printf 'Error: cannot create temp file for summaries\n' >&2
         exit 1
     }
-    if ! summarize_target "$revision" "$summaries_file" "$pathspec" "$model_mode"; then
+    if ! summarize_target "$revision" "$summaries_file" "$pathspec" "$GIV_MODEL_MODE"; then
         printf 'Error: summarize_target failed\n' >&2
         rm -f "$summaries_file"
         exit 1
@@ -131,7 +139,7 @@ cmd_changelog() {
     fi
 
     # 4) Build the AI prompt
-    prompt_template="${TEMPLATE_DIR}/changelog_prompt.md"
+    prompt_template="${GIV_TEMPLATE_DIR}/changelog_prompt.md"
     print_debug "Building prompt from template: $prompt_template"
     tmp_prompt_file=$(portable_mktemp "changelog_prompt.XXXXXXX.md") || {
         printf 'Error: cannot create temp file for prompt\n' >&2
@@ -151,7 +159,7 @@ cmd_changelog() {
         exit 1
     }
     if ! generate_from_prompt "$tmp_prompt_file" "$response_file" \
-            "$model_mode" "0.7"; then
+            "$GIV_MODEL_MODE" "0.7"; then
         printf 'Error: generate_from_prompt failed\n' >&2
         rm -f "$summaries_file" "$tmp_prompt_file" "$response_file"
         exit 1
@@ -187,7 +195,7 @@ cmd_changelog() {
     append_link "$tmp_out" "Managed by giv" "https://github.com/giv-cli/giv"
 
     # 8) Dry‐run?
-    if [ "$dry_run" = "true" ]; then
+    if [ "$GIV_DRY_RUN" = "true" ]; then
         print_debug "Dry run: updated changelog content:"
         cat "$tmp_out"
         return 0
@@ -212,7 +220,7 @@ cmd_changelog() {
 # Arguments:
 #   $1 = full path to prompt template file
 #   $2 = revision specifier     (e.g. "--current")
-#   $3 = PATHSPEC               (e.g. "src/*" or "README.md")
+#   $3 = GIV_PATHSPEC               (e.g. "src/*" or "README.md")
 #   $4 = output file path
 #   $5 = model mode             (e.g. "auto", "your-model")
 #   $6 = temperature            (e.g. "0.7", "0.6")
@@ -227,7 +235,7 @@ cmd_changelog() {
 cmd_document() {
     prompt_tpl="$1"
     revision="${2:---current}"
-    pathspec="${3:-}" # New PATHSPEC argument
+    pathspec="${3:-}" # New GIV_PATHSPEC argument
     out="${4:-}"
     mode="${5:-auto}"
     temp="${6:-0.9}"

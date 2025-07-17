@@ -120,7 +120,7 @@ EOF
   run cat "$tmp"
   cat "$tmp"
   # expect two commits, each followed by two blank lines
-  expected=$'RESP'
+  expected="RESP"
   assert_output --partial "$expected"
 
   rm -f "$tmp"
@@ -183,6 +183,17 @@ EOF
   assert_output $'first commit\n\nsecond commit'
 }
 
+@test "cmd_message HEAD prints commit message" {
+  # ensure TODO_PATTERN matches something
+  echo "TODO: something" >>"$REPO/file.txt"
+  git add file.txt
+  git commit -m "add TODO"
+  export GIV_DEBUG="true"
+  run cmd_message "HEAD" "" "TODO" "auto"
+  assert_success
+  assert_output --partial "add TODO"
+}
+
 #----------------------------------------
 # cmd_summary
 #----------------------------------------
@@ -226,7 +237,10 @@ EOF
 }
 
 @test "cmd_changelog writes to its default file" {
-  run cmd_changelog "HEAD" "src/*"
+  export GIV_DEBUG="true"
+  export GIV_OUTPUT_VERSION=""
+  export GIV_OUTPUT_MODE="auto"
+  run cmd_changelog "HEAD" ""
   assert_success
   assert_output --partial "Changelog written to CHANGELOG.md"
 }

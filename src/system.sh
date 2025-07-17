@@ -4,7 +4,7 @@
 # Logging helpers
 # -------------------------------------------------------------------
 print_debug() {
-    if [ "${debug:-}" = "true" ]; then
+    if [ "${GIV_DEBUG:-}" = "true" ]; then
         printf 'DEBUG: %s\n' "$*" >&2
     fi
 }
