@@ -387,7 +387,7 @@ parse_args() {
     print_debug "Global variables set"
 
     print_debug "Environment variables:"
-    print_debug "  GIV_TMPDIR: ${GIV_TMPDIR:-}"
+    print_debug "  GIV_TMP_DIR: ${GIV_TMP_DIR:-}"
     print_debug "  GIV_MODEL_MODE: ${GIV_MODEL_MODE:-}"
     print_debug "  GIV_MODEL: ${GIV_MODEL:-}"
     print_debug "  GIV_API_MODEL: ${GIV_API_MODEL:-}"

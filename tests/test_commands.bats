@@ -14,13 +14,13 @@ BATS_TEST_START_TIME="$(date +%s)"
 SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
 # shellcheck source=../src/commands.sh
 HELPERS="$BATS_TEST_DIRNAME/../src/commands.sh"
-# shellcheck source=../src/giv.sh
 TEMPLATES_DIR="$BATS_TEST_DIRNAME/../templates"
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.tmp/giv"
 
 setup() {
   # create a temp git repo
   REPO="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
-  GIV_TMPDIR_SAVE=
+  GIV_TMPDIR_SAVE=true
   cd "$REPO"
   git init -q
   git config user.name "Test"

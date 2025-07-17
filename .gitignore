@@ -10,3 +10,6 @@ tests/.tmp
 dist
 .DS_Store
 .backup.env
+.giv/tmp
+.giv/cache
+.giv/logs
