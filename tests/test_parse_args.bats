@@ -7,7 +7,7 @@ load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
 load "$BATS_TEST_DIRNAME/../src/system.sh"
-SCRIPT="$BATS_TEST_DIRNAME/../src/configuration.sh"
+SCRIPT="$BATS_TEST_DIRNAME/../src/args.sh"
 OG_DIR="$(pwd)"
 
 setup() {

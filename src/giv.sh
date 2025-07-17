@@ -107,10 +107,12 @@ else
     DOCS_DIR=""  # It's optional; do not fail if not found
 fi
 
+# shellcheck source=./config.sh
+. "${LIB_DIR}/config.sh"
 # shellcheck source=./system.sh
 . "${LIB_DIR}/system.sh"
-# shellcheck source=./configuration.sh
-. "${LIB_DIR}/configuration.sh"
+# shellcheck source=./args.sh
+. "${LIB_DIR}/args.sh"
 # shellcheck source=markdown.sh
 . "${LIB_DIR}/markdown.sh"
 # shellcheck source=llm.sh

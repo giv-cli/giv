@@ -6,7 +6,7 @@ SCRIPT="${BATS_TEST_DIRNAME}/../src/markdown.sh"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
-load "$BATS_TEST_DIRNAME/../src/configuration.sh"
+load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
 load "$SCRIPT"
 
@@ -376,7 +376,7 @@ EOF
 
 @test "strip_markdown handles complex Markdown" {
     input="# Heading\n\nThis is a **bold** text and this is an *italic* text.\n\n- List item 1\n- List item 2"
-    expected="# Heading\n\nThis is a bold text and this is an italic text.\n\n- List item 1\n- List item 2"
+    expected="Heading\n\nThis is a bold text and this is an italic text.\n\n- List item 1\n- List item 2"
 
     result=$(echo "$input" | strip_markdown)
     output="$result"

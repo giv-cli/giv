@@ -1,4 +1,21 @@
 
+# -------------------------------------------------------------------
+# Dependencies:
+#
+# This script relies on several external commands and utilities. 
+# Ensure they are installed and available in your PATH.
+#
+# - portable_mktemp: Create temporary files securely
+# - append_link: Custom script to append a link to the output file
+# - manage_section: Custom script to manage sections in the changelog
+# - summarize_target: Custom script to summarize Git history for a given revision
+# - build_prompt: Custom script to build AI prompts from templates and summaries
+# - generate_from_prompt: Custom script to generate content from AI prompts
+# - get_project_title: Custom script to extract project title from summaries
+# - find_version_file: Custom script to locate the version file in the repository
+# - get_version_info: Custom script to retrieve version information from the version file
+#
+# -------------------------------------------------------------------
 
 # # -------------------------------------------------------------------
 # # Subcommand Implementations

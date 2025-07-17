@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 
-load "$BATS_TEST_DIRNAME/../src/configuration.sh"
+load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/project.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
 
