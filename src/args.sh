@@ -170,9 +170,9 @@ parse_args() {
         case "$1" in
         --current | --staged | --cached)
             if [ "$1" = "--staged" ]; then
-                REVISION="--cached"
+                GIV_REVISION="--cached"
             else
-                REVISION="$1"
+                GIV_REVISION="$1"
             fi
             shift
             ;;
@@ -184,7 +184,7 @@ parse_args() {
             # Check if $1 is a valid commit range or commit id
             if echo "$1" | grep -q '\.\.'; then
                 if git rev-list "$1" >/dev/null 2>&1; then
-                    REVISION="$1"
+                    GIV_REVISION="$1"
                     # If it's a valid commit ID, shift it
                     print_debug "Valid commit range: $1"
                     shift
@@ -193,7 +193,7 @@ parse_args() {
                     exit 1
                 fi
             elif git rev-parse --verify "$1" >/dev/null 2>&1; then
-                REVISION="$1"
+                GIV_REVISION="$1"
                 # If it's a valid commit ID, shift it
                 print_debug "Valid commit ID: $1"
                 shift
@@ -206,10 +206,10 @@ parse_args() {
         esac
     fi
 
-    if [ -z "${REVISION}" ]; then
+    if [ -z "${GIV_REVISION}" ]; then
         # If no target specified, default to current working tree
         print_debug "Debug: No target specified, defaulting to current working tree."
-        REVISION="--current"
+        GIV_REVISION="--current"
     fi
     # 3. Collect all non-option args as pattern (until first option or end)
     PATHSPEC=""
@@ -224,7 +224,7 @@ parse_args() {
         shift
     done
 
-    print_debug "Target and pattern parsed: ${REVISION}, ${PATHSPEC}"
+    print_debug "Target and pattern parsed: ${GIV_REVISION}, ${PATHSPEC}"
 
     # 4. Remaining args: global options
     while [ $# -gt 0 ]; do
@@ -358,7 +358,7 @@ parse_args() {
     print_debug "  Debug: ${debug}"
     print_debug "  Dry Run: ${dry_run}"
     print_debug "  Subcommand: ${subcmd}"
-    print_debug "  Revision: ${REVISION}"
+    print_debug "  Revision: ${GIV_REVISION}"
     print_debug "  Pathspec: ${PATHSPEC}"
     print_debug "  Template Directory: ${template_dir}"
     print_debug "  Config File: ${config_file}"

@@ -175,7 +175,8 @@ build_history() {
 #
 #   $1 = target (SHA, range, --current, --cached, or "")
 #   $2 = path to write summaries into
-#   $3 = (optional) override for model_mode
+#   $3 = pathspec to limit changes
+#   $4 = (optional) override for model_mode
 # -------------------------------------------------------------------
 summarize_target() {
     target="$1"

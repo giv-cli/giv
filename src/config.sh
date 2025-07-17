@@ -19,10 +19,10 @@
 # - **File:** `src/system.sh`, Line 32: `GIV_TMPDIR="" # Clear the variable`
 # - **File:** `src/system.sh`, Line 45: `GIV_TMPDIR="$(mktemp -d -p "${base_path}")"`
 
-# ## `REVISION`
+# ## `GIV_REVISION`
 # - **File:** `src/config.sh` (Definition)
 # - **File:** `src/args.sh`, Line 8: `revision Any Git revision or revision-range`
-# - **File:** `src/commands.sh`, Line 120: `if ! summarize_target "$REVISION"`
+# - **File:** `src/commands.sh`, Line 120: `if ! summarize_target "$GIV_REVISION"`
 
 # ## `PATHSPEC`
 # - **File:** `src/config.sh` (Definition)
@@ -115,7 +115,7 @@ export release_notes_file='RELEASE_NOTES.md'
 export announce_file='ANNOUNCEMENT.md'
 
 GIV_TMPDIR=""
-REVISION=""
+GIV_REVISION="--current"
 PATHSPEC=""
 config_file=""
 is_config_loaded=false

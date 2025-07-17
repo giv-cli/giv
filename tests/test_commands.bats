@@ -6,12 +6,13 @@ load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
 load "$BATS_TEST_DIRNAME/../src/config.sh"
+load "$BATS_TEST_DIRNAME/../src/system.sh"
 
 BATS_TEST_START_TIME="$(date +%s)"
 
 # shellcheck source=../src/giv.sh
 SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
-# shellcheck source=../src/giv.sh
+# shellcheck source=../src/commands.sh
 HELPERS="$BATS_TEST_DIRNAME/../src/commands.sh"
 # shellcheck source=../src/giv.sh
 TEMPLATES_DIR="$BATS_TEST_DIRNAME/../templates"
@@ -225,7 +226,7 @@ EOF
 }
 
 @test "cmd_changelog writes to its default file" {
-  run cmd_changelog
+  run cmd_changelog "HEAD" "src/*"
   assert_success
   assert_output --partial "Changelog written to CHANGELOG.md"
 }

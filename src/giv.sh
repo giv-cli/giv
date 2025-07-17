@@ -142,24 +142,24 @@ if [ "${is_sourced}" -eq 0 ]; then
 
     # Dispatch logic
     case "${subcmd}" in
-    message | msg) cmd_message "${REVISION}" ;;
+    message | msg) cmd_message "${GIV_REVISION}" ;;
     document | doc) cmd_document \
       "${prompt_file}" \
-      "${REVISION}" \
+      "${GIV_REVISION}" \
       "${PATHSPEC}" \
       "${output_file:-}" \
       "${model_mode}" \
       "0.7" "" ;;
     summary) cmd_document \
       "${TEMPLATE_DIR}/final_summary_prompt.md" \
-      "${REVISION}" \
+      "${GIV_REVISION}" \
       "${PATHSPEC}" \
       "${output_file:-}" \
       "${model_mode}" \
       "0.7" "" ;;
     release-notes) cmd_document \
       "${TEMPLATE_DIR}/release_notes_prompt.md" \
-      "${REVISION}" \
+      "${GIV_REVISION}" \
       "${PATHSPEC}" \
       "${output_file:-$release_notes_file}" \
       "${model_mode}" \
@@ -167,13 +167,13 @@ if [ "${is_sourced}" -eq 0 ]; then
       "65536" ;;
     announcement)  cmd_document \
       "${TEMPLATE_DIR}/announcement_prompt.md" \
-      "${REVISION}" \
+      "${GIV_REVISION}" \
       "${PATHSPEC}" \
       "${output_file:-$announce_file}" \
       "${model_mode}" \
       "0.5" \
       "65536" ;;
-    changelog) cmd_changelog ;;
+    changelog) cmd_changelog "${GIV_REVISION}" "${PATHSPEC}" ;;
     help)
         show_help
         exit 0
@@ -184,7 +184,7 @@ if [ "${is_sourced}" -eq 0 ]; then
     update)
         run_update "latest"
         ;;
-    *) cmd_message "${REVISION}" ;;
+    *) cmd_message "${GIV_REVISION}" ;;
     esac
 
     if [ -z "${GIV_TMPDIR_SAVE:-}" ]; then

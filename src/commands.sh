@@ -107,7 +107,8 @@ cmd_message() {
 # cmd_changelog: generate or update CHANGELOG.md from Git history
 # -------------------------------------------------------------------
 cmd_changelog() {
-    # 1) Determine output file
+    revision="$1"
+    pathspec="$2"
     output_file="${output_file:-$changelog_file}"
     print_debug "Changelog file: $output_file"
 
@@ -116,7 +117,7 @@ cmd_changelog() {
         printf 'Error: cannot create temp file for summaries\n' >&2
         exit 1
     }
-    if ! summarize_target "$REVISION" "$summaries_file" "$model_mode"; then
+    if ! summarize_target "$revision" "$summaries_file" "$pathspec" "$model_mode"; then
         printf 'Error: summarize_target failed\n' >&2
         rm -f "$summaries_file"
         exit 1
@@ -150,7 +151,7 @@ cmd_changelog() {
         exit 1
     }
     if ! generate_from_prompt "$tmp_prompt_file" "$response_file" \
-        "$model_mode" "0.7"; then
+            "$model_mode" "0.7"; then
         printf 'Error: generate_from_prompt failed\n' >&2
         rm -f "$summaries_file" "$tmp_prompt_file" "$response_file"
         exit 1
@@ -210,7 +211,7 @@ cmd_changelog() {
 #
 # Arguments:
 #   $1 = full path to prompt template file
-#   $2 = revision specifier     (e.g. "--current" or "$REVISION")
+#   $2 = revision specifier     (e.g. "--current")
 #   $3 = PATHSPEC               (e.g. "src/*" or "README.md")
 #   $4 = output file path
 #   $5 = model mode             (e.g. "auto", "your-model")
