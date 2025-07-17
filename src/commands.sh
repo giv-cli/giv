@@ -1,4 +1,3 @@
-
 # -------------------------------------------------------------------
 # Dependencies:
 #
@@ -212,11 +211,12 @@ cmd_changelog() {
 # Arguments:
 #   $1 = full path to prompt template file
 #   $2 = revision specifier     (e.g. "--current" or "$REVISION")
-#   $3 = output file path
-#   $4 = model mode             (e.g. "auto", "your-model")
-#   $5 = temperature            (e.g. "0.7", "0.6")
-#   $6 = context window size    (optional; e.g. "65536")
-#   $7… = extra flags for build_prompt (e.g. --example, --rules)
+#   $3 = PATHSPEC               (e.g. "src/*" or "README.md")
+#   $4 = output file path
+#   $5 = model mode             (e.g. "auto", "your-model")
+#   $6 = temperature            (e.g. "0.7", "0.6")
+#   $7 = context window size    (optional; e.g. "65536")
+#   $8… = extra flags for build_prompt (e.g. --example, --rules)
 #
 # Side-effects:
 #   - Summaries are written to a temp file
@@ -226,11 +226,12 @@ cmd_changelog() {
 cmd_document() {
     prompt_tpl="$1"
     revision="${2:---current}"
-    out="${3:-}"
-    mode="${4:-auto}"
-    temp="${5:-0.9}"
-    ctx="${6:-32768}"
-    shift 6
+    pathspec="${3:-}" # New PATHSPEC argument
+    out="${4:-}"
+    mode="${5:-auto}"
+    temp="${6:-0.9}"
+    ctx="${7:-32768}"
+    shift 7
 
     # validate template exists
     if [ ! -f "${prompt_tpl}" ]; then
@@ -244,7 +245,7 @@ cmd_document() {
     # 1) Summarize
     summaries=$(portable_mktemp "${doc_base}_summaries_XXXXXX.md")
     print_debug "Generating summaries to: ${summaries}"
-    summarize_target "${revision}" "${summaries}" "${mode}"
+    summarize_target "${revision}" "${summaries}" "${pathspec}" "${mode}"
 
     # bail if no summaries
     if [ ! -f "${summaries}" ]; then

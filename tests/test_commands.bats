@@ -115,7 +115,7 @@ EOF
   generate_response() { echo "RESP"; }
   export debug="true"
   # call inside the real repo
-  summarize_target HEAD~1..HEAD $tmp
+  summarize_target HEAD~1..HEAD $tmp ""
   run cat "$tmp"
   cat "$tmp"
   # expect two commits, each followed by two blank lines
@@ -128,7 +128,7 @@ EOF
 @test "summarize_target on --current" {
   tmp="$(mktemp)"
   mock_ollama "dummy" "CUR"
-  summarize_target --current "$tmp"
+  summarize_target --current "$tmp" ""
   run cat "$tmp"
   # one invocation + two newlines
   assert_output --partial 'CUR'
@@ -188,13 +188,7 @@ EOF
 @test "cmd_summary prints to stdout" {
   summarize_target() { echo "SUM"; }
 
-  
   run cmd_document "$TEMPLATES_DIR/final_summary_prompt.md" "--current" "" "auto" "0.7" ""
-  printf "Output: %s\n" "$output"
-  ollama() {
-    # shellcheck disable=SC2317
-    printf 'Ollama called' >&2
-  }
   assert_success
   assert_output --partial "SUM"
 }
@@ -203,7 +197,7 @@ EOF
   ollama() {
     echo "SUM"
   }
-  run cmd_document "$TEMPLATES_DIR/final_summary_prompt.md" HEAD~1 "" "auto" "0.7"
+  run cmd_document "$TEMPLATES_DIR/final_summary_prompt.md" HEAD~1 "" "" "auto" "0.7"
   assert_success
   assert_output --partial "SUM"
 }
@@ -211,25 +205,21 @@ EOF
 @test "cmd_summary writes to file when output_file set" {
   output_file="out.sum"
   summarize_target() { echo "SUM"; }
-  run cmd_document "$TEMPLATES_DIR/final_summary_prompt.md" "--current" "${output_file}" "auto"
+  run cmd_document "$TEMPLATES_DIR/final_summary_prompt.md" "--current" "" "${output_file}" "auto"
   assert_success
   [ -f out.sum ]
   assert_output --partial "Response written to out.sum"
   rm -f out.sum
 }
 
-#----------------------------------------
-# cmd_release_notes / announcement / changelog
-#----------------------------------------
-
 @test "cmd_release_notes writes to its default file" {
-  run cmd_document "$TEMPLATES_DIR/release_notes_prompt.md" "" "RELEASE_NOTES.md"
+  run cmd_document "$TEMPLATES_DIR/release_notes_prompt.md" "" "" "RELEASE_NOTES.md"
   assert_success
   assert_output --partial "Response written to RELEASE_NOTES.md"
 }
 
 @test "cmd_announcement writes to its default file" {
-  run cmd_document "$TEMPLATES_DIR/announcement_prompt.md" "" "ANNOUNCEMENT.md"
+  run cmd_document "$TEMPLATES_DIR/announcement_prompt.md" "" "" "ANNOUNCEMENT.md"
   assert_success
   assert_output --partial "Response written to ANNOUNCEMENT.md"
 }

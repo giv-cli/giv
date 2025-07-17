@@ -146,18 +146,21 @@ if [ "${is_sourced}" -eq 0 ]; then
     document | doc) cmd_document \
       "${prompt_file}" \
       "${REVISION}" \
+      "${PATHSPEC}" \
       "${output_file:-}" \
       "${model_mode}" \
       "0.7" "" ;;
     summary) cmd_document \
       "${TEMPLATE_DIR}/final_summary_prompt.md" \
       "${REVISION}" \
+      "${PATHSPEC}" \
       "${output_file:-}" \
       "${model_mode}" \
       "0.7" "" ;;
     release-notes) cmd_document \
       "${TEMPLATE_DIR}/release_notes_prompt.md" \
       "${REVISION}" \
+      "${PATHSPEC}" \
       "${output_file:-$release_notes_file}" \
       "${model_mode}" \
       "0.6" \
@@ -165,6 +168,7 @@ if [ "${is_sourced}" -eq 0 ]; then
     announcement)  cmd_document \
       "${TEMPLATE_DIR}/announcement_prompt.md" \
       "${REVISION}" \
+      "${PATHSPEC}" \
       "${output_file:-$announce_file}" \
       "${model_mode}" \
       "0.5" \

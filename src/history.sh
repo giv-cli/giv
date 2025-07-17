@@ -180,12 +180,13 @@ build_history() {
 summarize_target() {
     target="$1"
     summaries_file="$2"
-    gen_mode="${3:-$model_mode}"
+    pathspec="$3"
+    gen_mode="${4:-$model_mode}"
 
     # 1) Special "current" / "cached" / empty
     if [ -z "$target" ] || [ "$target" = "--current" ] || [ "$target" = "--cached" ]; then
         print_debug "Processing special target: ${target}"
-        summarize_commit "$target" "$gen_mode" >>"$summaries_file"
+        summarize_commit "$target" "$pathspec" "$gen_mode" >>"$summaries_file"
         printf '\n' >>"$summaries_file"
         return
     fi
@@ -214,7 +215,7 @@ summarize_target() {
         done
 
         # Summarize left endpoint first
-        summarize_commit "$left" "$gen_mode" >>"$summaries_file"
+        summarize_commit "$left" "$pathspec" "$gen_mode" >>"$summaries_file"
         printf '\n' >>"$summaries_file"
 
         # Now list & summarize everything in the range (excludes left)
@@ -223,7 +224,7 @@ summarize_target() {
 
         while IFS= read -r commit; do
             print_debug "Summarizing commit: $commit"
-            summarize_commit "$commit" "$gen_mode" >>"$summaries_file"
+            summarize_commit "$commit" "$pathspec" "$gen_mode" >>"$summaries_file"
             printf '\n' >>"$summaries_file"
         done <"$commits_file"
 
@@ -234,7 +235,7 @@ summarize_target() {
     # 3) Single commit (tags, HEAD~N, SHA, etc.)
     if git rev-parse --verify "$target" >/dev/null 2>&1; then
         print_debug "Summarizing single commit: $target"
-        summarize_commit "$target" "$gen_mode" >>"$summaries_file"
+        summarize_commit "$target" "$pathspec" "$gen_mode" >>"$summaries_file"
         printf '\n========================\n\n'  >>"$summaries_file"
         return
     fi
@@ -268,12 +269,13 @@ summarize_target() {
 #   - generate_response
 summarize_commit() {
     commit="$1"
-    gen_mode="${2:-${model_mode}}"
+    pathspec="$2"
+    gen_mode="${3:-${model_mode}}"
     hist=$(portable_mktemp "hist.${commit}.XXXXXX.md")
     pr=$(portable_mktemp "prompt.${commit}.XXXXXX.md")
     res_file=$(portable_mktemp "summary.${commit}.XXXXXX.md")
     print_debug "summarize_commit ${commit} ${hist} ${pr}"
-    build_history "${hist}" "${commit}" "${todo_pattern}" "$PATHSPEC"
+    build_history "${hist}" "${commit}" "${todo_pattern}" "$pathspec"
     sc_version_file=$(find_version_file)
     sc_version=$(get_version_info "${commit}" "${sc_version_file}")
     summary_template=$(build_prompt --version "${sc_version}" \
@@ -284,7 +286,7 @@ summarize_commit() {
 
     print_commit_metadata "$commit" >"$res_file"
     printf '\n\n' >>"$res_file"
-    echo "${res}" >>"${res_file}"
+    echo "${res}" >>"$res_file"
 
     cat "${res_file}"
 }
