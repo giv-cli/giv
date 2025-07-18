@@ -57,10 +57,10 @@ cmd_message() {
 
     # Handle both --current and --cached (see argument parsing section for details).
     if [ "${commit_id}" = "--current" ] || [ "${commit_id}" = "--cached" ]; then
-        hist=$(portable_mktemp "commit_history_XXXXXX.md")
+        hist=$(portable_mktemp "commit_history_XXXXXX")
         build_history "${hist}" "${commit_id}" "${todo_pattern}" "${pathspec}"
         print_debug "Generated history file ${hist}"
-        pr=$(portable_mktemp "commit_message_prompt_XXXXXX.md")
+        pr=$(portable_mktemp "commit_message_prompt_XXXXXX")
         build_prompt --template "${GIV_TEMPLATE_DIR}/message_prompt.md" \
             --summary "${hist}" >"${pr}"
         print_debug "Generated prompt file ${pr}"
@@ -121,7 +121,7 @@ cmd_changelog() {
     output_mode="$GIV_OUTPUT_MODE"
 
     # 2) Summarize Git history
-    summaries_file=$(portable_mktemp "summaries.XXXXXXX.md") || {
+    summaries_file=$(portable_mktemp "summaries.XXXXXXX") || {
         printf 'Error: cannot create temp file for summaries\n' >&2
         exit 1
     }
@@ -141,7 +141,7 @@ cmd_changelog() {
     # 4) Build the AI prompt
     prompt_template="${GIV_TEMPLATE_DIR}/changelog_prompt.md"
     print_debug "Building prompt from template: $prompt_template"
-    tmp_prompt_file=$(portable_mktemp "changelog_prompt.XXXXXXX.md") || {
+    tmp_prompt_file=$(portable_mktemp "changelog_prompt.XXXXXXX") || {
         printf 'Error: cannot create temp file for prompt\n' >&2
         rm -f "$summaries_file"
         exit 1
@@ -153,7 +153,7 @@ cmd_changelog() {
     fi
 
     # 5) Generate AI response
-    response_file=$(portable_mktemp "changelog_response.XXXXXXX.md") || {
+    response_file=$(portable_mktemp "changelog_response.XXXXXXX") || {
         printf 'Error: cannot create temp file for AI response\n' >&2
         rm -f "$summaries_file" "$tmp_prompt_file"
         exit 1
@@ -166,7 +166,7 @@ cmd_changelog() {
     fi
 
     # 6) Prepare a working copy of the changelog
-    tmp_out=$(portable_mktemp "changelog_output.XXXXXXX.md") || {
+    tmp_out=$(portable_mktemp "changelog_output.XXXXXXX") || {
         printf 'Error: cannot create temp file for changelog update\n' >&2
         exit 1
     }
@@ -252,7 +252,7 @@ cmd_document() {
     doc_base=$(basename "${prompt_tpl%.*}")
 
     # 1) Summarize
-    summaries=$(portable_mktemp "${doc_base}_summaries_XXXXXX.md")
+    summaries=$(portable_mktemp "${doc_base}_summaries_XXXXXX")
     print_debug "Generating summaries to: ${summaries}"
     summarize_target "${revision}" "${summaries}" "${pathspec}" "${mode}"
 
@@ -263,7 +263,7 @@ cmd_document() {
     fi
 
     # 2) Build prompt
-    prompt_tmp=$(portable_mktemp "${doc_base}_prompt_XXXXXX.md")
+    prompt_tmp=$(portable_mktemp "${doc_base}_prompt_XXXXXX")
     title=$(get_project_title "${summaries}")
     current_version="$(get_version_info --current "$(find_version_file)")"
 

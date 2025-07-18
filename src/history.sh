@@ -23,11 +23,11 @@ extract_todo_changes() {
 # helper: writes message header based on commit type
 get_message_header() {
     commit="$1"
-    print_debug "Getting message header for commit $commit"
-    case "$commit" in
+    print_debug "Getting message header for commit ${commit}"
+    case "${commit}" in
     --cached) echo "Staged Changes" ;;
     --current | "") echo "Current Changes" ;;
-    *) git log -1 --pretty=%B "$commit" ;;
+    *) git log -1 --pretty=%B "${commit}" ;;
     esac
 }
 
@@ -78,10 +78,10 @@ build_diff() {
     --current | "") ;;
     *) diff_cmd="$diff_cmd ${commit}^!" ;;
     esac
-    print_debug "Building diff for commit $commit with pattern $diff_pattern"
+    print_debug "Building diff for commit ${commit} with pattern ${diff_pattern}"
 
     diff_cmd="$diff_cmd --minimal --no-prefix --unified=3 --no-color -b -w --compact-summary --color-moved=no"
-    if [ -n "$diff_pattern" ]; then
+    if [ -n "${diff_pattern}" ]; then
         diff_cmd="$diff_cmd -- \"$diff_pattern\""
     fi
 
@@ -165,16 +165,17 @@ build_history() {
     printf '**Date:** %s\n' "$(get_commit_date "$commit")" >>"$hist"
     # version
     vf=$(find_version_file)
-    [ -n "$vf" ] && print_debug "Found version file: $vf"
-    [ -n "$vf" ] && {
+    print_debug "Using version file: $vf"
+    [ -n "${vf}" ] && print_debug "Found version file: $vf"
+    [ -n "${vf}" ] && {
         ver=$(get_version_info "$commit" "$vf")
         [ -n "$ver" ] && printf '**Version:** %s\n' "$ver" >>"$hist"
     }
-    msg=$(get_message_header "$commit")
-    printf '**Message:** %s\n' "$msg" >>"$hist"
+    msg=$(get_message_header "${commit}")
+    printf '**Message:** %s\n' "${msg}" >>"${hist}"
 
     # diff
-    diff_out=$(build_diff "$commit" "$diff_pattern" "$GIV_DEBUG")
+    diff_out=$(build_diff "$commit" "$diff_pattern")
     # shellcheck disable=SC2016
     printf '```diff\n%s\n```\n' "$diff_out" >>"$hist"
 
@@ -330,9 +331,9 @@ summarize_commit() {
 
 
   # Temporary files for generation
-  hist=$(portable_mktemp "hist.${commit}.XXXXXX.md")
-  pr=$(portable_mktemp "prompt.${commit}.XXXXXX.md")
-  res_file=$(portable_mktemp "summary.${commit}.XXXXXX.md")
+  hist=$(portable_mktemp "hist.${commit}.XXXXXX")
+  pr=$(portable_mktemp "prompt.${commit}.XXXXXX")
+  res_file=$(portable_mktemp "summary.${commit}.XXXXXX")
 
   print_debug "summarize_commit ${commit} ${hist} ${pr}"
 
@@ -347,9 +348,11 @@ summarize_commit() {
 
   print_debug "Using summary prompt: ${summary_template}"
   printf '%s\n' "$summary_template" >"$pr"
-  res=$(generate_response "$pr" "$gen_mode" "0.9" "32768")
+  print_debug "Generating response for commit ${commit} in mode ${gen_mode}"
+  res=$(generate_response "${pr}" "${gen_mode}" "0.9" "32768")
 
   print_commit_metadata "$commit" >"$res_file"
+  print_debug "Printed commit metadata to ${res_file}"
   printf '\n\n' >>"$res_file"
   echo "$res" >>"$res_file"
 

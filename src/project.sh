@@ -135,6 +135,12 @@ find_version_file() {
 get_version_info() {
     commit="$1"
     vf="$2"
+
+    [ -z "${vf}" ] && [ -f "${vf}" ] && {
+        print_debug "No version file specified."
+        echo ""
+        return
+    }
     print_debug "Getting version info for commit $commit from $vf"
 
     # Ensure empty string is returned on failure
@@ -170,6 +176,6 @@ get_version_info() {
         ;;
     esac | {
         read -r raw
-        parse_version "$raw"
+        parse_version "${raw:-}" || echo ""
     }
 }

@@ -65,7 +65,7 @@ portable_mktemp() {
     mkdir -p "$GIV_TMP_DIR"
     
     if command -v mktemp >/dev/null 2>&1; then
-        mktemp -p "${GIV_TMP_DIR}" "$1"
+        mktemp "${GIV_TMP_DIR}/$1"
     else
         echo "${GIV_TMP_DIR}/giv.$$.$(date +%s)"
     fi

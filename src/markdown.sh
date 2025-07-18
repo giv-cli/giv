@@ -61,10 +61,8 @@ strip_markdown() {
     -e 's/`//g' \
     -e 's/\*\*\([^*][^*]*\)\*\*/\1/g' \
     -e 's/\*\([^*][^*]*\)\*/\1/g' \
-    -e 's/^[[:blank:]]*#\+[[:blank:]]*//g' \
-    -e 's/^[[:blank:]]*>[[:blank:]]*//g' \
-    -e 's/^[[:blank:]]*[-+*][[:blank:]]*//g' \
-    -e 's/^[[:blank:]]*[0-9]\+\.[[:blank:]]*//g'
+    -e 's/^[[:blank:]]*#[[:blank:]]*//g' \
+    -e 's/^[[:blank:]]*>[[:blank:]]*//g'
 }
 
 # Collapse multiple blank lines to one, ensure exactly one blank at EOF
@@ -155,7 +153,7 @@ manage_section() {
     [ -f "$file" ] && orig="$file" || orig="/dev/null"
     
     # pick tmp
-    tmp=$(portable_mktemp "markdown-temp.XXXXXXX.md") || return 1
+    tmp=$(portable_mktemp "markdown-temp.XXXXXXX") || return 1
     
     # if mode=update but no existing header, fall back to prepend
     if [ "$mode" = update ] && ! grep -qE "^${header}[[:space:]]*${section}([[:space:]]|\$)" "$orig"; then
@@ -294,7 +292,7 @@ append_link() {
         return 0
     fi
     
-    tmp=$(portable_mktemp "append-link-temp.XXXXXXXX.md") || {
+    tmp=$(portable_mktemp "append-link-temp.XXXXXXXX") || {
         printf '%s Failed to create temp file\n' "$prefix" >&2
         return 0
     }

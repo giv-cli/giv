@@ -1,5 +1,6 @@
 #!/usr/bin/env bats
 
+
 mkdir -p "$BATS_TEST_DIRNAME/.logs"
 export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/commands.log"
 load 'test_helper/bats-support/load'
@@ -19,6 +20,7 @@ load "$HELPERS"
 TEMPLATES_DIR="$BATS_TEST_DIRNAME/../templates"
 # export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.tmp/giv"
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_DEBUG=""
 
 setup() {
   # create a temp git repo
@@ -29,18 +31,13 @@ setup() {
   git config user.name "Test"
   git config user.email "test@example.com"
   # make two commits
-  echo "one" >file.txt
+  echo "Version: 1.0.0" >file.txt
   git add file.txt
   git commit -q -m "first commit"
   echo "two" >>file.txt
   git commit -q -am "second commit"
 
-  # make helper stubs
-  build_history() { printf "HIST:%s\n" "$2" >"$1"; }
-  generate_response() { echo "RESP"; }
-  portable_mktemp() { mktemp; }
-  get_current_version() { echo "1.2.3"; }
-  mock_ollama "dummy" "Ollama message"
+ 
   rm -rf "$GIV_HOME/cache"  # clean up any old cache
   mkdir -p "$GIV_HOME/cache"
 
@@ -58,6 +55,26 @@ setup() {
   # load the script under test
   # shellcheck source=../src/giv.sh
   source "$SCRIPT"
+
+  generate_response() {
+    print_debug "Mock generate_response called with args: $*"
+    echo "RESP"
+  }
+  export -f generate_response
+  
+  # make helper stubs
+  build_history() { printf "HIST:%s\n" "$2" >"$1"; }
+  # generate_response() { echo "RESP"; }
+  portable_mktemp() { mktemp; }
+  get_current_version() { echo "1.2.3"; }
+  get_version_info() { echo "1.2.3"; }
+  mock_ollama "dummy" "Ollama message"
+  get_message_header() {
+  echo "MSG"
+}
+find_version_file() { echo "file.txt"; }
+export -f get_message_header
+export -f get_version_info
 }
 
 teardown() {
@@ -102,14 +119,13 @@ EOF
       echo pr.tmp
     fi
   }
-
   rm -f hist.tmp pr.tmp out.txt
   rm -rf "$GIV_HOME/cache/*.*"  # clean up any old cache
   mock_ollama "dummy" "RESP"
-  export GIV_DEBUG=""
-  run $(summarize_commit HEAD "" "local" >out.txt)
-  printf "Output: %s\n" "$output"
+  GIV_DEBUG="true"
+  result=$(summarize_commit HEAD "" "local" >out.txt)
   assert_success
+  printf "Output: %s\n" "$result"
 
   # should have RESP in out.txt
   run cat out.txt
