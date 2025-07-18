@@ -13,3 +13,4 @@ dist
 .giv/tmp
 .giv/cache
 .giv/logs
+tests/.giv

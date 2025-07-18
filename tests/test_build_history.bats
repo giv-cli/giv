@@ -2,6 +2,7 @@
 
 mkdir -p "$BATS_TEST_DIRNAME/.logs"
 export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/error.log"
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 

@@ -14,8 +14,11 @@ BATS_TEST_START_TIME="$(date +%s)"
 SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
 # shellcheck source=../src/commands.sh
 HELPERS="$BATS_TEST_DIRNAME/../src/commands.sh"
+
+load "$HELPERS"
 TEMPLATES_DIR="$BATS_TEST_DIRNAME/../templates"
-export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.tmp/giv"
+# export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.tmp/giv"
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 
 setup() {
   # create a temp git repo
@@ -38,6 +41,8 @@ setup() {
   portable_mktemp() { mktemp; }
   get_current_version() { echo "1.2.3"; }
   mock_ollama "dummy" "Ollama message"
+  rm -rf "$GIV_HOME/cache"  # clean up any old cache
+  mkdir -p "$GIV_HOME/cache"
 
   # prompts and file globals
   default_summary_prompt="DEF_SUM"
@@ -46,21 +51,20 @@ setup() {
   # announce_file="announce.out"
   # changelog_file="changelog.out"
 
-  # no dry_run by default
-  unset dry_run
-  export debug="1"
+  # no GIV_DRY_RUN by default
+  unset GIV_DRY_RUN
+  export GIV_DEBUG=""
 
   # load the script under test
   # shellcheck source=../src/giv.sh
   source "$SCRIPT"
-
-  load "$HELPERS"
 }
 
 teardown() {
   remove_tmp_dir
   rm -rf "$REPO"
   rm -f *.out
+  rm -rf "$GIV_HOME/cache"  # clean up any old cache
 
 }
 
@@ -68,12 +72,14 @@ mock_ollama() {
   arg1="${1:-dummy}"
   arg2="${2:-Ollama message}"
   mkdir -p bin
+  rm -f bin/ollama
+  # create a mock ollama command that just echoes its arguments
   cat >bin/ollama <<EOF
 #!/bin/bash
 echo "Ollama command: \$1"
 echo "Using model: \$2"
-echo "Ollama arg1: $arg1"
-echo "Ollama arg2: $arg2"
+echo "arg1: $arg1"
+echo "arg2: $arg2"
 echo "Ollama run complete"
 if [ "\$3" ]; then
   echo "Ollama in verbose mode \$3"
@@ -98,9 +104,12 @@ EOF
   }
 
   rm -f hist.tmp pr.tmp out.txt
-
+  rm -rf "$GIV_HOME/cache/*.*"  # clean up any old cache
   mock_ollama "dummy" "RESP"
-  summarize_commit HEAD PROMPT >out.txt
+  export GIV_DEBUG=""
+  run $(summarize_commit HEAD "" "local" >out.txt)
+  printf "Output: %s\n" "$output"
+  assert_success
 
   # should have RESP in out.txt
   run cat out.txt

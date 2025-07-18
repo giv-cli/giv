@@ -1,5 +1,6 @@
 #!/usr/bin/env bats
 
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 load '../src/project.sh'
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'

@@ -2,6 +2,8 @@
 
 load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
+
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 setup() {
     # Move into a brand-new repo
     TMP_REPO="$BATS_TEST_DIRNAME/.tmp/tmp_repo"

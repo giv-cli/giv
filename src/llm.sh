@@ -129,7 +129,7 @@ generate_remote() {
         -H "Content-Type: application/json" \
         -d "${body}")
 
-    if [ "$debug" = "true" ]; then
+    if [ "$GIV_DEBUG" = "true" ]; then
         echo "Response from remote API:" >&2
         echo "${response}" >&2
         #echo "${response}" >> "response.json"
@@ -150,7 +150,7 @@ run_local() {
     export OLLAMA_TEMPERATURE="${2:-0.9}"
     export OLLAMA_NUM_CTX="${3:-32768}"
 
-    if [ "$debug" = "true" ]; then
+    if [ "$GIV_DEBUG" = "true" ]; then
         # shellcheck disable=SC2154
         ollama run "${GIV_MODEL}" --verbose <"$1"
     else

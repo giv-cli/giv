@@ -8,6 +8,7 @@ load "$BATS_TEST_DIRNAME/../src/system.sh"
 
 export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/main.error.log"
 
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 setup_file() {
   : >"$ERROR_LOG"
 }

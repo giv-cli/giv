@@ -155,7 +155,7 @@ build_history() {
     printf '**Message:** %s\n' "$msg" >>"$hist"
 
     # diff
-    diff_out=$(build_diff "$commit" "$diff_pattern" "$debug")
+    diff_out=$(build_diff "$commit" "$diff_pattern" "$GIV_DEBUG")
     # shellcheck disable=SC2016
     printf '```diff\n%s\n```\n' "$diff_out" >>"$hist"
 
@@ -281,25 +281,54 @@ summarize_target() {
 #   - build_prompt
 #   - generate_response
 summarize_commit() {
-    commit="$1"
-    pathspec="$2"
-    gen_mode="${3:-${GIV_MODEL_MODE:-auto}}"
-    hist=$(portable_mktemp "hist.${commit}.XXXXXX.md")
-    pr=$(portable_mktemp "prompt.${commit}.XXXXXX.md")
-    res_file=$(portable_mktemp "summary.${commit}.XXXXXX.md")
-    print_debug "summarize_commit ${commit} ${hist} ${pr}"
-    build_history "${hist}" "${commit}" "${GIV_TODO_PATTERN}" "$pathspec"
-    sc_version_file=$(find_version_file)
-    sc_version=$(get_version_info "${commit}" "${sc_version_file}")
-    summary_template=$(build_prompt --version "${sc_version}" \
-        --template "${GIV_TEMPLATE_DIR}/summary_prompt.md" --summary "${hist}")
-    print_debug "Using summary prompt: ${summary_template}"
-    printf '%s\n' "${summary_template}" >"${pr}"
-    res=$(generate_response "${pr}" "${gen_mode}" "0.9" "32768")
+  commit="$1"
+  pathspec="$2"
+  gen_mode="${3:-${GIV_MODEL_MODE:-auto}}"
 
-    print_commit_metadata "$commit" >"$res_file"
-    printf '\n\n' >>"$res_file"
-    echo "${res}" >>"$res_file"
+  # Find or confirm GIV_HOME
+  if [ -z "$GIV_HOME" ]; then
+    GIV_HOME=$(find_giv_dir) || {
+      echo "Error: .giv directory not found" >&2
+      return 1
+    }
+  fi
 
-    cat "${res_file}"
+  summary_cache="$GIV_HOME/cache/${commit}-summary.md"
+
+  # Return cached summary if it exists
+  if [ -f "$summary_cache" ]; then
+    cat "$summary_cache"
+    return 0
+  fi
+
+
+  # Temporary files for generation
+  hist=$(portable_mktemp "hist.${commit}.XXXXXX.md")
+  pr=$(portable_mktemp "prompt.${commit}.XXXXXX.md")
+  res_file=$(portable_mktemp "summary.${commit}.XXXXXX.md")
+
+  print_debug "summarize_commit ${commit} ${hist} ${pr}"
+
+  build_history "$hist" "$commit" "$GIV_TODO_PATTERN" "$pathspec"
+  sc_version_file=$(find_version_file)
+  sc_version=$(get_version_info "$commit" "$sc_version_file")
+
+  summary_template=$(build_prompt \
+    --version "$sc_version" \
+    --template "$GIV_TEMPLATE_DIR/summary_prompt.md" \
+    --summary "$hist")
+
+  print_debug "Using summary prompt: ${summary_template}"
+  printf '%s\n' "$summary_template" >"$pr"
+  res=$(generate_response "$pr" "$gen_mode" "0.9" "32768")
+
+  print_commit_metadata "$commit" >"$res_file"
+  printf '\n\n' >>"$res_file"
+  echo "$res" >>"$res_file"
+
+  # Save and return summary
+  if [ "$commit" != "--cached" ] && [ "$commit" != "--current" ]; then    
+    cp -f "$res_file" "$summary_cache"
+  fi
+  cat "$res_file"
 }
