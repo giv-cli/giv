@@ -64,13 +64,30 @@ portable_mktemp() {
     fi
 }
 
+
+find_giv_dir() {
+  dir=$(pwd)
+  while [ "$dir" != "/" ]; do
+    if [ -d "$dir/.giv" ]; then
+      printf '%s\n' "$dir/.giv"
+      return 0
+    fi
+    dir=$(dirname "$dir")
+  done
+  printf '%s\n' "$(pwd)/.giv"
+}
+
+
 # Function to ensure .giv directory is initialized
 ensure_giv_dir_init() {
 
-    if [ ! -d "$(pwd)/.giv" ]; then
-        echo "Initializing .giv directory..."
+    [ -z "${GIV_HOME:-}" ] && GIV_HOME="$(find_giv_dir)"
+
+    if [ ! -d "${GIV_HOME}" ]; then
+        print_debug "Initializing .giv directory..."
+        mkdir -p "$GIV_HOME"        
     fi
-    mkdir -p "$(pwd)/.giv"
-    [ ! -f "$(pwd)/.giv/config" ] && printenv | grep "GIV_" > "$(pwd)/.giv/config"
-    mkdir -p "$(pwd)/.giv" "$(pwd)/.giv/cache" "$(pwd)/.giv/.tmp" "$(pwd)/.giv/templates"
+    
+    [ ! -f "$GIV_HOME/config" ] && printenv | grep "GIV_" > "$GIV_HOME/config"
+    mkdir -p "$GIV_HOME" "$GIV_HOME/cache" "$GIV_HOME/.tmp" "$GIV_HOME/templates"
 }

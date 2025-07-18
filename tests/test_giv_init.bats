@@ -7,18 +7,18 @@ load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
 
 @test "ensure_giv_dir creates .giv directory and files" {
-    
+    export GIV_HOME="$BATS_TEST_DIRNAME/.tmp/.giv"
+    export GIV_DEBUG="true"
    {
-    cd "$BATS_TEST_DIRNAME/.tmp"
-    rm -rf "$(pwd)/.giv"  # Clean up any existing .giv directory
+    rm -rf "$GIV_HOME"  # Clean up any existing .giv directory
     run ensure_giv_dir_init
     assert_success
     
-    [ -d "$(pwd)/.giv" ]
-    [ -f "$(pwd)/.giv/config" ]
-    [ -d "$(pwd)/.giv/cache" ]
-    [ -d "$(pwd)/.giv/.tmp" ]
-    [ -d "$(pwd)/.giv/templates" ]
+    [ -d "$GIV_HOME" ]
+    [ -f "$GIV_HOME/config" ]
+    [ -d "$GIV_HOME/cache" ]
+    [ -d "$GIV_HOME/.tmp" ]
+    [ -d "$GIV_HOME/templates" ]
    }
 
 }

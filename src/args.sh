@@ -119,7 +119,7 @@ parse_args() {
         ;;
         message | msg | summary | changelog \
         | document | doc | release-notes | announcement \
-        | available-releases | update)
+        | available-releases | update | init)
             subcmd=$1
             shift
         ;;

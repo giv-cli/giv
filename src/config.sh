@@ -148,6 +148,7 @@
 export GIV_LIB_DIR="${GIV_LIB_DIR:-}"
 export GIV_DOCS_DIR="${GIV_DOCS_DIR:-}"
 export GIV_TEMPLATE_DIR="${GIV_TEMPLATE_DIR:-}"
+export GIV_HOME="${GIV_HOME:-$(pwd)/.giv}"
 
 export GIV_TMP_DIR="${GIV_TMP_DIR:-.giv/tmp}"
 export GIV_TMPDIR_SAVE="${GIV_TMPDIR_SAVE:-true}"

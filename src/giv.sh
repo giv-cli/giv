@@ -192,6 +192,16 @@ if [ "${is_sourced}" -eq 0 ]; then
     update)
         run_update "latest"
         ;;
+    init)
+        ensure_giv_dir_init
+        if [ -d "${GIV_TEMPLATE_DIR}" ]; then
+            cp -r "${GIV_TEMPLATE_DIR}"/* "$(pwd)/.giv/templates/"
+            print_info "Templates copied to .giv/templates."
+        else
+            print_error "Template directory not found: ${GIV_TEMPLATE_DIR}"
+            exit 1
+        fi
+        ;;
     *) cmd_message "${GIV_REVISION}" ;;
     esac
 
