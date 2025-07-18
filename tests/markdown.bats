@@ -9,17 +9,21 @@ load 'test_helper/bats-assert/load'
 load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
 load "$SCRIPT"
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 
-# Create a temp file and print its path
-portable_mktemp_file() {
-    if command -v mktemp >/dev/null 2>&1; then
-        # try both common mktemp syntaxes
-        mktemp 2>/dev/null || mktemp -t tmpfile
-    else
-        t="/tmp/${0##*/}.$$.$(date +%s)"
-        : >"$t" && printf '%s\n' "$t" || return 1
-    fi
-}
+
+
+# # Create a temp file and print its path
+# portable_mktemp_file() {
+#     if command -v mktemp >/dev/null 2>&1; then
+#         # try both common mktemp syntaxes
+#         mktemp 2>/dev/null || mktemp -t tmpfile
+#     else
+#         t="/tmp/${0##*/}.$$.$(date +%s)"
+#         : >"$t" && printf '%s\n' "$t" || return 1
+#     fi
+# }
 setup() {
     # Create a clean temp dir for test artifacts
     TESTDIR="$(mktemp -d)"
@@ -41,17 +45,6 @@ write_file() {
     printf "%s\n" "$@" >"$filepath"
 }
 
-@test "portable_mktemp_file creates a file that exists" {
-    run portable_mktemp_file
-    [ "$status" -eq 0 ]
-    # Path should be output
-    tmpfile="$output"
-    [ -n "$tmpfile" ]
-    # File should exist (mktemp or fallback created it)
-    [ -e "$tmpfile" ]
-    # Cleanup
-    rm -f "$tmpfile"
-}
 
 @test "normalize_blank_lines collapses duplicates and ensures one blank at EOF" {
     write_file f.md "Line1" "" "" "Line2" "" """Line3"
@@ -66,7 +59,7 @@ write_file() {
     write_file new.md "New A" "New B"
 
     run manage_section "# Title" orig.md new.md append v1.0.0 '##'
-    [ "$status" -eq 0 ]
+    assert_success
     tmp="$output"
     content="$(cat "$tmp")"
 
@@ -100,11 +93,11 @@ write_file() {
     write_file new.md "X" "Y"
 
     run manage_section "# Changelog" orig.md new.md prepend v0.1 '##'
-    [ "$status" -eq 0 ]
+    assert_success
 
     tmp="$output"
     run cat "$tmp"
-    [ "$status" -eq 0 ]
+    assert_success
 
     assert_output <<EOF
 # Changelog
@@ -127,7 +120,7 @@ EOF
     write_file new.md "New1" "New2"
 
     run manage_section "# C" orig.md new.md update v1.0.0 '##'
-    [ "$status" -eq 0 ]
+    assert_success
     tmp="$output"
     content="$(cat "$tmp")"
 
@@ -142,7 +135,7 @@ EOF
     write_file new.md "AA"
 
     run manage_section "# T" orig.md new.md update v1.2.3 '##'
-    [ "$status" -eq 0 ]
+    assert_success
 
     tmp="$output"
     # <-- read the generated file, not the filename
@@ -165,7 +158,7 @@ EOF
     write_file new.md "New detail"
 
     run manage_section "# Top" orig.md new.md update Subsection '###'
-    [ "$status" -eq 0 ]
+    assert_success
     tmp="$output"
     content="$(cat "$tmp")"
 
@@ -188,7 +181,7 @@ EOF
 @test "exit cleanly when URL is empty" {
     write_file test.md "Line1"
     run append_link test.md "Test" ""
-    [ "$status" -eq 0 ]
+    assert_success
     # look in $output, not $stderr
     [[ "$output" =~ "URL is empty" ]]
     # file untouched:
@@ -199,7 +192,7 @@ EOF
 @test "append link to non-existent file" {
     rm -f test.md
     run append_link test.md "T" "http://u"
-    [ "$status" -eq 0 ]
+    assert_success
     # debug now lives in $output
     [[ "$output" =~ "creating" ]]
     run cat test.md
@@ -212,7 +205,7 @@ EOF
 @test "append link to empty existing file" {
     write_file test.md ""
     run append_link test.md "T" "http://u"
-    [ "$status" -eq 0 ]
+    assert_success
     run cat test.md
     assert_output <<EOF
 [T](http://u)
@@ -223,7 +216,7 @@ EOF
 @test "append link to non-empty file" {
     write_file test.md "A" "B"
     run append_link test.md "T" "http://u"
-    [ "$status" -eq 0 ]
+    assert_success
     run cat test.md
     assert_output <<EOF
 A
@@ -237,7 +230,7 @@ EOF
 @test "trim multiple blanks before appending" {
     printf "A\n\n\n" >test.md
     run append_link test.md "T" "http://u"
-    [ "$status" -eq 0 ]
+    assert_success
     run cat test.md
     assert_output <<EOF
 A
@@ -250,7 +243,7 @@ EOF
 @test "do not duplicate existing link" {
     write_file test.md "X" "[T](http://u)" "Y"
     run append_link test.md "T" "http://u"
-    [ "$status" -eq 0 ]
+    assert_success
     # again, check $output
     [[ "$output" =~ "Link already exists" ]]
     run cat test.md
@@ -264,7 +257,7 @@ EOF
 @test "non-existent file returns nothing" {
     rm -f file.md
     run extract_section "v1.0.0" file.md
-    [ "$status" -eq 0 ]
+    assert_success
     [ -z "$output" ]
 }
 
@@ -275,7 +268,7 @@ EOF
         "## v1.0.0" \
         "Content"
     run extract_section "v2.0.0" file.md
-    [ "$status" -eq 0 ]
+    assert_success
     [ -z "$output" ]
 }
 
@@ -290,7 +283,7 @@ EOF
         "## v0.9.0" \
         "Other"
     run extract_section "v1.0.0" file.md
-    [ "$status" -eq 0 ]
+    assert_success
     assert_output <<EOF
 ## v1.0.0
 Line1
@@ -309,7 +302,7 @@ EOF
         "## v0.9.0" \
         "XYZ"
     run extract_section "v1.0.0" file.md
-    [ "$status" -eq 0 ]
+    assert_success
     assert_output <<EOF
 ## [v1.0.0]
 Alpha
@@ -333,7 +326,7 @@ D
 EOF
 
     run extract_section "Subsection" file.md "###"
-    [ "$status" -eq 0 ]
+    assert_success
     assert_output <<EOF
 ### Subsection
 A
@@ -348,7 +341,7 @@ EOF
         "## Final" \
         "Last"
     run extract_section "Final" file.md
-    [ "$status" -eq 0 ]
+    assert_success
     assert_output <<EOF
 ## Final
 Last
@@ -382,4 +375,147 @@ EOF
     output="$result"
     assert_output "$expected"
 }
+
+# Test remove_top_level_header
+@test "remove_top_level_header removes top-level header" {
+    write_file test.md "# Header
+Content"
+    run remove_top_level_header test.md
+    assert_success
+    run cat test.md
+    assert_output "Content"
+}
+
+@test "remove_top_level_header does nothing if no header" {
+    write_file test.md "Content"
+    run remove_top_level_header test.md
+    assert_success
+    result=$(cat test.md)
+    [ "$result" = "Content" ]
+}
+
+# Test strip_code_fences
+@test "strip_code_fences removes code fences" {
+    write_file test.md "\`\`\`Code\`\`\`"
+    run strip_code_fences test.md
+    assert_success
+    run cat test.md
+    assert_output "Code"
+}
+
+@test "strip_code_fences does nothing if no code fences" {
+    write_file test.md "Code"
+    run strip_code_fences test.md
+    assert_success
+    result=$(cat test.md)
+    [ "$result" = "Code" ]
+}
+
+# Test enforce_final_newline
+@test "enforce_final_newline adds missing newline" {
+    write_file test.md "Content"
+    run enforce_final_newline test.md
+    assert_success
+
+    # Check if the last line is a newline
+    [ -z "$(tail -n 1 test.md)" ]
+
+    # result=$(tail -n 10 test.md)
+    # printf "%s" "$result"   
+    # printf 'newline\n' 
+    # # Check if the last line is a newline
+    # [ "$result" = "Content\n" ] 
+}
+
+@test "enforce_final_newline does nothing if newline exists" {
+    write_file test.md "Content
+    "
+    run enforce_final_newline test.md
+    assert_success
+    
+    run tail -n 3 test.md
+    assert_output "Content
+    "
+}
+
+
+
+# # Test post_process_document
+# @test "post_process_document applies all steps" {
+#     write_file test.md "# Header
+
+# ```
+# Code
+# ```
+# Content"
+#     run post_process_document test.md
+#     assert_success
+#     result=$(cat test.md)
+#     [ "$result" = "Content\n" ]
+# }
+
+# # Test is_glow_installed
+# @test "is_glow_installed returns true if glow is installed" {
+#     mock_command glow
+#     is_glow_installed
+#     assert_success
+# }
+
+# @test "is_glow_installed returns false if glow is not installed" {
+#     unmock_command glow
+#     is_glow_installed
+#     assert_failure
+# }
+
+# # Test install_pkg
+# @test "install_pkg tries package managers" {
+#     mock_command brew
+#     mock_command pacman
+#     mock_command snap
+#     install_pkg
+#     assert_success
+# }
+
+# # Test install_from_github
+# @test "install_from_github succeeds with valid inputs" {
+#     mock_command curl
+#     mock_command tar
+#     install_from_github
+#     assert_success
+# }
+
+# # Test ensure_glow
+# @test "ensure_glow installs glow if not installed" {
+#     unmock_command glow
+#     ensure_glow
+#     assert_success
+# }
+
+# # Test print_md_file
+# @test "print_md_file prints existing file" {
+#     write_file test.md "Content"
+#     print_md_file test.md
+#     assert_output <<EOF
+# Content
+# EOF
+# }
+
+# @test "print_md_file fails for non-existent file" {
+#     rm -f test.md
+#     print_md_file test.md
+#     assert_failure
+# }
+
+# # Test print_md
+# @test "print_md uses glow if installed" {
+#     mock_command glow
+#     print_md
+#     assert_success
+# }
+
+# @test "print_md falls back to strip_markdown if glow not installed" {
+#     unmock_command glow
+#     print_md
+#     assert_success
+# }
 

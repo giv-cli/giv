@@ -129,13 +129,13 @@ build_history() {
     diff_pattern="${4:-}"
 
 
-    # Determine cache directory and file
-    if [ -z "$GIV_HOME" ]; then
-        GIV_HOME=$(find_giv_dir) || {
-            echo "Error: .giv directory not found" >&2
-            return 1
-        }
-    fi
+    # # Determine cache directory and file
+    # if [ -z "$GIV_HOME" ]; then
+    #     GIV_HOME=$(find_giv_dir) || {
+    #         echo "Error: .giv directory not found" >&2
+    #         return 1
+    #     }
+    # fi
 
     history_cache="$GIV_HOME/cache/${commit}-history.md"
 
@@ -312,13 +312,13 @@ summarize_commit() {
   pathspec="$2"
   gen_mode="${3:-${GIV_MODEL_MODE:-auto}}"
 
-  # Find or confirm GIV_HOME
-  if [ -z "$GIV_HOME" ]; then
-    GIV_HOME=$(find_giv_dir) || {
-      echo "Error: .giv directory not found" >&2
-      return 1
-    }
-  fi
+#   # Find or confirm GIV_HOME
+#   if [ -z "$GIV_HOME" ]; then
+#     GIV_HOME=$(find_giv_dir) || {
+#       echo "Error: .giv directory not found" >&2
+#       return 1
+#     }
+#   fi
 
   summary_cache="$GIV_HOME/cache/${commit}-summary.md"
 

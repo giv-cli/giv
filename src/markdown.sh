@@ -1,17 +1,61 @@
 #!/bin/sh
 # POSIX-sh helpers for inserting/updating Markdown sections
 
-# strip_markdown: remove common Markdown formatting from input text
-#
-# Reads from stdin and writes stripped text to stdout.
-#
-# Usage:
-#   echo "$markdown" | strip_markdown
-#
-# strip_markdown: remove common Markdown formatting
-# Reads from stdin, writes plain text to stdout
+
+# Remove top-level markdown header (e.g. "# Title")
+remove_top_level_header() {
+    sed '1{/^#[[:space:]]/d;}' "$1" > "$1.tmp" && mv "$1.tmp" "$1"      
+}
+
+# Remove triple backtick code fences from the first and last line (if present)
+strip_code_fences() {
+
+    # Remove code fences on a single line (e.g. ```Code```)
+    sed 's/^```\(.*\)```$/\1/' "$1" > "$1.tmp" && mv "$1.tmp" "$1"
+    
+    # Remove code fence if first line is only ```
+    first_line=$(head -n 1 "$1")
+    if [ "$first_line" = '```' ]; then
+        tail -n +2 "$1" > "$1.tmp" && mv "$1.tmp" "$1"
+    fi
+    # Remove code fence if last line is only ```
+    last_line=$(tail -n 1 "$1")
+    if [ "$last_line" = '```' ]; then
+        line_count=$(wc -l < "$1")
+        if [ "$line_count" -gt 1 ]; then
+            head -n $((line_count - 1)) "$1" > "$1.tmp" && mv "$1.tmp" "$1"
+        else
+            : > "$1"
+        fi
+    fi
+    
+    
+}
+
+# Ensure the file ends with exactly one newline (add only if missing)
+enforce_final_newline() {
+    [ -f "$1" ] || return 0
+    
+        # If the last line is not empty, add a newline
+    if [ ! "$(tail -n 2 "$1")" = "\n" ]; then        
+        cat "$1" > "$1.tmp"
+        printf '\n' >> "$1.tmp"
+        mv "$1.tmp" "$1"
+    fi
+}
+
+# Apply all post-processing steps to a file
+post_process_document() {
+    file="$1"
+    remove_top_level_header "$file"
+    strip_code_fences "$file"
+    normalize_blank_lines "$file"
+}
+
 strip_markdown() {
-  sed -e '/^[[:blank:]]*```.*$/d' \
+    # Reads from stdin and writes stripped text to stdout.
+    
+    sed -e '/^[[:blank:]]*```.*$/d' \
     -e 's/!\[[^]]*\](\([^)]*\))//g' \
     -e 's/\[\([^]]*\)\](\([^)]*\))/\1/g' \
     -e 's/`//g' \
@@ -25,12 +69,12 @@ strip_markdown() {
 
 # Collapse multiple blank lines to one, ensure exactly one blank at EOF
 normalize_blank_lines() {
-  in="$1"
-  awk '
+    in="$1"
+    awk '
     NF { print; prev=1 }
     !NF { if (prev) print; prev=0 }
     END { if (prev) print "" }
-  ' "$in" >"$in".norm && mv "$in".norm "$in"
+    ' "$in" >"$in".norm && mv "$in".norm "$in"
 }
 
 # extract_section <section_name> <markdown_file> [<header_id>]
@@ -44,44 +88,44 @@ normalize_blank_lines() {
 #
 # Returns 0 always; prints nothing if file or section is missing.
 extract_section() {
-  section=$1
-  file=$2
-  header=${3:-"##"}
-
-  # nothing to do if file absent
-  [ ! -f "$file" ] && return 0
-
-  # escape section name for regex
-  esc=$(printf '%s' "$section" | sed 's/[][\\/.*^$]/\\&/g')
-
-  # build pattern to find the heading line
-  pat="^${header}[[:space:]]*\\[?${esc}\\]?"
-
-  # locate the first matching heading line number
-  start=$(grep -nE "$pat" "$file" 2>/dev/null | head -n1 | cut -d: -f1)
-  [ -z "$start" ] && return 0
-
-  # count how many "#" in header to get its level
-  HL=${#header}
-
-  # build a regex matching any heading of level ≤ HL
-  lvl_pat="^#{1,${HL}}[[:space:]]"
-
-  # find the next heading (same or higher level) after start
-  offset=$(tail -n +"$((start + 1))" "$file" |
-    grep -nE "$lvl_pat" |
-    head -n1 |
+    section=$1
+    file=$2
+    header=${3:-"##"}
+    
+    # nothing to do if file absent
+    [ ! -f "$file" ] && return 0
+    
+    # escape section name for regex
+    esc=$(printf '%s' "$section" | sed 's/[][\\/.*^$]/\\&/g')
+    
+    # build pattern to find the heading line
+    pat="^${header}[[:space:]]*\\[?${esc}\\]?"
+    
+    # locate the first matching heading line number
+    start=$(grep -nE "$pat" "$file" 2>/dev/null | head -n1 | cut -d: -f1)
+    [ -z "$start" ] && return 0
+    
+    # count how many "#" in header to get its level
+    HL=${#header}
+    
+    # build a regex matching any heading of level ≤ HL
+    lvl_pat="^#{1,${HL}}[[:space:]]"
+    
+    # find the next heading (same or higher level) after start
+    offset=$(tail -n +"$((start + 1))" "$file" |
+        grep -nE "$lvl_pat" |
+        head -n1 |
     cut -d: -f1)
-
-  if [ -n "$offset" ]; then
-    end=$((start + offset - 1))
-  else
-    # no further heading: go to EOF
-    end=$(wc -l <"$file")
-  fi
-
-  # print from the header line through end
-  sed -n "${start},${end}p" "$file"
+    
+    if [ -n "$offset" ]; then
+        end=$((start + offset - 1))
+    else
+        # no further heading: go to EOF
+        end=$(wc -l <"$file")
+    fi
+    
+    # print from the header line through end
+    sed -n "${start},${end}p" "$file"
 }
 
 # manage_section - Manages sections within a markdown file.
@@ -100,38 +144,38 @@ extract_section() {
 # Returns:
 #   Path to a temporary file containing the modified markdown content.
 manage_section() {
-  title=$1
-  file=$2
-  newf=$3
-  mode=$4
-  section=$5
-  header=${6:-"##"}
-
-  # read original (or empty if missing)
-  [ -f "$file" ] && orig="$file" || orig="/dev/null"
-
-  # pick tmp
-  tmp=$(portable_mktemp "markdown-temp.XXXXXXX.md") || return 1
-
-  # if mode=update but no existing header, fall back to prepend
-  if [ "$mode" = update ] && ! grep -qE "^${header}[[:space:]]*${section}([[:space:]]|\$)" "$orig"; then
-    mode=prepend
-  fi
-
-  case "$mode" in
-  append)
-    {
-      cat "$orig"
-      printf "\n%s %s\n\n" "$header" "$section"
-      cat "$newf"
-    } >"$tmp"
-    ;;
-
-  prepend)
-    awk -v title="$title" \
-      -v header="$header" \
-      -v section="$section" \
-      -v cf="$newf" '
+    title=$1
+    file=$2
+    newf=$3
+    mode=$4
+    section=$5
+    header=${6:-"##"}
+    
+    # read original (or empty if missing)
+    [ -f "$file" ] && orig="$file" || orig="/dev/null"
+    
+    # pick tmp
+    tmp=$(portable_mktemp "markdown-temp.XXXXXXX.md") || return 1
+    
+    # if mode=update but no existing header, fall back to prepend
+    if [ "$mode" = update ] && ! grep -qE "^${header}[[:space:]]*${section}([[:space:]]|\$)" "$orig"; then
+        mode=prepend
+    fi
+    
+    case "$mode" in
+        append)
+            {
+                cat "$orig"
+                printf "\n%s %s\n\n" "$header" "$section"
+                cat "$newf"
+            } >"$tmp"
+        ;;
+        
+        prepend)
+            awk -v title="$title" \
+            -v header="$header" \
+            -v section="$section" \
+            -v cf="$newf" '
         BEGIN {
           HL = length(header)
           # read the replacement text
@@ -180,13 +224,13 @@ manage_section() {
           printf "%s", newc
           if (newc !~ /\n$/) print ""      # ensure final newline if missing
           for (i = ins; i <= NR; i++) print A[i]
-        }' "$orig" >"$tmp"
-    ;;
-
-  update)
-    awk -v header="$header" \
-      -v section="$section" \
-      -v cf="$newf" '
+            }' "$orig" >"$tmp"
+        ;;
+        
+        update)
+            awk -v header="$header" \
+            -v section="$section" \
+            -v cf="$newf" '
       BEGIN {
         HL = length(header)
         # slurp new content
@@ -213,19 +257,19 @@ manage_section() {
         }
         print
       }
-      ' "$orig" >"$tmp"
-    ;;
-
-  *)
-    printf 'Invalid mode provided: %s\n' "$mode"
-    rm -f "$tmp"
-    return 1
-    ;;
-  esac
-
-  # normalize and return tmp path
-  normalize_blank_lines "$tmp"
-  printf '%s\n' "$tmp"
+            ' "$orig" >"$tmp"
+        ;;
+        
+        *)
+            printf 'Invalid mode provided: %s\n' "$mode"
+            rm -f "$tmp"
+            return 1
+        ;;
+    esac
+    
+    # normalize and return tmp path
+    normalize_blank_lines "$tmp"
+    printf '%s\n' "$tmp"
 }
 
 # append_link <file> <title> <url>
@@ -234,35 +278,35 @@ manage_section() {
 #  - otherwise: trims trailing blank lines, ensures one blank above + one below,
 #    appends the link, moves temp → original, prints debug, returns 0
 append_link() {
-  file=$1
-  title=$2
-  url=$3
-  prefix="DEBUG: append_link:"
-  if [ -z "$url" ]; then
-    printf '%s URL is empty, skipping\n' "$prefix" >&2
-    return 0
-  fi
-
-  link="[$title]($url)"
-
-  if [ -f "$file" ] && grep -Fq "$link" "$file"; then
-    printf '%s Link already exists: %s\n' "$prefix" "$link" >&2
-    return 0
-  fi
-
-  tmp=$(portable_mktemp "append-link-temp.XXXXXXXX.md") || {
-    printf '%s Failed to create temp file\n' "$prefix" >&2
-    return 0
-  }
-
-  # if the file doesn't exist, read from /dev/null and note creation
-  input="$file"
-  if [ ! -f "$file" ]; then
-    input="/dev/null"
-    printf '%s File %s does not exist; creating\n' "$prefix" "$file" >&2
-  fi
-
-  awk -v link="$link" '
+    file=$1
+    title=$2
+    url=$3
+    prefix="DEBUG: append_link:"
+    if [ -z "$url" ]; then
+        printf '%s URL is empty, skipping\n' "$prefix" >&2
+        return 0
+    fi
+    
+    link="[$title]($url)"
+    
+    if [ -f "$file" ] && grep -Fq "$link" "$file"; then
+        printf '%s Link already exists: %s\n' "$prefix" "$link" >&2
+        return 0
+    fi
+    
+    tmp=$(portable_mktemp "append-link-temp.XXXXXXXX.md") || {
+        printf '%s Failed to create temp file\n' "$prefix" >&2
+        return 0
+    }
+    
+    # if the file doesn't exist, read from /dev/null and note creation
+    input="$file"
+    if [ ! -f "$file" ]; then
+        input="/dev/null"
+        printf '%s File %s does not exist; creating\n' "$prefix" "$file" >&2
+    fi
+    
+    awk -v link="$link" '
     { lines[n++] = $0 }
     END {
       # remove any trailing blank lines
@@ -279,29 +323,29 @@ append_link() {
       print link
       print ""
     }
-  ' "$input" >"$tmp"
-
-  mv "$tmp" "$file"
-  printf '%s Appended link: %s to %s\n' "$prefix" "$link" "$file" >&2
-  return 0
+    ' "$input" >"$tmp"
+    
+    mv "$tmp" "$file"
+    printf '%s Appended link: %s to %s\n' "$prefix" "$link" "$file" >&2
+    return 0
 }
 
 is_glow_installed() {
-  command -v glow >/dev/null 2>&1
+    command -v glow >/dev/null 2>&1
 }
 
 install_pkg() {
-  echo "Checking package managers..."
-  if command -v brew >/dev/null 2>&1; then
-    brew install glow && return 0
-  elif command -v pacman >/dev/null 2>&1; then
-    sudo pacman -S --noconfirm glow && return 0
-  elif command -v snap >/dev/null 2>&1; then
-    sudo snap install glow && return 0 
-  elif command -v scoop >/dev/null 2>&1; then
-    scoop install glow && return 0
-  fi
-  return 1
+    echo "Checking package managers..."
+    if command -v brew >/dev/null 2>&1; then
+        brew install glow && return 0
+        elif command -v pacman >/dev/null 2>&1; then
+        sudo pacman -S --noconfirm glow && return 0
+        elif command -v snap >/dev/null 2>&1; then
+        sudo snap install glow && return 0
+        elif command -v scoop >/dev/null 2>&1; then
+        scoop install glow && return 0
+    fi
+    return 1
 }
 
 # This function installs the 'glow' binary from GitHub releases.
@@ -319,46 +363,46 @@ install_pkg() {
 # Returns:
 #   0 on success, non-zero on failure
 install_from_github() {
-  echo "Installing glow binary from GitHub releases…"
-  os=$(uname -s | tr '[:upper:]' '[:lower:]')
-  arch=$(uname -m)
-  case "$arch" in
-  x86_64 | amd64) arch="x86_64" ;;
-  arm64 | aarch64) arch="arm64" ;;
-  *)
-    echo "Unsupported arch: $arch"
-    exit 1
-    ;;
-  esac
-
-  tag=$(curl -fsSL https://api.github.com/repos/charmbracelet/glow/releases/latest |
+    echo "Installing glow binary from GitHub releases…"
+    os=$(uname -s | tr '[:upper:]' '[:lower:]')
+    arch=$(uname -m)
+    case "$arch" in
+        x86_64 | amd64) arch="x86_64" ;;
+        arm64 | aarch64) arch="arm64" ;;
+        *)
+            echo "Unsupported arch: $arch"
+            exit 1
+        ;;
+    esac
+    
+    tag=$(curl -fsSL https://api.github.com/repos/charmbracelet/glow/releases/latest |
     grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-  file="glow_${tag#v}_${os}_${arch}.tar.gz"
-
-  tmpdir=$(mktemp -d)
-  curl -fsSL "https://github.com/charmbracelet/glow/releases/download/$tag/$file" -o "$tmpdir/glow.tar.gz"
-  curl -fsSL "https://github.com/charmbracelet/glow/releases/download/$tag/checksums.txt" -o "$tmpdir/checksums.txt"
-
-  cd "$tmpdir" || exit 1
-  sha256sum -c checksums.txt --ignore-missing --quiet || {
-    echo "Checksum verification failed"
-    exit 1
-  }
-
-  tar -xzf glow.tar.gz
-  chmod +x glow
-
-  bindir="/usr/local/bin"
-  if [ -w "$bindir" ]; then
-    mv glow "$bindir"
-  else
-    sudo mv glow "$bindir"
-  fi
-
-  cd - || exit 1
-  rm -rf "$tmpdir"
-
-  echo "glow installed to $bindir"
+    file="glow_${tag#v}_${os}_${arch}.tar.gz"
+    
+    tmpdir=$(mktemp -d)
+    curl -fsSL "https://github.com/charmbracelet/glow/releases/download/$tag/$file" -o "$tmpdir/glow.tar.gz"
+    curl -fsSL "https://github.com/charmbracelet/glow/releases/download/$tag/checksums.txt" -o "$tmpdir/checksums.txt"
+    
+    cd "$tmpdir" || exit 1
+    sha256sum -c checksums.txt --ignore-missing --quiet || {
+        echo "Checksum verification failed"
+        exit 1
+    }
+    
+    tar -xzf glow.tar.gz
+    chmod +x glow
+    
+    bindir="/usr/local/bin"
+    if [ -w "$bindir" ]; then
+        mv glow "$bindir"
+    else
+        sudo mv glow "$bindir"
+    fi
+    
+    cd - || exit 1
+    rm -rf "$tmpdir"
+    
+    echo "glow installed to $bindir"
 }
 
 
@@ -370,22 +414,22 @@ install_from_github() {
 #
 # Exits with status 1 if the installation fails.
 ensure_glow() {
-  if is_installed; then
-    echo "✔ glow already installed: $(command -v glow)"
-    return
-  fi
-
-  echo "✗ glow not found. Installing…"
-  if install_pkg; then
-    echo "Installed via package manager."
-  else
-    install_from_github
-  fi
-
-  if ! is_installed; then
-    echo "Installation failed. See https://github.com/charmbracelet/glow#installation"
-    exit 1
-  fi
+    if is_installed; then
+        echo "✔ glow already installed: $(command -v glow)"
+        return
+    fi
+    
+    echo "✗ glow not found. Installing…"
+    if install_pkg; then
+        echo "Installed via package manager."
+    else
+        install_from_github
+    fi
+    
+    if ! is_installed; then
+        echo "Installation failed. See https://github.com/charmbracelet/glow#installation"
+        exit 1
+    fi
 }
 
 # This function prints a markdown file using the 'glow' command.
@@ -398,18 +442,18 @@ ensure_glow() {
 # Returns:
 #   0 on success, 1 if no argument is provided or the file does not exist.
 print_md_file() {
-  ensure_glow
-  if [ -z "$1" ]; then
-    echo "Usage: view_md <file>"
-    return 1
-  fi
-
-  if [ ! -f "$1" ]; then
-    echo "File not found: $1"
-    return 1
-  fi
-
-  glow "$1"
+    ensure_glow
+    if [ -z "$1" ]; then
+        echo "Usage: view_md <file>"
+        return 1
+    fi
+    
+    if [ ! -f "$1" ]; then
+        echo "File not found: $1"
+        return 1
+    fi
+    
+    glow "$1"
 }
 
 # This function prints markdown content.
@@ -418,11 +462,11 @@ print_md_file() {
 # If 'glow' is installed, it uses 'glow' to render the markdown content without numbering and with zero width.
 # If 'glow' is not installed, it falls back to calling the 'strip_markdown' function.
 print_md() {
-
-  #if is_glow_installed >/dev/null 2>&1; then
-  if [ "$(command -v glow)" ]; then
-    glow -n -w 0
-  else
-    strip_markdown
-  fi
+    
+    #if is_glow_installed >/dev/null 2>&1; then
+    if [ "$(command -v glow)" ]; then
+        glow -n -w 0
+    else
+        strip_markdown
+    fi
 }

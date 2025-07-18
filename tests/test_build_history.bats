@@ -2,7 +2,6 @@
 
 mkdir -p "$BATS_TEST_DIRNAME/.logs"
 export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/error.log"
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
@@ -10,9 +9,13 @@ load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
 load "$BATS_TEST_DIRNAME/../src/project.sh"
 SCRIPT="$BATS_TEST_DIRNAME/../src/history.sh"
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 
 setup() {
+    rm -rf "$GIV_HOME/cache"  # clean up any old cache
+    rm -rf "$GIV_HOME/.tmp"  # clean up any old tmp
     mkdir -p "$GIV_HOME/cache"
+    mkdir -p "$GIV_HOME/.tmp"
     # Create a temporary git repo
     REPO="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
     cd "$REPO"
@@ -63,11 +66,11 @@ setup() {
 teardown() {
     remove_tmp_dir
     rm -rf "$REPO"
-    rm -rf "$GIV_HOME/cache"  # clean up any old cache
 }
 
 @test "build_history for HEAD shows updated version and diff block" {
     hist="$(mktemp)"
+
     build_history "$hist" HEAD
     assert_success
     run cat "$hist"
@@ -92,7 +95,8 @@ teardown() {
     build_history "$hist" HEAD
 
     # Should NOT contain any Version: header
-    ! grep -q "\*\*Version:\*\*" "$hist"
+    run grep -q "\*\*Version:\*\*" "$hist"
+    assert_failure
 
     # Should still contain a diff block
     run grep -F '```diff' "$hist"
