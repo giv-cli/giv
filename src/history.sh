@@ -168,80 +168,92 @@ build_history() {
     return 0
 }
 
+# Helper function to handle special targets
+handle_special_target() {
+    target="$1"
+    summaries_file="$2"
+    pathspec="$3"
+    gen_mode="$4"
 
-# -------------------------------------------------------------------
-# summarize_target: summarize a commit, or an inclusive two-/three-dot
-# range, or the working tree/index.
-#
-#   $1 = target (SHA, range, --current, --cached, or "")
-#   $2 = path to write summaries into
-#   $3 = pathspec to limit changes
-#   $4 = (optional) override for GIV_MODEL_MODE
-# -------------------------------------------------------------------
+    print_debug "Processing special target: ${target}"
+    summarize_commit "$target" "$pathspec" "$gen_mode" >>"$summaries_file"
+    printf '\n' >>"$summaries_file"
+}
+
+# Helper function to handle commit ranges
+handle_commit_range() {
+    target="$1"
+    summaries_file="$2"
+    pathspec="$3"
+    gen_mode="$4"
+
+    print_debug "Detected commit-range syntax: ${target}"
+    sep="$(printf '%s' "$target" | grep -q '\.\.\.' && echo '...' || echo '..')"
+    left="${target%%"$sep"*}"
+    right="${target#*"$sep"}"
+
+    print_debug "Range endpoints: left='${left}' right='${right}'"
+    for c in "$left" "$right"; do
+        if ! git rev-parse --verify "$c" >/dev/null 2>&1; then
+            printf 'Error: Invalid commit in range: %s\n' "$c" >&2
+            exit 1
+        fi
+    done
+
+    summarize_commit "$left" "$pathspec" "$gen_mode" >>"$summaries_file"
+    printf '\n' >>"$summaries_file"
+
+    commits_file=$(portable_mktemp "commits_list_XXXXXX")
+    git rev-list --reverse "$target" >"$commits_file"
+
+    while IFS= read -r commit; do
+        print_debug "Summarizing commit: $commit"
+        summarize_commit "$commit" "$pathspec" "$gen_mode" >>"$summaries_file"
+        printf '\n' >>"$summaries_file"
+    done <"$commits_file"
+
+    rm -f "$commits_file"
+}
+
+# Helper function to handle single commits
+handle_single_commit() {
+    target="$1"
+    summaries_file="$2"
+    pathspec="$3"
+    gen_mode="$4"
+
+    print_debug "Summarizing single commit: $target"
+    summarize_commit "$target" "$pathspec" "$gen_mode" >>"$summaries_file"
+    printf '\n========================\n\n'  >>"$summaries_file"
+}
+
+# Updated summarize_target function
 summarize_target() {
     target="$1"
     summaries_file="$2"
     pathspec="$3"
     gen_mode="${4:-$GIV_MODEL_MODE:-auto}"
 
-    # 1) Special "current" / "cached" / empty
+    if [ "$gen_mode" = "none" ]; then
+        print_debug "Skipping model invocation due to --model-mode none"
+        return
+    fi
+
     if [ -z "$target" ] || [ "$target" = "--current" ] || [ "$target" = "--cached" ]; then
-        print_debug "Processing special target: ${target}"
-        summarize_commit "$target" "$pathspec" "$gen_mode" >>"$summaries_file"
-        printf '\n' >>"$summaries_file"
+        handle_special_target "$target" "$summaries_file" "$pathspec" "$gen_mode"
         return
     fi
 
-    # 2) Two- or three-dot range?
     if printf '%s' "$target" | grep -qE '\.\.\.?'; then
-        print_debug "Detected commit-range syntax: ${target}"
-        # Figure out which sep
-        if printf '%s' "$target" | grep -q '\.\.\.'; then
-            sep='...'
-        else
-            sep='..'
-        fi
-
-        # Split endpoints
-        left="${target%%"$sep"*}"
-        right="${target#*"$sep"}"
-        print_debug "Range endpoints: left='${left}' right='${right}'"
-
-        # Validate both endpoints
-        for c in "$left" "$right"; do
-            if ! git rev-parse --verify "$c" >/dev/null 2>&1; then
-                printf 'Error: Invalid commit in range: %s\n' "$c" >&2
-                exit 1
-            fi
-        done
-
-        # Summarize left endpoint first
-        summarize_commit "$left" "$pathspec" "$gen_mode" >>"$summaries_file"
-        printf '\n' >>"$summaries_file"
-
-        # Now list & summarize everything in the range (excludes left)
-        commits_file=$(portable_mktemp "commits_list_XXXXXX")
-        git rev-list --reverse "$target" >"$commits_file"
-
-        while IFS= read -r commit; do
-            print_debug "Summarizing commit: $commit"
-            summarize_commit "$commit" "$pathspec" "$gen_mode" >>"$summaries_file"
-            printf '\n' >>"$summaries_file"
-        done <"$commits_file"
-
-        rm -f "$commits_file"
+        handle_commit_range "$target" "$summaries_file" "$pathspec" "$gen_mode"
         return
     fi
 
-    # 3) Single commit (tags, HEAD~N, SHA, etc.)
     if git rev-parse --verify "$target" >/dev/null 2>&1; then
-        print_debug "Summarizing single commit: $target"
-        summarize_commit "$target" "$pathspec" "$gen_mode" >>"$summaries_file"
-        printf '\n========================\n\n'  >>"$summaries_file"
+        handle_single_commit "$target" "$summaries_file" "$pathspec" "$gen_mode"
         return
     fi
 
-    # 4) Nothing matched → fatal
     print_error "Error: Invalid target: $target"
     exit 1
 }

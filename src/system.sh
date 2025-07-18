@@ -36,30 +36,41 @@ remove_tmp_dir() {
 portable_mktemp_dir() {
     base_path="${GIV_TMP_DIR:-TMPDIR:-.giv/tmp}"
     mkdir -p "${base_path}"
-
+    
     # Ensure only one subfolder under $TMPDIR/giv exists per execution of the script
     # If GIV_TMP_DIR is not set, create a new temporary directory
     if [ -z "${GIV_TMP_DIR}" ]; then
-
+        
         if command -v mktemp >/dev/null 2>&1; then
             GIV_TMP_DIR="$(mktemp -d -p "${base_path}")"
         else
             GIV_TMP_DIR="${base_path}/giv.$$.$(date +%s)"
             mkdir -p "${GIV_TMP_DIR}"
         fi
-
+        
     fi
 }
 
 # Portable mktemp: fallback if mktemp not available
 portable_mktemp() {
     [ -z "$GIV_TMP_DIR" ] && portable_mktemp_dir
-
+    
     mkdir -p "$GIV_TMP_DIR"
-
+    
     if command -v mktemp >/dev/null 2>&1; then
         mktemp -p "${GIV_TMP_DIR}" "$1"
     else
         echo "${GIV_TMP_DIR}/giv.$$.$(date +%s)"
     fi
+}
+
+# Function to ensure .giv directory is initialized
+ensure_giv_dir_init() {
+
+    if [ ! -d "$(pwd)/.giv" ]; then
+        echo "Initializing .giv directory..."
+    fi
+    mkdir -p "$(pwd)/.giv"
+    [ ! -f "$(pwd)/.giv/config" ] && printenv | grep "GIV_" > "$(pwd)/.giv/config"
+    mkdir -p "$(pwd)/.giv" "$(pwd)/.giv/cache" "$(pwd)/.giv/.tmp" "$(pwd)/.giv/templates"
 }

@@ -290,3 +290,5 @@ setup_git_range() {
   assert_output --partial "Subcommand: document"
   assert_output --partial "Prompt File: PROMPT"
 }
+
+

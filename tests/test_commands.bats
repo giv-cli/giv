@@ -136,6 +136,21 @@ EOF
   rm -f "$tmp"
 }
 
+@test "summarize_target respects --dry-run" {
+  tmp="$(mktemp)"
+  export GIV_DRY_RUN="true"
+  run summarize_target HEAD~1..HEAD "$tmp" ""
+  assert_success
+  [ -z "$output" ]
+}
+
+@test "summarize_target skips model invocation with --model-mode none" {
+  tmp="$(mktemp)"
+  run summarize_target HEAD~1..HEAD "$tmp" "" --model-mode none
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
 #----------------------------------------
 # cmd_message
 #----------------------------------------

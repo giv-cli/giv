@@ -82,8 +82,7 @@ EOF
 # Returns:
 #   0 if parsing is successful, non-zero on error.
 parse_args() {
-    
-    # Initialize local variables
+    # Initialize variables
     model=${GIV_MODEL:-'devstral'}
     model_mode=${GIV_MODEL_MODE:-'auto'}
     api_model=${GIV_API_MODEL:-}

@@ -129,6 +129,8 @@ GIV_DOCS_DIR="${DOCS_DIR}"
 
 is_sourced="$(get_is_sourced)"
 if [ "${is_sourced}" -eq 0 ]; then
+    # Ensure .giv directory is initialized
+    ensure_giv_dir_init
     portable_mktemp_dir
     parse_args "$@"
 
@@ -141,6 +143,7 @@ if [ "${is_sourced}" -eq 0 ]; then
     # if [ "${debug}" = "true" ]; then
     #     set -x
     # fi
+
 
     # Dispatch logic
     case "${subcmd}" in
