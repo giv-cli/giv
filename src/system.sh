@@ -22,14 +22,21 @@ print_error() {
 # Filesystem helpers
 # -------------------------------------------------------------------
 remove_tmp_dir() {
-    # Remove the temporary directory if it exists
-    if [ -n "$GIV_TMP_DIR" ] && [ -d "$GIV_TMP_DIR" ]; then
-        rm -rf "$GIV_TMP_DIR"
-        print_debug "Removed temporary directory $GIV_TMP_DIR"
+    if [ -z "${GIV_TMPDIR_SAVE:-}" ]; then
+        print_debug "Removing temporary directory: $GIV_TMP_DIR"
+        
+        # Remove the temporary directory if it exists
+        if [ -n "$GIV_TMP_DIR" ] && [ -d "$GIV_TMP_DIR" ]; then
+            rm -rf "$GIV_TMP_DIR"
+            print_debug "Removed temporary directory $GIV_TMP_DIR"
+        else
+            print_debug 'No temporary directory to remove.'
+        fi
+        GIV_TMP_DIR="" # Clear the variable
     else
-        print_debug 'No temporary directory to remove.'
+        print_debug "Preserving temporary directory: $GIV_TMP_DIR"
+        return 0
     fi
-    GIV_TMP_DIR="" # Clear the variable
 }
 
 # Portable mktemp: fallback if mktemp not available
@@ -66,28 +73,28 @@ portable_mktemp() {
 
 
 find_giv_dir() {
-  dir=$(pwd)
-  while [ "$dir" != "/" ]; do
-    if [ -d "$dir/.giv" ]; then
-      printf '%s\n' "$dir/.giv"
-      return 0
-    fi
-    dir=$(dirname "$dir")
-  done
-  printf '%s\n' "$(pwd)/.giv"
+    dir=$(pwd)
+    while [ "$dir" != "/" ]; do
+        if [ -d "$dir/.giv" ]; then
+            printf '%s\n' "$dir/.giv"
+            return 0
+        fi
+        dir=$(dirname "$dir")
+    done
+    printf '%s\n' "$(pwd)/.giv"
 }
 
 
 # Function to ensure .giv directory is initialized
 ensure_giv_dir_init() {
-
+    
     [ -z "${GIV_HOME:-}" ] && GIV_HOME="$(find_giv_dir)"
-
+    
     if [ ! -d "${GIV_HOME}" ]; then
         print_debug "Initializing .giv directory..."
-        mkdir -p "$GIV_HOME"        
+        mkdir -p "$GIV_HOME"
     fi
     
-    [ ! -f "$GIV_HOME/config" ] && printenv | grep "GIV_" > "$GIV_HOME/config"
+    [ ! -f "$GIV_HOME/config" ] && cp "$GIV_DOCS_DIR/config.example" "$GIV_HOME/config"
     mkdir -p "$GIV_HOME" "$GIV_HOME/cache" "$GIV_HOME/.tmp" "$GIV_HOME/templates"
 }

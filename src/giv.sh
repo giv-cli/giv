@@ -1,8 +1,6 @@
 #!/bin/sh
 # giv - A POSIX-compliant script to generate commit messages, summaries,
 # changelogs, release notes, and announcements from Git history using AI
-__VERSION="0.3.0-beta"
-
 set -eu
 
 # Ensure our temp-dir cleanup always runs:
@@ -10,7 +8,6 @@ set -eu
 
 IFS='
 '
-
 
 # -------------------------------------------------------------------
 # Path detection for libraries, templates, and docs (POSIX compatible)
@@ -195,8 +192,8 @@ if [ "${is_sourced}" -eq 0 ]; then
     init)
         ensure_giv_dir_init
         if [ -d "${GIV_TEMPLATE_DIR}" ]; then
-            cp -r "${GIV_TEMPLATE_DIR}"/* "$(pwd)/.giv/templates/"
-            print_info "Templates copied to .giv/templates."
+            cp -r "${GIV_TEMPLATE_DIR}"/* "$GIV_HOME/templates/"
+            print_info "Templates copied to $GIV_HOME/templates."
         else
             print_error "Template directory not found: ${GIV_TEMPLATE_DIR}"
             exit 1
@@ -205,8 +202,6 @@ if [ "${is_sourced}" -eq 0 ]; then
     *) cmd_message "${GIV_REVISION}" ;;
     esac
 
-    if [ -z "${GIV_TMPDIR_SAVE:-}" ]; then
-        # Clean up temporary directory if it was created
-        remove_tmp_dir
-    fi
+    # Clean up temporary directory if it was created
+    remove_tmp_dir
 fi

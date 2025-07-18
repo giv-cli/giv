@@ -82,23 +82,9 @@ EOF
 # Returns:
 #   0 if parsing is successful, non-zero on error.
 parse_args() {
-    # Initialize variables
-    model=${GIV_MODEL:-'devstral'}
-    model_mode=${GIV_MODEL_MODE:-'auto'}
-    api_model="${GIV_API_MODEL:-}"
-    api_url="${GIV_API_URL:-}"
-    api_key="${GIV_API_KEY:-}"
-    debug="${GIV_DEBUG:-}"
-    output_file="${GIV_OUTPUT_FILE:-}"
-    todo_pattern="${GIV_TODO_PATTERN:-}"
-    todo_files="${GIV_TODO_FILES:-*todo*}"
-    subcmd=''
-    output_mode="${GIV_OUTPUT_MODE:-auto}"
-    output_version="${GIV_OUTPUT_VERSION:-auto}"
-    version_file="${GIV_VERSION_FILE:-}"
-    version_pattern="${GIV_VERSION_PATTERN:-}"
-    prompt_file="${GIV_PROMPT_FILE:-}"
 
+    subcmd=''
+    
     config_file=""
     is_config_loaded=false
     
@@ -134,7 +120,7 @@ parse_args() {
     set -- "$@"
     
     # Early config file parsing (handle both --config-file and --config-file=)
-    config_file="${PWD}/.env"
+    config_file="${GIV_HOME}/config"
     i=1
     while [ $i -le $# ]; do
         eval "arg=\${$i}"
@@ -166,7 +152,11 @@ parse_args() {
     # -------------------------------------------------------------------
     # Config file handling (early parse)
     # -------------------------------------------------------------------
-    
+    model=${GIV_MODEL:-'devstral'}
+    model_mode=${GIV_MODEL_MODE:-'auto'}
+    api_model="${GIV_API_MODEL:-}"
+    api_url="${GIV_API_URL:-}"
+    api_key="${GIV_API_KEY:-}"
     # Always attempt to source config file if it exists; empty config_file is a valid state.
     if [ -n "${config_file}" ] && [ -f "${config_file}" ]; then
         # shellcheck disable=SC1090
@@ -182,6 +172,21 @@ parse_args() {
         elif [ ! -f "${config_file}" ] && [ "${config_file}" != "${PWD}/.env" ]; then
         print_warn "config file ${config_file} not found."
     fi
+    # Initialize variables
+    model=${GIV_MODEL:-'devstral'}
+    model_mode=${GIV_MODEL_MODE:-'auto'}
+    api_model="${GIV_API_MODEL:-}"
+    api_url="${GIV_API_URL:-}"
+    api_key="${GIV_API_KEY:-}"
+    debug="${GIV_DEBUG:-}"
+    output_file="${GIV_OUTPUT_FILE:-}"
+    todo_pattern="${GIV_TODO_PATTERN:-}"
+    todo_files="${GIV_TODO_FILES:-*todo*}"
+    output_mode="${GIV_OUTPUT_MODE:-auto}"
+    output_version="${GIV_OUTPUT_VERSION:-auto}"
+    version_file="${GIV_VERSION_FILE:-}"
+    version_pattern="${GIV_VERSION_PATTERN:-}"
+    prompt_file="${GIV_PROMPT_FILE:-}"
     
     # 2. Next arg: revision (if present and not option)
     if [ $# -gt 0 ]; then
@@ -329,7 +334,7 @@ parse_args() {
     done
     
     print_debug "Parsed options"
-
+    
     # If subcommand is document, ensure we have a prompt file
     if [ "${subcmd}" = "document" ] && [ -z "${prompt_file}" ]; then
         printf 'Error: --prompt-file is required for the document subcommand.\n' >&2
@@ -368,25 +373,27 @@ parse_args() {
     [ "${model_mode}" = "none" ] && print_warn "Model mode set to \"none\", only prompt templates will be returned."
     
     print_debug "Set global variables:"
-    GIV_MODEL_MODE="${model_mode:-GIV_MODEL_MODE}"
-    GIV_MODEL="${model:-GIV_MODEL}"
-    GIV_TODO_FILES="${todo_files:-GIV_TODO_FILES}"
+    GIV_MODEL_MODE="${model_mode:-}"
+    GIV_MODEL="${model:-}"
+    GIV_TODO_FILES="${todo_files:-}"
     GIV_TODO_PATTERN="${todo_pattern:-}"
-    GIV_API_MODEL="${api_model:-GIV_API_MODEL}"
-    GIV_API_URL="${api_url:-GIV_API_URL}"
-    GIV_API_KEY="${api_key:-GIV_API_KEY}"
+    GIV_API_MODEL="${api_model:-}"
+    GIV_API_URL="${api_url:-}"
+    GIV_API_KEY="${api_key:-}"
     GIV_OUTPUT_FILE="${output_file:-}"
-    GIV_OUTPUT_MODE="${output_mode:-GIV_OUTPUT_MODE}"
-    GIV_OUTPUT_VERSION="${output_version:-GIV_OUTPUT_VERSION}"
+    GIV_OUTPUT_MODE="${output_mode:-}"
+    GIV_OUTPUT_VERSION="${output_version:-}"
     GIV_PROMPT_FILE="${prompt_file:-}"  # Default to empty if unset
     GIV_VERSION_FILE="${version_file:-}"
     GIV_VERSION_PATTERN="${version_pattern:-}"  # Default to empty if unset
     GIV_CONFIG_FILE="${config_file}"
-    GIV_DEBUG="${debug:-GIV_DEBUG}"
+    GIV_DEBUG="${debug:-}"
     print_debug "Global variables set"
-
+    
     print_debug "Environment variables:"
+    print_debug "  GIV_HOME: ${GIV_HOME:-}"
     print_debug "  GIV_TMP_DIR: ${GIV_TMP_DIR:-}"
+    print_debug "  GIV_TMPDIR_SAVE: ${GIV_TMPDIR_SAVE:-}"
     print_debug "  GIV_MODEL_MODE: ${GIV_MODEL_MODE:-}"
     print_debug "  GIV_MODEL: ${GIV_MODEL:-}"
     print_debug "  GIV_API_MODEL: ${GIV_API_MODEL:-}"

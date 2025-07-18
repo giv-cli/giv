@@ -8,6 +8,7 @@ load "$BATS_TEST_DIRNAME/../src/system.sh"
 
 @test "ensure_giv_dir creates .giv directory and files" {
     export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+    export GIV_DOCS_DIR="$BATS_TEST_DIRNAME/../docs"
     export GIV_DEBUG="true"
    {
     rm -rf "$GIV_HOME"  # Clean up any existing .giv directory

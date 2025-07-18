@@ -14,3 +14,5 @@ dist
 .giv/cache
 .giv/logs
 tests/.giv
+.notes
+.giv/config.bak

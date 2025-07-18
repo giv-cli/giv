@@ -10,9 +10,8 @@
   - Simplify flow control for model invocation to improve maintainability.
   - Modularize the `summarize_target()` and `summarize_commit()` functions for better readability and testing.
 - **Configuration Enhancements:**
-  - Implement the polished `parse_args()` function from the `giv_folder.md` file.
   - Add `.giv` initialization on first run with default templates and configuration.
-  - Ensure proper precedence for configuration sources: CLI args → config file → `.giv/.givrc` → environment variables.
+  - Ensure proper precedence for configuration sources: CLI args → config file → `.giv/config` → environment variables.
 - **Testing:**
   - Increase automated testing coverage for text insertion and token replacement functions.
   - Add unit tests for the new `parse_args()` and `.giv` initialization logic.

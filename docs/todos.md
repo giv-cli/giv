@@ -1,32 +1,5 @@
 # TODOs
 
-## Git Command Robustness:
-The use of `git diff` and `git rev-list` assumes the repository is in a clean state. If the user runs giv inside a shallow clone or with unusual ref names, some commands could fail.
-
-The script does check `git rev-parse --is-inside-work-tree` early to ensure you’re in a git repo.
-
-One scenario: very large diffs. Using `--compact-summary` and unified=3 limits output size, but if a commit touched 500 files, the diffstat could still be long.
-
-It might be worth limiting or truncating extremely large diffs before feeding to the LLM summary (perhaps summarizing the diffstat itself). This is more a potential enhancement than a bug; currently, a huge commit might risk hitting token limits for summarization. The code doesn’t explicitly guard against that beyond the diff settings.
-
-In practice, this might rarely be an issue, but it’s good to document.
-
-## Environment Variable Confusion:
-There are both config file `.env` loading and environment variables like `GIV_MODEL`, `GIV_API_URL`, etc. The code merges these by preferring CLI args, then env vars, then defaults.
-
-One thing to double-check: if the user sets `GIV_MODEL_MODE=none` (or uses `--model-mode none`), the script sets dry_run=true for generation but still goes through summarization unless explicitly handled.
-
-Actually, in generate_response, if mode is "none", it doesn’t have a case and will default to local which tries Ollama (not desired). There is a check setting model_mode="none" will skip model usage and treat it effectively as dry-run.
-
-This area could be refactored to make the logic clearer: e.g. a single flag that indicates “no model calls” which both summarization and final generation honor. As is, it does seem to work: model_mode none triggers warnings and then they set dry_run=true which causes generate_from_prompt to just print the prompt.
-
-It might be cleaner if summarize_target also respected dry-run and skipped calling the model (currently if you do `--model-mode none`, it might still run summarize_commit which calls generate_response; though since they set model_mode="none" and pass that in, generate_response would return empty immediately or error).
-
-This flow is a bit convoluted. A refactor could short-circuit summarization when no model is to be used – instead, just concatenate raw commit messages or something.
-
-This ties into perhaps providing a mode where the tool generates a draft prompt for manual use (which it does via `--dry-run` or `--prompt-file` in document). Not a critical bug, but worth reviewing.
-
-
 
 ## Pending
 

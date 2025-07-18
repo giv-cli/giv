@@ -1,10 +1,39 @@
-GIV_TMPDIR_SAVE=1
+# GIV Configuration Example
+## Check the docs/configuration.md for more details.
 
-### Basic setup for Ollama CLI
-GIV_MODEL=devstral
-# Note: When using remote generation, the GIV_API_MODEL variable or the CLI --api-model arg will determine which model to use
+## Debugging
+# ### Set to "true" to enable debug mode, which provides detailed logging
+# GIV_DEBUG=""
+# ### If set to "true", enables dry run mode (no changes will be made)
+# GIV_DRY_RUN=""
+# ### Set to "true" to preserve temporary directories after execution for debugging purposes
+# GIV_TMPDIR_SAVE=""
+
+
+## Model and API configuration
+GIV_MODEL_MODE="auto"
+GIV_MODEL="devstral"
 
 ## Remote: groq API Configuration
 GIV_API_URL="https://api.groq.com/openai/v1/chat/completions"
 GIV_API_MODEL="compound-beta"
 GIV_API_KEY="${GROQ_API_KEY:-}"
+
+
+## Remote: OpenAI Compatible API Configuration
+GIV_API_MODEL=gpt-4o-mini
+GIV_API_URL=https://api.openai.com/v1/chat/completions
+GIV_API_KEY="${OPENAI_API_KEY:-}"
+
+## Project details
+### Path to the file containing the project version (e.g., "pyproject.toml" or "package.json")
+GIV_VERSION_FILE="src/config.sh"
+
+### Regex pattern to extract the version string from the version file (e.g., 'version\s*=\s*"([0-9\.]+)"')
+GIV_VERSION_PATTERN=""
+
+### Regex pattern to identify TODO comments in code (e.g., 'TODO:(.*)')
+GIV_TODO_PATTERN=""
+
+### Comma-separated list of files or glob patterns to search for TODOs (e.g., "*.py,src/**/*.js")
+GIV_TODO_FILES="docs/todos.md"

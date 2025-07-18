@@ -368,8 +368,8 @@ EOF
   assert_success
   assert_output --partial "phi"
 }
-@test "Config defaults to PWD/.env" {
-  echo "GIV_MODEL=llama3" >.env
+@test "Config defaults to GIV_HOME/config" {
+  echo "GIV_MODEL=llama3" >"$GIV_HOME/config"
 
   mock_ollama "dummy" "- llama3"
 
@@ -379,7 +379,8 @@ EOF
   assert_output --partial "Using model: llama3"
 }
 @test "Config file overrides .env" {
-  echo "GIV_MODEL=llama3" >.env
+
+  echo "GIV_MODEL=llama3" >"$GIV_HOME/config"
   tmpfile=$(mktemp)
   echo "GIV_MODEL=phi3" >"$tmpfile"
   gen_commits
