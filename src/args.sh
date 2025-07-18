@@ -85,9 +85,9 @@ parse_args() {
     # Initialize variables
     model=${GIV_MODEL:-'devstral'}
     model_mode=${GIV_MODEL_MODE:-'auto'}
-    api_model=${GIV_API_MODEL:-}
-    api_url=${GIV_API_URL:-}
-    api_key=${GIV_API_KEY:-}
+    api_model="${GIV_API_MODEL:-}"
+    api_url="${GIV_API_URL:-}"
+    api_key="${GIV_API_KEY:-}"
     debug="${GIV_DEBUG:-}"
     output_file="${GIV_OUTPUT_FILE:-}"
     todo_pattern="${GIV_TODO_PATTERN:-}"

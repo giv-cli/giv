@@ -45,8 +45,8 @@ run_update() {
 
 cmd_message() {
     commit_id="${1:-}"
-    pathspec="${2:-GIV_PATHSPEC}" # New argument for PATHSPEC
-    todo_pattern="${3:-GIV_TODO_PATTERN}" # New argument for todo_pattern
+    pathspec="${2:-$GIV_PATHSPEC}" # New argument for PATHSPEC
+    todo_pattern="${3:-$GIV_TODO_PATTERN}" # New argument for todo_pattern
     model_mode="${4:-}" # New argument for model_mode
 
     if [ -z "${commit_id}" ]; then

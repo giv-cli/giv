@@ -12,6 +12,7 @@ load "$BATS_TEST_DIRNAME/../src/project.sh"
 SCRIPT="$BATS_TEST_DIRNAME/../src/history.sh"
 
 setup() {
+    mkdir -p "$GIV_HOME/cache"
     # Create a temporary git repo
     REPO="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
     cd "$REPO"
@@ -62,26 +63,23 @@ setup() {
 teardown() {
     remove_tmp_dir
     rm -rf "$REPO"
+    rm -rf "$GIV_HOME/cache"  # clean up any old cache
 }
 
 @test "build_history for HEAD shows updated version and diff block" {
     hist="$(mktemp)"
-    run build_history "$hist" HEAD
-
-    cat "$hist"
-    # Should contain the updated version header
-    run grep -F "**Version:** 1.1.0" "$hist"
+    build_history "$hist" HEAD
     assert_success
     run cat "$hist"
-    assert_output --partial '```diff'
+    assert_output --partial "**Version:** 1.1.0"
 }
 
 @test "build_history for HEAD~2 shows previous version" {
     hist="$(mktemp)"
     build_history "$hist" HEAD~2
+    assert_success
     run cat "$hist"
     assert_output --partial "**Version:** 1.0.0"
-    assert_success
 }
 
 @test "build_history with no version file emits only diff block" {

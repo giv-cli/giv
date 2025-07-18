@@ -4,7 +4,7 @@
 # Extract TODO changes for history extraction
 extract_todo_changes() {
     range="$1"
-    pattern="${2:-$todo_pattern}"
+    pattern="${2:-$GIV_TODO_PATTERN}"
 
     print_debug "Extracting TODO changes for range: ${range} and pattern ${pattern}"
     # Default to no pattern if not set
@@ -128,15 +128,34 @@ build_history() {
     todo_pattern="${3:-${GIV_TODO_PATTERN:-TODO}}"
     diff_pattern="${4:-}"
 
-    print_debug "Building history for commit $commit"
+
+    # Determine cache directory and file
+    if [ -z "$GIV_HOME" ]; then
+        GIV_HOME=$(find_giv_dir) || {
+            echo "Error: .giv directory not found" >&2
+            return 1
+        }
+    fi
+
+    history_cache="$GIV_HOME/cache/${commit}-history.md"
+
+    # Return cached history if it exists
+    if [ -f "$history_cache" ]; then
+        cat "$history_cache" > "$hist"
+        return 0
+    fi
+
     : >"$hist"
 
     if [ -z "$commit" ]; then
         commit="--current"
     fi
 
+    print_debug "Building history for commit $commit"
+
     # Verify the commit is valid
-    if [ "$commit" != "--cached" ] && [ "$commit" != "--current" ] && ! git rev-parse --verify "$commit" >/dev/null 2>&1; then
+    if [ "$commit" != "--cached" ] && [ "$commit" != "--current" ] \
+        && ! git rev-parse --verify "$commit" >/dev/null 2>&1; then
         printf 'Error: Could not build history for commit: %s\n' "$commit" >&2
         exit 1
     fi
@@ -165,7 +184,15 @@ build_history() {
     # shellcheck disable=SC2016
     [ -n "$td" ] && printf '\n### TODO Changes\n```diff\n%s\n```\n' "$td" >>"$hist"
 
-    return 0
+    # Save history to cache
+    if [ "$commit" != "--cached" ] && [ "$commit" != "--current" ]; then
+        print_debug "Saving history to cache: $history_cache"
+        cp -f "$hist" "$history_cache"
+    else
+        print_debug "Not caching history for special commit: $commit"
+    fi
+
+    
 }
 
 # Helper function to handle special targets
