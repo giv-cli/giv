@@ -4,7 +4,7 @@ load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
 load "$BATS_TEST_DIRNAME/../src/config.sh"
-load "$BATS_TEST_DIRNAME/../src/system.sh"
+. "$BATS_TEST_DIRNAME/../src/system.sh"
 
 export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/main.error.log"
 
@@ -14,6 +14,9 @@ setup_file() {
 }
 
 setup() {
+  export GIV_TEMPLATE_DIR="$BATS_TEST_DIRNAME/../templates"
+  mkdir -p "$GIV_TEMPLATE_DIR"
+
   ORIG_DIR="$PWD"
   mkdir -p "$BATS_TEST_DIRNAME/.tmp"
   BATS_TMP_DIR="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"

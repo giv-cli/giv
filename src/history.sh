@@ -250,115 +250,197 @@ handle_single_commit() {
     pathspec="$3"
     gen_mode="$4"
 
+    if ! is_valid_commit "$target"; then
+        print_error "Error: Invalid target: $target"
+        return 1
+    fi
+
     print_debug "Summarizing single commit: $target"
     summarize_commit "$target" "$pathspec" "$gen_mode" >>"$summaries_file"
     printf '\n========================\n\n'  >>"$summaries_file"
 }
 
-# Updated summarize_target function
-summarize_target() {
-    target="$1"
-    summaries_file="$2"
-    pathspec="$3"
-    gen_mode="${4:-$GIV_MODEL_MODE:-auto}"
-
-    if [ "$gen_mode" = "none" ]; then
-        print_debug "Skipping model invocation due to --model-mode none"
-        return
-    fi
-
-    if [ -z "$target" ] || [ "$target" = "--current" ] || [ "$target" = "--cached" ]; then
-        handle_special_target "$target" "$summaries_file" "$pathspec" "$gen_mode"
-        return
-    fi
-
-    if printf '%s' "$target" | grep -qE '\.\.\.?'; then
-        handle_commit_range "$target" "$summaries_file" "$pathspec" "$gen_mode"
-        return
-    fi
-
-    if git rev-parse --verify "$target" >/dev/null 2>&1; then
-        handle_single_commit "$target" "$summaries_file" "$pathspec" "$gen_mode"
-        return
-    fi
-
-    print_error "Error: Invalid target: $target"
-    exit 1
+is_valid_commit() {
+    [ "$1" = "--current" ] || [ "$1" = "--cached" ] && return 0
+    # Check if the commit is a valid git reference
+    git rev-parse --verify "$1^{commit}" >/dev/null 2>&1
 }
 
-# summarize_commit - Generates a summary for a given commit.
-#
-# Arguments:
-#   $1 - The commit hash or identifier to summarize.
-#   $2 - (Optional) The generation mode to use; defaults to the value of $GIV_MODEL_MODE.
-#
-# Description:
-#   This function creates temporary files to store commit history, prompt, and summary results.
-#   It builds the commit history, retrieves version information, and constructs a summary prompt.
-#   The prompt is then used to generate a summary response, which is saved to a file and printed.
-#
-# Outputs:
-#   Prints the generated summary to stdout.
-#
-# Dependencies:
-#   - portable_mktemp
-#   - print_debug
-#   - build_history
-#   - find_version_file
-#   - get_version_info
-#   - build_prompt
-#   - generate_response
+# Modularized summarize_commit function
 summarize_commit() {
   commit="$1"
   pathspec="$2"
   gen_mode="${3:-${GIV_MODEL_MODE:-auto}}"
 
-#   # Find or confirm GIV_HOME
-#   if [ -z "$GIV_HOME" ]; then
-#     GIV_HOME=$(find_giv_dir) || {
-#       echo "Error: .giv directory not found" >&2
-#       return 1
-#     }
-#   fi
+  print_debug "Starting summarize_commit for commit: $commit"
 
-  summary_cache="$GIV_HOME/cache/${commit}-summary.md"
+  summary_cache=$(get_summary_cache "$commit")
+  print_debug "Summary cache path: $summary_cache"
 
-  # Return cached summary if it exists
   if [ -f "$summary_cache" ]; then
+    print_debug "Cache hit for commit: $commit"
     cat "$summary_cache"
     return 0
   fi
 
+  hist=$(create_temp_file "hist.${commit}")
+  pr=$(create_temp_file "prompt.${commit}")
+  res_file=$(create_temp_file "summary.${commit}")
 
-  # Temporary files for generation
-  hist=$(portable_mktemp "hist.${commit}.XXXXXX")
-  pr=$(portable_mktemp "prompt.${commit}.XXXXXX")
-  res_file=$(portable_mktemp "summary.${commit}.XXXXXX")
+  print_debug "Temporary files created: hist=$hist, prompt=$pr, res_file=$res_file"
 
-  print_debug "summarize_commit ${commit} ${hist} ${pr}"
+  generate_commit_history "$hist" "$commit" "$pathspec"
+  sc_version=$(get_commit_version "$commit")
+  print_debug "Commit version: $sc_version"
 
-  build_history "$hist" "$commit" "$GIV_TODO_PATTERN" "$pathspec"
-  sc_version_file=$(find_version_file)
-  sc_version=$(get_version_info "$commit" "$sc_version_file")
-
-  summary_template=$(build_prompt \
-    --version "$sc_version" \
-    --template "$GIV_TEMPLATE_DIR/summary_prompt.md" \
-    --summary "$hist")
-
-  print_debug "Using summary prompt: ${summary_template}"
+  summary_template=$(build_summary_prompt "$sc_version" "$hist")
+  print_debug "Summary template generated"
   printf '%s\n' "$summary_template" >"$pr"
-  print_debug "Generating response for commit ${commit} in mode ${gen_mode}"
-  res=$(generate_response "${pr}" "${gen_mode}" "0.9" "32768")
 
-  print_commit_metadata "$commit" >"$res_file"
-  print_debug "Printed commit metadata to ${res_file}"
+  res=$(generate_summary_response "$pr" "$gen_mode")
+  print_debug "Summary response generated"
+
+  save_commit_metadata "$commit" "$res_file"
+  print_debug "Commit metadata saved"
   printf '\n\n' >>"$res_file"
   echo "$res" >>"$res_file"
 
-  # Save and return summary
-  if [ "$commit" != "--cached" ] && [ "$commit" != "--current" ]; then    
-    cp -f "$res_file" "$summary_cache"
-  fi
+  cache_summary "$commit" "$res_file"
+  print_debug "Summary cached"
   cat "$res_file"
 }
+
+# Generates commit history and saves it to a temporary file.
+generate_commit_history() {
+    hist_file="$1"
+    commit="$2"
+    pathspec="$3"
+
+    print_debug "Generating commit history for commit: $commit"
+    build_history "$hist_file" "$commit" "$pathspec"
+}
+
+# Builds a summary prompt based on the commit history.
+build_summary_prompt() {
+    version="$1"
+    hist_file="$2"
+    template_dir="${GIV_TEMPLATE_DIR}"
+    template_file="${template_dir}/final_summary_prompt.md"
+
+    print_debug "Building summary prompt using version: $version and history file: $hist_file"
+
+    if [ ! -f "$template_file" ]; then
+        printf 'Error: Template file not found: %s\n' "$template_file" >&2
+        return 1
+    fi
+
+    build_prompt --version "$version" --template "$template_file" --summary "$hist_file"
+}
+
+# Generates a summary response based on the prompt.
+generate_summary_response() {
+    prompt_file="$1"
+    gen_mode="$2"
+
+    print_debug "Generating summary response using mode: $gen_mode"
+
+    case "$gen_mode" in
+        auto)
+            print_debug "Auto mode selected, defaulting to local"
+            gen_mode="local"
+            ;;
+        local|remote)
+            ;;  # Supported modes
+        *)
+            printf 'Error: Unsupported gen_mode: %s\n' "$gen_mode" >&2
+            return 1
+            ;;
+    esac
+
+    generate_response "$prompt_file" "$gen_mode"
+}
+
+# Function to get the path to the cached summary for a given commit
+get_summary_cache() {
+  commit="$1"
+  echo "$GIV_HOME/cache/${commit}-summary.md"
+}
+
+# Function to cache a summary for a given commit
+cache_summary() {
+  commit="$1"
+  summary_file="$2"
+
+  cache_path=$(get_summary_cache "$commit")
+  mkdir -p "$(dirname "$cache_path")"
+  cp -f "$summary_file" "$cache_path"
+}
+
+# Function to create a temporary file with a given prefix
+create_temp_file() {
+    prefix="$1"
+    mktemp "${GIV_TMP_DIR:-/tmp}/${prefix}.XXXXXX"
+}
+
+# Function to save metadata for a given commit
+save_commit_metadata() {
+    commit="$1"
+    metadata_file="$2"
+
+    print_debug "Saving metadata for commit: $commit"
+    printf 'Commit: %s\n' "$commit" >> "$metadata_file"
+    printf 'Date: %s\n' "$(get_commit_date "$commit")" >> "$metadata_file"
+    printf 'Message: %s\n' "$(get_message_header "$commit")" >> "$metadata_file"
+}
+
+# Function to get the version information for a given commit
+get_commit_version() {
+    commit="$1"
+    version_file="$(find_version_file)"
+
+    if [ -z "$version_file" ]; then
+        print_debug "No version file found for commit: $commit"
+        echo ""
+        return
+    fi
+
+    print_debug "Getting version info for commit $commit from $version_file"
+    git show "$commit:$version_file" 2>/dev/null | grep -Eo 'version[[:space:]]*[:=][[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*[:=][[:space:]]*"([^"]+)"/\1/'
+}
+
+summarize_target() {
+    target="$1"
+    summaries_file="$2"
+    pathspec="$3"
+    gen_mode="${4:-auto}"  # Default gen_mode to 'auto' if not provided
+
+    print_debug "Starting summarize_target with target: $target, summaries_file: $summaries_file, pathspec: $pathspec, gen_mode: $gen_mode"
+
+    if [ -z "$target" ]; then
+        target="--current"
+    fi
+
+    case "$target" in
+    --current | --cached)
+        print_debug "Handling special target: $target"
+        handle_special_target "$target" "$summaries_file" "$pathspec" "$gen_mode"
+        ;;
+    *...*)
+        print_debug "Handling three-dot commit range: $target"
+        handle_commit_range "$target" "$summaries_file" "$pathspec" "$gen_mode"
+        ;;
+    *..*)
+        print_debug "Handling two-dot commit range: $target"
+        handle_commit_range "$target" "$summaries_file" "$pathspec" "$gen_mode"
+        ;;
+    *)
+        print_debug "Handling single commit: $target"
+        handle_single_commit "$target" "$summaries_file" "$pathspec" "$gen_mode"
+        ;;
+    esac
+
+    print_debug "Finished summarize_target for target: $target"
+}
+
+# # Ensure the temporary directory exists
+mkdir -p "${GIV_TMP_DIR:-/tmp}"

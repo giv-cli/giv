@@ -1,4 +1,3 @@
-
 # json_escape - Reads stdin and outputs JSON-escaped string (with surrounding quotes)
 #
 # This function handles the following characters:
@@ -115,6 +114,12 @@ extract_content_from_response() {
 generate_remote() {
     content=$(cat "$1")
 
+    # Check required environment variables
+    if [ -z "${GIV_API_MODEL}" ] || [ -z "${GIV_API_URL}" ] || [ -z "${GIV_API_KEY}" ]; then
+        printf 'Error: Missing required environment variables for remote generation.\n' >&2
+        return 1
+    fi
+
     # Escape for JSON (replace backslash, double quote, and control characters)
     # Use json_escape to safely encode the prompt as a JSON string
     escaped_content=$(printf "%s" "${content}" | json_escape)
@@ -132,17 +137,21 @@ generate_remote() {
     if [ "$GIV_DEBUG" = "true" ]; then
         echo "Response from remote API:" >&2
         echo "${response}" >&2
-        #echo "${response}" >> "response.json"
     fi
 
     # Extract the content field from the response
     result=$(extract_content_from_response "${response}")
 
-    #print_debug "Parsed response:$result"
     echo "${result}"
 }
 
 run_local() {
+    # Check required environment variables
+    if [ -z "${GIV_MODEL}" ]; then
+        printf 'Error: Missing required environment variable GIV_MODEL for local generation.\n' >&2
+        return 1
+    fi
+
     # Backup original values of OLLAMA_TEMPERATURE and OLLAMA_NUM_CTX
     orig_ollama_temperature="${OLLAMA_TEMPERATURE:-}"
     orig_ollama_num_ctx="${OLLAMA_NUM_CTX:-}"
@@ -179,21 +188,38 @@ run_local() {
 #     - 'none': Outputs the content of the input file directly using `cat`.
 #     - Any other value: Calls the `run_local` function with the input file path as an argument, along with temperature and context window size if provided.
 generate_response() {
-    gen_mode="${2:-$GIV_MODEL_MODE:-auto}"
+    gen_mode="${2:-${GIV_MODEL_MODE:-auto}}"
     temp="${3:-0.5}"         # Default to a neutral temperature of 0.5
     ctx_window="${4:-32768}" # Default context window size
 
-    print_debug "Generating response using $gen_mode mode with temperature=$temp and context window size=$ctx_window"
+    print_debug "Generating response using gen_mode='$gen_mode', temperature=$temp, context window size=$ctx_window"
 
     case ${gen_mode} in
+    auto)
+        print_debug "Auto mode selected, defaulting to 'local'"
+        gen_mode="local"
+        ;;
     remote)
-        generate_remote "$1" "$temp" "$ctx_window"
+        print_debug "Remote mode selected"
+        if ! generate_remote "$1" "$temp" "$ctx_window"; then
+            printf 'Error: generate_remote failed\n' >&2
+            return 1
+        fi
         ;;
     none)
+        print_debug "None mode selected, outputting file content"
         cat "$1"
         ;;
+    local)
+        print_debug "Local mode selected"
+        if ! run_local "$1" "$temp" "$ctx_window"; then
+            printf 'Error: run_local failed\n' >&2
+            return 1
+        fi
+        ;;
     *)
-        run_local "$1" "$temp" "$ctx_window"
+        printf 'Error: Unsupported gen_mode: %s\n' "$gen_mode" >&2
+        return 1
         ;;
     esac
 }
@@ -278,6 +304,8 @@ build_prompt() {
     template_file=""
     summary_file=""
 
+    print_debug "Arguments passed to build_prompt: $*"
+
     # resolve version if unset or 'auto'
     if [ -z "${version}" ] || [ "${version}" = "auto" ]; then
         print_debug "No version set or version is 'auto', trying to find it from version file"
@@ -306,6 +334,7 @@ build_prompt() {
             ;;
         --template)
             template_file=$2
+            print_debug "Template file set to: $template_file"
             shift 2
             ;;
         --summary)

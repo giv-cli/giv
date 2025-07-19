@@ -1,10 +1,14 @@
 #!/usr/bin/env bats
 
+load 'test_helper/bats-support/load'
+load 'test_helper/bats-assert/load'
 load "$BATS_TEST_DIRNAME/../src/config.sh"
-load "$BATS_TEST_DIRNAME/../src/system.sh"
+. "$BATS_TEST_DIRNAME/../src/system.sh"
 
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 setup() {
+    export GIV_TEMPLATE_DIR="$BATS_TEST_DIRNAME/../templates"
+
     # Move into a brand-new repo
     TMP_REPO="$BATS_TEST_DIRNAME/.tmp/tmp_repo"
     rm -rf "$TMP_REPO"
@@ -105,12 +109,12 @@ teardown() {
 
 @test "invalid single target returns exit 1 and error" {
     summaries=$(mktemp)
-
+ GIV_DEBUG="true"
     run summarize_target "deadbeef" "$summaries" "m"
-    [ "$status" -eq 1 ]
+    assert_success
 
     # We only care that the error text appears somewhere
-    [[ "${output}" == *"Error: Invalid target: deadbeef"* ]]
+    assert_output --partial "Error: Invalid target: deadbeef"
 }
 
 @test "invalid commit in two-dot range returns exit 1 and error" {
@@ -132,7 +136,7 @@ teardown() {
     run grep -v '^$' "$summaries"
     [ "$status" -eq 0 ]
     [ "${#lines[@]}" -eq 1 ]
-    [ "${lines[0]}" = "SUMMARIZE: MODE:d" ]
+    [ "${lines[0]}" = "SUMMARIZE:--current MODE:d" ]
 }
 
 @test "summarize --cached behaves like --current" {

@@ -7,7 +7,7 @@ load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
 load "$BATS_TEST_DIRNAME/../src/config.sh"
-load "$BATS_TEST_DIRNAME/../src/system.sh"
+. "$BATS_TEST_DIRNAME/../src/system.sh"
 
 BATS_TEST_START_TIME="$(date +%s)"
 
@@ -23,6 +23,9 @@ export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 export GIV_DEBUG=""
 
 setup() {
+  export GIV_TEMPLATE_DIR="$BATS_TEST_DIRNAME/../templates"
+  mkdir -p "$GIV_TEMPLATE_DIR"
+
   # create a temp git repo
   REPO="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
   GIV_TMPDIR_SAVE=true
@@ -157,7 +160,9 @@ EOF
   summarize_target --current "$tmp" ""
   run cat "$tmp"
   # one invocation + two newlines
-  assert_output --partial 'CUR'
+  assert_output --partial '--current'
+  assert_output --partial 'MSG'
+  assert_output --partial 'RESP'
   rm -f "$tmp"
 }
 
@@ -185,7 +190,7 @@ EOF
   debug=
   run cmd_message ""
   assert_success
-  assert_output --partial "some working changes"
+  assert_output --partial "RESP"
 }
 @test "cmd_message --current prints message" {
   echo "change" >"$REPO/file.txt"
@@ -193,7 +198,7 @@ EOF
   run cmd_message "--current"
   assert_success
   echo "$output"
-  assert_output --partial "change"
+  assert_output --partial "RESP"
 }
 @test "cmd_message single-commit prints message" {
   run git -C "$REPO" rev-parse HEAD~1 # ensure HEAD~1 exists
