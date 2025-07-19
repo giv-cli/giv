@@ -10,7 +10,7 @@ load "$BATS_TEST_DIRNAME/../src/system.sh"
 load "$BATS_TEST_DIRNAME/../src/project.sh"
 SCRIPT="$BATS_TEST_DIRNAME/../src/history.sh"
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 setup() {
     rm -rf "$GIV_HOME/cache"  # clean up any old cache
     rm -rf "$GIV_HOME/.tmp"  # clean up any old tmp

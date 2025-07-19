@@ -4,6 +4,8 @@ load '../src/llm.sh'
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 setup() {
     TESTDIR="$(mktemp -d)"
     export TESTDIR

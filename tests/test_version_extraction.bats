@@ -8,6 +8,10 @@ load "$BATS_TEST_DIRNAME/../src/system.sh"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
+
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
+
 setup() {
     TMPDIR_REPO="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
     cd "$TMPDIR_REPO"

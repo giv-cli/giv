@@ -11,8 +11,12 @@ load "$BATS_TEST_DIRNAME/../src/project.sh"
 SCRIPT="$BATS_TEST_DIRNAME/../src/llm.sh"
 
 load "$SCRIPT"
+
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
+
 setup() {
-    TMPDIR_REPO="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
+    TMPDIR_REPO="$(mktemp -d -p "$GIV_TMP_DIR")"
     cd "$TMPDIR_REPO"
     rm -f input.md
 

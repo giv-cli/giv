@@ -148,9 +148,10 @@ generate_remote() {
 run_local() {
     # Check required environment variables
     if [ -z "${GIV_MODEL}" ]; then
-        printf 'Error: Missing required environment variable GIV_MODEL for local generation.\n' >&2
+        print_error "Missing required environment variable GIV_MODEL for local generation."
         return 1
     fi
+    print_debug "Running local generation with model: ${GIV_MODEL}"
 
     # Backup original values of OLLAMA_TEMPERATURE and OLLAMA_NUM_CTX
     orig_ollama_temperature="${OLLAMA_TEMPERATURE:-}"
@@ -202,7 +203,7 @@ generate_response() {
     remote)
         print_debug "Remote mode selected"
         if ! generate_remote "$1" "$temp" "$ctx_window"; then
-            printf 'Error: generate_remote failed\n' >&2
+            print_error "Failed to generate remote response"
             return 1
         fi
         ;;
@@ -213,12 +214,12 @@ generate_response() {
     local)
         print_debug "Local mode selected"
         if ! run_local "$1" "$temp" "$ctx_window"; then
-            printf 'Error: run_local failed\n' >&2
+            print_error "Failed to run local generation with ollama"
             return 1
         fi
         ;;
     *)
-        printf 'Error: Unsupported gen_mode: %s\n' "$gen_mode" >&2
+        print_error "Unsupported gen_mode: $gen_mode"
         return 1
         ;;
     esac
@@ -417,12 +418,13 @@ generate_from_prompt() {
 
     # 1) Invoke the AI
     if ! res=$(generate_response "$prompt_file" "$gen_mode" "$temperature" "$context_window"); then
-        printf 'Error: generate_response failed (mode=%s)\n' "$gen_mode" >&2
+        print_error "Failed to generate_response (mode=$gen_mode)"
         exit 1
     fi
 
     # 2) Dry‐run?  Just print and exit
     if [ "${GIV_DRY_RUN:-}" = "true" ] || [ -z "${response_output_file}" ]; then
+        print_debug "Dry run mode or no output file specified, printing response:"
         printf '%s\n' "$res"
         return 0
     fi
@@ -432,7 +434,7 @@ generate_from_prompt() {
         print_info "Response written to $response_output_file"
         return 0
     else
-        printf 'Error: Failed to write response to %s\n' "$response_output_file" >&2
+        print_error "Failed to write response to $response_output_file"
         exit 1
     fi
 }

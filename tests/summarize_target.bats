@@ -3,9 +3,33 @@
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 load "$BATS_TEST_DIRNAME/../src/config.sh"
-. "$BATS_TEST_DIRNAME/../src/system.sh"
+load "$BATS_TEST_DIRNAME/../src/system.sh"
 
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
+
+mock_ollama() {
+  arg1="${1:-dummy}"
+  arg2="${2:-Ollama message}"
+  mkdir -p bin
+  rm -f bin/ollama
+  # create a mock ollama command that just echoes its arguments
+  cat >bin/ollama <<EOF
+#!/bin/bash
+echo "Ollama command: \$1"
+echo "Using model: \$2"
+echo "arg1: $arg1"
+echo "arg2: $arg2"
+echo "Ollama run complete"
+if [ "\$3" ]; then
+  echo "Ollama in verbose mode \$3"
+fi
+EOF
+  chmod +x bin/ollama
+  export PATH="$PWD/bin:$PATH"
+}
+
+
 setup() {
     export GIV_TEMPLATE_DIR="$BATS_TEST_DIRNAME/../templates"
 
@@ -255,4 +279,50 @@ teardown() {
     [ "${lines[0]}" = "SUMMARIZE:HEAD~2 MODE:u" ]
     [ "${lines[1]}" = "SUMMARIZE:$SECOND_SHA MODE:u" ]
     [ "${lines[2]}" = "SUMMARIZE:$THIRD_SHA MODE:u" ]
+}
+
+#----------------------------------------
+# summarize_target
+#----------------------------------------
+@test "summarize_target on single-commit range" {
+  tmp="$(mktemp)"
+
+  generate_response() { echo "RESP"; }
+  export debug="true"
+  # call inside the real repo
+  summarize_target HEAD~1..HEAD "$tmp" ""
+  cat "$tmp"
+
+  # commit id of HEAD~1
+  head_commit=$(git rev-parse HEAD)
+  
+  run cat "$tmp"
+  assert_output --partial "SUMMARIZE:HEAD~1 MODE"
+  assert_output --partial "SUMMARIZE:$head_commit MODE"
+
+  rm -f "$tmp"
+}
+
+@test "summarize_target on --current" {
+  tmp="$(mktemp)"
+  mock_ollama "dummy" "CUR"
+  summarize_target --current "$tmp" ""
+  run cat "$tmp"
+  assert_output --partial 'SUMMARIZE:--current MODE:'
+  rm -f "$tmp"
+}
+
+@test "summarize_target respects --dry-run" {
+  tmp="$(mktemp)"
+  export GIV_DRY_RUN="true"
+  run summarize_target HEAD~1..HEAD "$tmp" ""
+  assert_success
+  [ -z "$output" ]
+}
+
+@test "summarize_target skips model invocation with --model-mode none" {
+  tmp="$(mktemp)"
+  run summarize_target HEAD~1..HEAD "$tmp" "" --model-mode none
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }

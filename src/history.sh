@@ -293,8 +293,12 @@ summarize_commit() {
   sc_version=$(get_commit_version "$commit")
   print_debug "Commit version: $sc_version"
 
-  summary_template=$(build_summary_prompt "$sc_version" "$hist")
-  print_debug "Summary template generated"
+  summary_template=$(build_commit_summary_prompt "$sc_version" "$hist")
+  if [ -z "$summary_template" ]; then
+    print_error "Failed to build summary prompt template for commit: $commit"
+    exit 1
+  fi
+  print_debug "Summary template generated: ${summary_template}"
   printf '%s\n' "$summary_template" >"$pr"
 
   res=$(generate_summary_response "$pr" "$gen_mode")
@@ -321,17 +325,16 @@ generate_commit_history() {
 }
 
 # Builds a summary prompt based on the commit history.
-build_summary_prompt() {
+build_commit_summary_prompt() {
     version="$1"
     hist_file="$2"
-    template_dir="${GIV_TEMPLATE_DIR}"
-    template_file="${template_dir}/final_summary_prompt.md"
+    template_file="${GIV_TEMPLATE_DIR}/summary_prompt.md"
 
     print_debug "Building summary prompt using version: $version and history file: $hist_file"
 
     if [ ! -f "$template_file" ]; then
-        printf 'Error: Template file not found: %s\n' "$template_file" >&2
-        return 1
+        print_error "Template file not found: $template_file"
+        exit 1
     fi
 
     build_prompt --version "$version" --template "$template_file" --summary "$hist_file"

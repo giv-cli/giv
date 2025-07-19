@@ -9,6 +9,8 @@ load 'test_helper/bats-assert/load'
 load "$HELPERS"
 load "$SCRIPT"
 
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 # Stub dependencies and source function
 setup() {
     # Stub portable_mktemp and normalize_blank_lines

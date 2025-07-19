@@ -20,6 +20,8 @@ load "$HELPERS"
 TEMPLATES_DIR="$BATS_TEST_DIRNAME/../templates"
 # export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.tmp/giv"
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
+
 export GIV_DEBUG=""
 
 setup() {
@@ -108,78 +110,7 @@ EOF
   chmod +x bin/ollama
   export PATH="$PWD/bin:$PATH"
 }
-#----------------------------------------
-# summarize_commit
-#----------------------------------------
-@test "summarize_commit writes RESP to out_file" {
-  # force portable_mktemp to yield deterministic files
-  COUNT=0
-  portable_mktemp() {
-    if [ "$COUNT" -eq 0 ]; then
-      COUNT=1
-      echo hist.tmp
-    else
-      echo pr.tmp
-    fi
-  }
-  rm -f hist.tmp pr.tmp out.txt
-  rm -rf "$GIV_HOME/cache/*.*"  # clean up any old cache
-  mock_ollama "dummy" "RESP"
-  GIV_DEBUG="true"
-  result=$(summarize_commit HEAD "" "local" >out.txt)
-  assert_success
-  printf "Output: %s\n" "$result"
 
-  # should have RESP in out.txt
-  run cat out.txt
-  assert_output --partial "RESP"
-}
-
-#----------------------------------------
-# summarize_target
-#----------------------------------------
-@test "summarize_target on single-commit range" {
-  tmp="$(mktemp)"
-
-  generate_response() { echo "RESP"; }
-  export debug="true"
-  # call inside the real repo
-  summarize_target HEAD~1..HEAD $tmp ""
-  run cat "$tmp"
-  cat "$tmp"
-  # expect two commits, each followed by two blank lines
-  expected="RESP"
-  assert_output --partial "$expected"
-
-  rm -f "$tmp"
-}
-
-@test "summarize_target on --current" {
-  tmp="$(mktemp)"
-  mock_ollama "dummy" "CUR"
-  summarize_target --current "$tmp" ""
-  run cat "$tmp"
-  # one invocation + two newlines
-  assert_output --partial '--current'
-  assert_output --partial 'MSG'
-  assert_output --partial 'RESP'
-  rm -f "$tmp"
-}
-
-@test "summarize_target respects --dry-run" {
-  tmp="$(mktemp)"
-  export GIV_DRY_RUN="true"
-  run summarize_target HEAD~1..HEAD "$tmp" ""
-  assert_success
-  [ -z "$output" ]
-}
-
-@test "summarize_target skips model invocation with --model-mode none" {
-  tmp="$(mktemp)"
-  run summarize_target HEAD~1..HEAD "$tmp" "" --model-mode none
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
-}
 
 #----------------------------------------
 # cmd_message
@@ -250,13 +181,10 @@ EOF
   assert_output --partial "SUM"
 }
 
-@test "cmd_summary HEAD~1 prints to stdout" {
-  ollama() {
-    echo "SUM"
-  }
+@test "cmd_summary HEAD~1 prints to stdout" {  
   run cmd_document "$TEMPLATES_DIR/final_summary_prompt.md" HEAD~1 "" "" "auto" "0.7"
   assert_success
-  assert_output --partial "SUM"
+  assert_output --partial "RESP"
 }
 
 @test "cmd_summary writes to file when output_file set" {

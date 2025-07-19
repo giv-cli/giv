@@ -7,6 +7,8 @@ load 'test_helper/bats-assert/load'
 
 SCRIPT="$BATS_TEST_DIRNAME/../src/llm.sh"
 
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 setup() {
     # adjust the path as needed
     load "$SCRIPT"

@@ -41,7 +41,7 @@ remove_tmp_dir() {
 
 # Portable mktemp: fallback if mktemp not available
 portable_mktemp_dir() {
-    base_path="${GIV_TMP_DIR:-TMPDIR:-.giv/.tmp}"
+    base_path="${GIV_TMP_DIR:-TMPDIR:-$GIV_HOME/tmp}"
     mkdir -p "${base_path}"
     
     # Ensure only one subfolder under $TMPDIR/giv exists per execution of the script

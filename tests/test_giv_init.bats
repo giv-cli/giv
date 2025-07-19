@@ -6,8 +6,10 @@ load 'test_helper/bats-assert/load'
 load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
 
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 @test "ensure_giv_dir creates .giv directory and files" {
-    export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+  
     export GIV_DOCS_DIR="$BATS_TEST_DIRNAME/../docs"
     export GIV_DEBUG="true"
    {
@@ -20,6 +22,8 @@ load "$BATS_TEST_DIRNAME/../src/system.sh"
     [ -d "$GIV_HOME/cache" ]
     [ -d "$GIV_HOME/.tmp" ]
     [ -d "$GIV_HOME/templates" ]
+
+    rm -f "$GIV_HOME/config"  # Clean up after test
    }
 
 }

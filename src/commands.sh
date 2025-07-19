@@ -244,7 +244,7 @@ cmd_document() {
 
     # validate template exists
     if [ ! -f "${prompt_tpl}" ]; then
-        printf 'template file not found: %s\n' "${prompt_tpl}" >&2
+        print_error "Template file not found: ${prompt_tpl}"
         exit 1
     fi
 
@@ -258,7 +258,7 @@ cmd_document() {
 
     # bail if no summaries
     if [ ! -f "${summaries}" ]; then
-        printf 'Error: No summaries generated for %s.\n' "${revision}" >&2
+        print_error "Error: No summaries generated for ${revision}."
         exit 1
     fi
 

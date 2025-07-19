@@ -7,8 +7,8 @@ load "$BATS_TEST_DIRNAME/../src/config.sh"
 . "$BATS_TEST_DIRNAME/../src/system.sh"
 
 export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/main.error.log"
-
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 setup_file() {
   : >"$ERROR_LOG"
 }
@@ -38,6 +38,7 @@ teardown() {
   remove_tmp_dir
   rm -rf "${BATS_TMP_DIR}"
   cd "${ORIG_DIR:-$PWD}" 2>/dev/null || true
+  rm -f "$GIV_HOME/config" || true
 }
 
 # ---- Helpers ----
@@ -380,6 +381,7 @@ EOF
   run "$GIV_SCRIPT" summary HEAD
   assert_success
   assert_output --partial "Using model: llama3"
+  rm -f "$GIV_HOME/config"  # Clean up after test
 }
 @test "Config file overrides .env" {
 
@@ -390,6 +392,7 @@ EOF
   run "$GIV_SCRIPT" summary HEAD --config-file "$tmpfile" --verbose
   assert_success
   assert_output --partial "phi3"
+  rm -f "$GIV_HOME/config"  # Clean up after test
 }
 
 @test "Env API key required for remote" {
@@ -405,7 +408,7 @@ EOF
 
   run "$GIV_SCRIPT" changelog HEAD
   assert_failure
-  assert_output --partial "Error: Invalid target: HEAD"
+  assert_output --partial "ERROR: Invalid target: HEAD"
 }
 
 @test "Fails on unknown subcommand" {
@@ -430,7 +433,7 @@ EOF
   git init -q
   run "$GIV_SCRIPT" changelog HEAD --verbose
   assert_failure
-  assert_output --partial "Error: Invalid target: HEAD"
+  assert_output --partial "ERROR: Invalid target: HEAD"
 }
 
 # ---- OUTPUT FILES ----

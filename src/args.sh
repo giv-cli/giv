@@ -82,7 +82,6 @@ EOF
 # Returns:
 #   0 if parsing is successful, non-zero on error.
 parse_args() {
-
     subcmd=''
     
     config_file=""
@@ -91,7 +90,7 @@ parse_args() {
     # Restore original arguments for main parsing
     # 1. Subcommand or help/version must be first
     if [ $# -eq 0 ]; then
-        printf 'No arguments provided.\n'
+        print_error "No arguments provided."
         exit 1
     fi
     case "$1" in
@@ -133,7 +132,7 @@ parse_args() {
                     print_debug "Debug: Found config file argument: --config-file ${config_file}"
                     break
                 else
-                    printf 'Error: --config-file requires a file path argument.\n'
+                    print_error "--config-file requires a file path argument."
                     exit 1
                 fi
             ;;
@@ -152,32 +151,36 @@ parse_args() {
     # -------------------------------------------------------------------
     # Config file handling (early parse)
     # -------------------------------------------------------------------
+    print_debug "Setting initial variables"
+    
     model=${GIV_MODEL:-'devstral'}
     model_mode=${GIV_MODEL_MODE:-'auto'}
     api_model="${GIV_API_MODEL:-}"
     api_url="${GIV_API_URL:-}"
     api_key="${GIV_API_KEY:-}"
+    print_debug "Initial API settings: $api_url"
+
+    # Load config file if it exists
+    is_config_loaded=false
     # Always attempt to source config file if it exists; empty config_file is a valid state.
-    if [ -n "${config_file}" ] && [ -f "${config_file}" ]; then
+    if [ -f "${config_file}" ]; then
+        print_debug "Sourcing config file: ${config_file}"
         # shellcheck disable=SC1090
         . "${config_file}"
-        is_config_loaded=true
         print_debug "Loaded config file: ${config_file}"
-        # Override defaults with config file values
-        model=${GIV_MODEL:-${model}}
-        model_mode=${GIV_MODEL_MODE:-${model_mode}}
-        api_model=${GIV_API_MODEL:-${api_model}}
-        api_url=${GIV_API_URL:-${api_url}}
-        api_key=${GIV_API_KEY:-${api_key}}
+        is_config_loaded=true
         elif [ ! -f "${config_file}" ] && [ "${config_file}" != "${PWD}/.env" ]; then
         print_warn "config file ${config_file} not found."
+    else
+        print_debug "No config file specified or found, using defaults."
     fi
-    # Initialize variables
-    model=${GIV_MODEL:-'devstral'}
-    model_mode=${GIV_MODEL_MODE:-'auto'}
-    api_model="${GIV_API_MODEL:-}"
-    api_url="${GIV_API_URL:-}"
-    api_key="${GIV_API_KEY:-}"
+    
+    model=${GIV_MODEL:-${model:-'devstral'}}
+    model_mode=${GIV_MODEL_MODE:-${model_mode:-'auto'}}
+    api_model=${GIV_API_MODEL:-${api_model}}
+    api_url=${GIV_API_URL:-${api_url}}
+    api_key=${GIV_API_KEY:-${api_key}}
+    
     debug="${GIV_DEBUG:-}"
     output_file="${GIV_OUTPUT_FILE:-}"
     todo_pattern="${GIV_TODO_PATTERN:-}"
@@ -188,6 +191,7 @@ parse_args() {
     version_pattern="${GIV_VERSION_PATTERN:-}"
     prompt_file="${GIV_PROMPT_FILE:-}"
     
+    print_debug "Parsing revision"
     # 2. Next arg: revision (if present and not option)
     if [ $# -gt 0 ]; then
         case "$1" in
@@ -212,7 +216,7 @@ parse_args() {
                         print_debug "Valid commit range: $1"
                         shift
                     else
-                        printf 'Error: Invalid commit range: %s\n' "$1" >&2
+                        print_error "Invalid commit range: $1"
                         exit 1
                     fi
                     elif git rev-parse --verify "$1" >/dev/null 2>&1; then
@@ -221,7 +225,7 @@ parse_args() {
                     print_debug "Valid commit ID: $1"
                     shift
                 else
-                    printf 'Error: Invalid target: %s\n' "$1" >&2
+                    print_error "Invalid target: $1"
                     exit 1
                 fi
                 # else: do not shift, let it fall through to pattern parsing
@@ -234,6 +238,8 @@ parse_args() {
         print_debug "Debug: No target specified, defaulting to current working tree."
         GIV_REVISION="--current"
     fi
+    
+    print_debug "Parsing revision"
     # 3. Collect all non-option args as pattern (until first option or end)
     while [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; do
         # If the first argument is a pattern, collect it

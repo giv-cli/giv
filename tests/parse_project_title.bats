@@ -1,10 +1,11 @@
 #!/usr/bin/env bats
 
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 load '../src/project.sh'
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 setup() {
     TMPDIR_REPO="$(mktemp -d)"
     cd "$TMPDIR_REPO"

@@ -12,6 +12,11 @@ SCRIPT="$BATS_TEST_DIRNAME/../src/args.sh"
 OG_DIR="$(pwd)"
 export GIV_TEMPLATE_DIR="${BATS_TEST_DIRNAME}/../templates"
 export __VERSION="1.0.0"
+
+
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
+
 setup() {
   # stub out external commands so parse_args doesn't actually exec them
   show_help() { printf 'HELP\n'; }
@@ -201,7 +206,7 @@ setup_git_range() {
   run parse_args changelog v1..v2 --verbose
   assert_failure
   # cat $output >> "$ERROR_LOG" # capture output for debugging (uncomment only when debugging)
-  assert_output --partial "Error: Invalid commit range: v1..v2"
+  assert_output --partial "ERROR: Invalid commit range: v1..v2"
 }
 # 10. explicit git-range target
 
@@ -266,11 +271,12 @@ setup_git_range() {
 
 @test "no pattern correctly sets target and pattern" {  
   setup_git_range
-  ollama() { echo "ollama called"; }
+  # echo "GIV_DEBUG=true" >"$GIV_HOME/config"
+  # echo "GIV_MODEL=llama3" >>"$GIV_HOME/config"
   export GIV_DEBUG="true"
   run parse_args changelog HEAD
-  echo "$output"
   assert_success
+  echo "Output: $output"
   assert_output --partial "Subcommand: changelog"
   assert_output --partial "Revision: HEAD"
   assert_output --partial "Pathspec: "
