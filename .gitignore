@@ -5,6 +5,8 @@ prompt.md
 history.md
 .test-logs
 tests/.logs
+tests/.tmp
+.tmp
 dist
 .DS_Store
 .backup.env
