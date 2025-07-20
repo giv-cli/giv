@@ -118,6 +118,8 @@ GIV_DOCS_DIR="${DOCS_DIR}"
 . "${LIB_DIR}/llm.sh"
 # shellcheck source=project.sh
 . "${LIB_DIR}/project.sh"
+# shellcheck source=project/metadata.sh
+. "${LIB_DIR}/project/metadata.sh"
 # shellcheck source=history.sh
 . "${LIB_DIR}/history.sh"
 # shellcheck source=commands.sh
@@ -130,6 +132,7 @@ if [ "${is_sourced}" -eq 0 ]; then
     ensure_giv_dir_init
     portable_mktemp_dir
     parse_args "$@"
+    metadata_init
 
     # # Verify the PWD is a valid git repository
     # if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then

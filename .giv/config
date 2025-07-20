@@ -37,3 +37,5 @@ GIV_TODO_PATTERN=""
 
 ### Comma-separated list of files or glob patterns to search for TODOs (e.g., "*.py,src/**/*.js")
 GIV_TODO_FILES="docs/todos.md"
+
+GIV_PROJECT_TYPE=custom

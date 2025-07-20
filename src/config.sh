@@ -27,6 +27,7 @@ export GIV_API_URL="${GIV_API_URL:-}"
 export GIV_API_KEY="${GIV_API_KEY:-}"
 
 ## Project details
+export GIV_PROJECT_TYPE="${GIV_PROJECT_TYPE:-auto}"
 export GIV_VERSION_FILE="${GIV_VERSION_FILE:-}"
 export GIV_VERSION_PATTERN="${GIV_VERSION_PATTERN:-}"
 export GIV_TODO_PATTERN="${GIV_TODO_PATTERN:-}"
