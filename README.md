@@ -4,7 +4,7 @@
 ## Key Features
 
 * **Subcommand workflow** – `message`, `summary`, `changelog`, `release-notes`, `announcement`, plus `update` & `available-releases` helpers.
-* **Flexible AI engine** – Offline with Ollama or remote via Chat-Completions API, switchable through `--model-mode`.
+* **Flexible AI engine** – Supports both local and remote AI models.
 * **Native Git targeting** – Accepts any revision specifier or range defined in *gitrevisions*, and any pathspec (including `:(exclude)` and `!*.md`). ([revision selection][7], [git revisions][5], [gitglossary][8])
 * **Version & TODO intelligence** – Detects SemVer bumps and scans only the files you specify for TODOs using regex patterns. ([semver.org][2])
 * **Cross-platform** – Runs in Bash, Zsh, Dash, or Ash on Linux, macOS, and Windows (WSL / Git Bash).
@@ -34,7 +34,6 @@ giv changelog --todo-files '*.ts' --todo-pattern 'TODO\\(\\w+\\):'
 
 # Create release notes for changes from v1.2.0 to HEAD with a remote endpoint
 giv release-notes v1.2.0..HEAD \
-    --model-mode remote \
     --api-model some-new-model \
     --api-url https://api.example.com/v1/chat/completions
 ```
@@ -118,7 +117,6 @@ giv <subcommand> [revision] [pathspec] [OPTIONS]
 | Flag                | Description                                 |
 | ------------------- | ------------------------------------------- |
 | `--model MODEL`     | Local Ollama model name                     |
-| `--model-mode MODE` | `auto` (default), `local`, `remote`, `none` |
 | `--api-model MODEL` | Remote model when `--model-mode remote`     |
 | `--api-url URL`     | Remote API endpoint                         |
 
@@ -129,8 +127,6 @@ giv <subcommand> [revision] [pathspec] [OPTIONS]
 | ---------------- | -------------------------------------------------- |
 | `GIV_API_KEY`    | API key for remote model                           |
 | `GIV_API_URL`    | Endpoint default if `--api-url` is omitted         |
-| `GIV_MODEL`      | Default local model                                |
-
 
 ## License
 

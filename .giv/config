@@ -38,3 +38,20 @@ GIV_TODO_PATTERN=""
 GIV_TODO_FILES="docs/todos.md"
 
 GIV_PROJECT_TYPE=custom
+
+
+AZURE_OPENAI_API_INSTANCE_NAME=i2db-chat-sandboxaizehuif2whye3c
+AZURE_OPENAI_API_VERSION=2024-04-01-preview
+EMBED_DEPLOYMENT=embedding
+LLM_DEPLOYMENT=gpt-4o-mini
+LLM_DEPLOYMENT=gpt-4.1-nano
+
+
+## If your deployment name and model name are different, set the model name here or use the --model flag in the CLI
+GIV_API_MODEL=$LLM_DEPLOYMENT
+
+## Create the proper API URL for Azure OpenAI
+GIV_API_URL="https://$AZURE_OPENAI_API_INSTANCE_NAME.openai.azure.com/openai/deployments/$LLM_DEPLOYMENT/chat/completions?api-version=$AZURE_OPENAI_API_VERSION"
+
+## Use the Azure OpenAI API key for authentication
+GIV_API_KEY=$AZURE_OPENAI_API_KEY

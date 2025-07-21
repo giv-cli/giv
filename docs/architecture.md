@@ -30,7 +30,7 @@ The main script, **giv.sh**, locates the library, template, and docs directories
 
 ### Project Metadata
 
-**project.sh** extracts project titles and version information from common project files like `package.json`, `pyproject.toml`, and `setup.py`. It also supports custom version file detection ([project.sh][7]).
+**metadata.sh** extracts project titles and version information from common project files like `package.json`, `pyproject.toml`, and `setup.py`. It also supports custom version file detection ([metadata.sh][7]).
 
 ### History Extraction
 
@@ -43,7 +43,7 @@ The main script, **giv.sh**, locates the library, template, and docs directories
 ## Data Domains
 
 1. **Git Data**: Commits, diffs, staged/unstaged changes, untracked files, commit dates, tags and ranges (handled by `build_diff`, `get_commit_date`, Git plumbing) ([history.sh][8]).
-2. **Project Metadata**: Version files (`package.json`, etc.), extracted versions (`get_version_info`), and project titles (`get_project_title`) ([project.sh][7]).
+2. **Project Metadata**: Version files (`package.json`, etc.), extracted versions (`get_version_info`), and project titles (`get_project_title`) ([metadata.sh][7]).
 3. **AI Prompt Templates**: Markdown templates stored under `templates/` (e.g. `summary_prompt.md`, `changelog_prompt.md`, `release_notes_prompt.md`, `announcement_prompt.md`) ([giv.sh][1]).
 4. **Generated Content**: Summary Markdown, commit messages, changelogs, release notes, announcements, managed under `.giv/cache` and output files in project root ([system.sh][3]) ([history.sh][8]).
 5. **Configuration & State**: Stored in `.giv/config`, `.giv/cache`, `.giv/.tmp`, and optionally `.giv/templates` (after `init`) ([system.sh][3]).
@@ -138,7 +138,7 @@ classDiagram
         +generate_response()
         +build_prompt()
     }
-    class project.sh {
+    class metadata.sh {
         +get_project_title()
         +get_version_info()
     }
@@ -157,14 +157,14 @@ classDiagram
     giv.sh --> args.sh
     giv.sh --> markdown.sh
     giv.sh --> llm.sh
-    giv.sh --> project.sh
+    giv.sh --> metadata.sh
     giv.sh --> history.sh
     giv.sh --> commands.sh
     commands.sh --> history.sh
     commands.sh --> llm.sh
     commands.sh --> markdown.sh
-    history.sh --> project.sh
-    llm.sh --> project.sh
+    history.sh --> metadata.sh
+    llm.sh --> metadata.sh
     markdown.sh --> system.sh
 ```
 
@@ -176,7 +176,7 @@ This should give you a clear view of how the scripts interconnect, the data each
 [4]: /src/args.sh "args.sh"
 [5]: /src/markdown.sh "markdown.sh"
 [6]: /src/llm.sh
-[7]: /src/project.sh
+[7]: /src/metadata.sh
 [8]: /src/history.sh 
 [9]: /src/commands.sh 
 
@@ -280,7 +280,7 @@ sequenceDiagram
 
 1. **Initialization** (once): creates `.giv/` directories.
 2. **Argument Parsing**: `args.sh` sets up global vars (prompt file, revision range).
-3. **History Extraction**: `history.sh` builds a unified history for the given range, invoking `project.sh` for title/version.
+3. **History Extraction**: `history.sh` builds a unified history for the given range, invoking `metadata.sh` for title/version.
 4. **Prompt Assembly**: `llm.sh` merges the template, history, and metadata into a single prompt.
 5. **AI Generation**: same module calls out to remote/local LLM, returns the document text.
 6. **Output**: `markdown.sh` writes the result to `DOCUMENT.md` and the CLI presents it.

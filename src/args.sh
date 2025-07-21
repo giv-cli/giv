@@ -27,9 +27,8 @@ Diff & Content Filters (what to keep)
   --version-pattern REGEX Custom regex to identify version strings
 
 AI / Model (how to think)
-  --model MODEL          Local Ollama model name
-  --model-mode MODE      auto (default), local, remote, none
-  --api-model MODEL      Remote model name when in remote mode
+  --model MODEL          Specify the local or remote model name
+  --api-model MODEL      Remote model name
   --api-url URL          Remote API endpoint URL
   --api-key KEY          API key for remote mode
 
@@ -55,10 +54,10 @@ Subcommands
 
 Examples:
   giv message HEAD~3..HEAD src/
-  giv summary --output-file SUMMARY.md --model-mode remote
+  giv summary --output-file SUMMARY.md
   giv changelog v1.0.0..HEAD --todo-files '*.js' --todo-pattern 'TODO:'
   giv release-notes v1.2.0..HEAD --api-model gpt-4o --api-url https://api.example.com
-  giv announcement --output-file ANNOUNCE.md --model-mode remote
+  giv announcement --output-file ANNOUNCE.md
   giv document --prompt-file templates/my_custom_prompt.md --output-file REPORT.md HEAD
 EOF
     printf '\nFor more information, see the documentation at %s\n' "${DOCS_DIR:-<no docs dir>}"
