@@ -74,7 +74,7 @@ get_commit_date() {
 
 print_commit_metadata() {
     commit="$1"
-    commit_version="$(get_version_info "$commit" "$(find_version_file)")"
+    commit_version="$(get_project_version "$commit")"
     printf '**Project Title:*** %s\n' "$(get_project_title)"
     printf '**Version:*** %s\n' "${commit_version}"
     printf '**Commit ID:*** %s\n' "$commit"
@@ -173,7 +173,7 @@ build_history() {
     printf '**Date:** %s\n' "$(get_commit_date "$commit")" >>"$hist"
 
 
-    ver=$(get_version_info "$commit")
+    ver=$(get_project_version "$commit")
     if [ -n "$ver" ]; then
         printf '**Version:** %s\n' "$ver" >>"$hist"
     fi

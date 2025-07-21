@@ -1,36 +1,16 @@
 #!/usr/bin/env bats
 
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
+export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src/project"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
 load "$BATS_TEST_DIRNAME/../src/project/metadata.sh"
 load "$BATS_TEST_DIRNAME/../src/llm.sh"
-
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
-
-mock_ollama() {
-  arg1="${1:-dummy}"
-  arg2="${2:-Ollama message}"
-  mkdir -p bin
-  rm -f bin/curl
-  # create a mock curl command that just echoes its arguments
-  cat >bin/curl <<EOF
-#!/bin/bash
-echo "Curl command: \$1"
-echo "Using model: \$2"
-echo "arg1: $arg1"
-echo "arg2: $arg2"
-echo "Curl run complete"
-if [ "\$3" ]; then
-  echo "Curl in verbose mode \$3"
-fi
-EOF
-  chmod +x bin/curl
-  export PATH="$PWD/bin:$PATH"
-}
-
+# Source the script under test
+load "$BATS_TEST_DIRNAME/../src/history.sh"
 
 setup() {
     export GIV_TEMPLATE_DIR="$BATS_TEST_DIRNAME/../templates"
@@ -54,15 +34,13 @@ setup() {
     git add b.txt
     git commit -q -m "second"
     SECOND_SHA=$(git rev-parse HEAD)
+    metadata_init
 
     # Mock generate_response function
     generate_response() {
         echo "Mocked response for generate_response"
     }
 
-    # Source the script under test
-    # Adjust this path if your script lives elsewhere
-    . "$BATS_TEST_DIRNAME/../src/history.sh"
 }
 
 teardown() {
@@ -255,23 +233,8 @@ teardown() {
 
 @test "summarize_target on --current" {
   tmp="$(mktemp)"
-  mock_ollama "dummy" "CUR"
   summarize_target --current "$tmp" ""
   run cat "$tmp"
   assert_output --partial 'Commit: --current'
   rm -f "$tmp"
-}
-
-process_lines() {
-    while IFS= read -r line; do
-        case "$line" in
-            "SUMMARIZE:--current MODE:mymode") echo "Valid line: $line" ;;
-            "SUMMARIZE:$FIRST_SHA MODE:xyz") echo "Valid line: $line" ;;
-            "SUMMARIZE:$FIRST_SHA MODE:r") echo "Valid line: $line" ;;
-            "SUMMARIZE:$SECOND_SHA MODE:r") echo "Valid line: $line" ;;
-            "SUMMARIZE:$FIRST_SHA MODE:q") echo "Valid line: $line" ;;
-            "SUMMARIZE:$SECOND_SHA MODE:q") echo "Valid line: $line" ;;
-            *) echo "Invalid line: $line" ;;
-        esac
-    done
 }

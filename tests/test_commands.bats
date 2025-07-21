@@ -81,7 +81,6 @@ setup() {
 }
 find_version_file() { echo "file.txt"; }
 export -f get_message_header
-export -f get_version_info
 
   # Ensure metadata cache includes project_type
   echo "GIV_METADATA_PROJECT_TYPE=test" >> "$GIV_HOME/cache/project_metadata.env"

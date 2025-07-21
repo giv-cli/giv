@@ -282,8 +282,7 @@ build_prompt() {
     # resolve version if unset or 'auto'
     if [ -z "${version}" ] || [ "${version}" = "auto" ]; then
         print_debug "No version set or version is 'auto', trying to find it from version file"
-        version_file="$(find_version_file)"
-        version="$(get_version_info --current "${version_file:-}")"
+        version="$(get_project_version --current)"
     fi
 
     # parse named options
@@ -408,11 +407,3 @@ generate_from_prompt() {
         exit 1
     fi
 }
-
-# Ensure GIV_DEBUG is initialized to avoid unbound variable errors.
-
-# Initialize GIV_DEBUG if not already set
-: "${GIV_DEBUG:=false}"
-
-# Ensure ENV_FILE is initialized to avoid unbound variable errors.
-: "${ENV_FILE:=/path/to/default/env/file}"

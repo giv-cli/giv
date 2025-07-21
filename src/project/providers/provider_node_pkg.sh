@@ -20,3 +20,14 @@ provider_node_pkg_collect() {
   [ -n "$repository" ] && printf 'repository_url="%s"\n' "$repository"
   [ -n "$author" ] && printf 'author="%s"\n' "$author"
 }
+
+
+provider_node_pkg_get_version() {
+    parse_version "$(jq -r '.version' package.json)"
+}
+
+provider_node_pkg_get_version_at_commit() {
+    commit="$1"
+    file_content=$(git show "${commit}:package.json") || return 1
+    parse_version "$(echo "$file_content" | jq -r '.version')"
+}

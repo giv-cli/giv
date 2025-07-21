@@ -4,23 +4,35 @@
 load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/project.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
+load "$BATS_TEST_DIRNAME/../src/project/metadata.sh"
 
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
 
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
+export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
+export GIV_DEBUG="true"
 
 setup() {
     TMPDIR_REPO="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
-    cd "$TMPDIR_REPO"
+    cd "$TMPDIR_REPO" || {
+        echo "Failed to change directory to TMPDIR_REPO" >&2
+        exit 1
+    }
     git init
     git config user.name "Test"
     git config user.email "test@example.com"
     TMPFILE="$(mktemp -p "${TMPDIR_REPO}")"
     export TMPFILE
-    GIV_TMPDIR_SAVE=
+
+    # Create a package.json file for Node.js provider detection
+    echo '{"name": "test-project", "version": "1.0.0"}' > package.json
+
+    export GIV_PROJECT_TYPE="custom"
+    export GIV_VERSION_FILE="version.txt"
+    # Initialize metadata
+    metadata_init
 }
 
 teardown() {
@@ -90,16 +102,19 @@ teardown() {
 # }
 
 @test "get_version_info detects version from current file" {
+    export GIV_PROJECT_TYPE="custom"
+    export GIV_VERSION_FILE="version.txt"
     echo "version = '1.2.3'" >"version.txt"
-    run get_version_info "--current" "version.txt"
+    run get_project_version "--current"
     assert_success
     assert_equal "$output" "1.2.3"
 }
 
 @test "get_version_info detects version from cached file" {
+    export GIV_VERSION_FILE="version.txt"
     echo "version = '1.2.3'" >"version.txt"
     git add "version.txt"
-    run get_version_info "--cached" "version.txt"
+    run get_project_version "--cached"
     assert_success
     assert_equal "$output" "1.2.3"
 }
@@ -109,73 +124,88 @@ teardown() {
     git add "version.txt"
     git commit -m "Add version file"
     commit_hash=$(git rev-parse HEAD)
-    run get_version_info "$commit_hash" "version.txt"
+    export GIV_VERSION_FILE="version.txt"
+    run get_project_version "$commit_hash"
     assert_success
     assert_equal "$output" "1.2.3"
 }
 
 @test "get_version_info detects version with v-prefix" {
-    echo "version = 'v1.2.3'" >"$TMPFILE"
-    run get_version_info "--current" "$TMPFILE"
+    export GIV_METADATA_PROJECT_TYPE="custom"
+    export GIV_VERSION_FILE="version.txt"
+    echo "version = 'v1.2.3'" >"version.txt"
+    run get_project_version "--current"
     assert_success
     assert_equal "$output" "v1.2.3"
 }
 
 @test "get_version_info returns empty string if no version found" {
-    echo "No version here" >"$TMPFILE"
-    run get_version_info "--current" "$TMPFILE"
+    export GIV_VERSION_FILE="version.txt"
+    echo "No version here" >"$GIV_VERSION_FILE"
+    run get_project_version "--current"
     assert_success
     assert_equal "$output" ""
 }
 
 @test "get_version_info handles missing file gracefully" {
-    run get_version_info "--current" "nonexistent_file.txt"
+    export GIV_VERSION_FILE="nonexistent_file.txt"
+    run get_project_version "--current"
     assert_success
     assert_equal "$output" ""
 }
 
 @test "get_version_info detects version from JSON file" {
+    export GIV_METADATA_PROJECT_TYPE="node_pkg"
+    metadata_init
     echo '{"version": "1.2.3"}' >"package.json"
-    run get_version_info "--current" "package.json"
+    run get_project_version "--current"
     assert_success
     assert_equal "$output" "1.2.3"
 }
 
 @test "get_version_info detects version from cached JSON file" {
+    export GIV_METADATA_PROJECT_TYPE="node_pkg"
+    metadata_init
     echo '{"version": "1.2.3"}' >"package.json"
     git add "package.json"
-    run get_version_info "--cached" "package.json"
+    run get_project_version "--cached"
     assert_success
     assert_equal "$output" "1.2.3"
 }
 
 @test "get_version_info detects version from specific commit JSON file" {
+    export GIV_METADATA_PROJECT_TYPE="node_pkg"
+    metadata_init
     echo '{"version": "1.2.3"}' >"package.json"
     git add "package.json"
     git commit -m "Add JSON version file"
     commit_hash=$(git rev-parse HEAD)
-    run get_version_info "$commit_hash" "package.json"
+    run get_project_version "$commit_hash"
     assert_success
     assert_equal "$output" "1.2.3"
 }
 
 @test "get_version_info handles multiple version strings and picks the first one" {
+    export GIV_VERSION_FILE="version.txt"
+    metadata_init
     cat >"version.txt" <<EOF
 version = '1.2.3'
 version = '2.3.4'
 EOF
-    run get_version_info "--current" "version.txt"
+    run get_project_version "--current"
     assert_success
     assert_equal "$output" "1.2.3"
 }
 
 @test "get_version_info handles invalid commit gracefully" {
-    run get_version_info "invalid_commit_hash" "$TMPFILE"
+    run get_project_version "invalid_commit_hash"
     assert_success
     assert_equal "$output" ""
 }
 
 @test "get_version_info detects version from file in specific commit with multiple versions" {
+    export GIV_VERSION_FILE="version.txt"
+    export GIV_METADATA_PROJECT_TYPE="custom"
     cat >"version.txt" <<EOF
 version = '1.2.3'
 version = '2.3.4'
@@ -183,7 +213,7 @@ EOF
     git add "version.txt"
     git commit -m "Add multiple versions"
     commit_hash=$(git rev-parse HEAD)
-    run get_version_info "$commit_hash" "version.txt"
+    run get_project_version "$commit_hash"
     assert_success
     assert_equal "$output" "1.2.3"
 }

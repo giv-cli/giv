@@ -8,7 +8,10 @@ load 'test_helper/bats-assert/load'
 load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
 load "$BATS_TEST_DIRNAME/../src/project/metadata.sh"
+
 SCRIPT="$BATS_TEST_DIRNAME/../src/history.sh"
+load "$SCRIPT"
+
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 setup() {
@@ -44,23 +47,13 @@ setup() {
     git add package.json
     git commit -q -m "Bump to 1.1.0"
 
-    # Stub helper functions
-    parse_version() {
-        # Extract the version number from a diff line
-        echo "$1" | sed -E 's/.*"version":[[:space:]]*"([^"]+)".*/\1/'
-    }
-    get_current_version_from_file() {
-        # Read the version directly from the file
-        grep -E '"version":' "$1" | sed -E 's/.*"version":[[:space:]]*"([^"]+)".*/\1/'
-    }
+   
     extract_todo_changes() {
         # By default, no TODO changes
         return 0
     }
 
-    # Source the script under test
-    # shellcheck source=/Users/itlackey/giv-cli/giv/src/history.sh
-    . "$SCRIPT"
+
 
     # Set required environment variables
     export GIV_API_KEY="test-api-key"
@@ -198,12 +191,12 @@ teardown() {
     assert_output --partial "Bump to 1.1.0"
 }
 
-@test "find_version_file finds package.json" {
-    debug=""
-    run find_version_file
-    assert_success
-    assert_output "package.json"
-}
+# @test "find_version_file finds package.json" {
+#     debug=""
+#     run find_version_file
+#     assert_success
+#     assert_output "package.json"
+# }
 
 @test "get_version_info for --current extracts version from file" {
     run get_version_info --current package.json
