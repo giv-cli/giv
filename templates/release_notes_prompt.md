@@ -2,6 +2,13 @@
 
 [SUMMARY]
 
+## Project Overview
+
+[TITLE]
+[AUTHOR]
+[URL]
+[DESCRIPTION]
+
 ## Instructions
 
 Write one comprehensive release notes document [PROJECT_TITLE] [VERSION] from the provided change summaries, following these guidelines:

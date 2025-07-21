@@ -16,9 +16,11 @@ metadata_init() {
     # -------------------------
     print_debug "Determining project provider for type: ${GIV_PROJECT_TYPE:-auto}"
     if [ "${GIV_PROJECT_TYPE}" = "custom" ]; then
+        # shellcheck disable=SC1091
         [ -f "${GIV_HOME}/project_provider.sh" ] && . "${GIV_HOME}/project_provider.sh"
     elif [ "${GIV_PROJECT_TYPE}" = "auto" ]; then
         for f in "${GIV_LIB_DIR}/project/providers"/*.sh; do
+            # shellcheck disable=SC1090
             [ -f "$f" ] && . "$f"
         done
         for fn in $(set | awk -F'=' '/^provider_.*_detect=/ { sub("()","",$1); print $1 }'); do
@@ -28,6 +30,7 @@ metadata_init() {
             fi
         done
     else
+        # shellcheck disable=SC1090
         . "${GIV_LIB_DIR}/project/providers/provider_${GIV_PROJECT_TYPE}.sh" || return 1
         DETECTED_PROVIDER="provider_${GIV_PROJECT_TYPE}_detect"
     fi
@@ -93,6 +96,7 @@ metadata_init() {
     # Export for current shell
     # -------------------------
     set -a
+    # shellcheck disable=SC1090
     . "$ENV_FILE"
     set +a
 }

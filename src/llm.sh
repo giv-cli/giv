@@ -279,6 +279,29 @@ replace_tokens() {
     ' "$@"
 }
 
+# replace_metadata: Replaces placeholders in stdin with values from GIV_METADATA_ environment variables.
+#
+# Usage:
+#   replace_metadata < summary_file > output_file
+replace_metadata() {
+  awk '
+    BEGIN {
+      ORS = ""
+    }
+    {
+      line = $0
+      for (v in ENVIRON) {
+        if (v ~ /^GIV_METADATA_/) {
+          name = substr(v, 14)
+          gsub("\\[" name "\\]", ENVIRON[v], line)
+        }
+      }
+      print line "\n"
+    }
+  '
+}
+
+
 # build_prompt: fill a prompt template with tokens and diff content
 #
 # Usage:
@@ -378,12 +401,12 @@ build_prompt() {
     export GIV_TOKEN_EXAMPLE="${example:-${GIV_TOKEN_EXAMPLE}}"
     export GIV_TOKEN_RULES="${rules:-${GIV_TOKEN_RULES}}"
 
-    # combine template + instructions, then replace tokens using diff as summary
+    # combine template + instructions, then replace metadata and tokens using diff as summary
     {
         cat "${template_file}"
         printf '\nOutput just the final content—no extra commentary or code fencing. '
         printf 'Use only information contained in this prompt and the summaries provided above.\n'
-    } | replace_tokens "${summary_file}"
+    }  | replace_tokens "${summary_file}"| replace_metadata "${summary_file}"
 
     return
 }

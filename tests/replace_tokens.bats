@@ -16,6 +16,7 @@ export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 
 setup() {
+    mkdir -p "$GIV_TMP_DIR"
     TMPDIR_REPO="$(mktemp -d -p "$GIV_TMP_DIR")"
     cd "$TMPDIR_REPO"
     rm -f input.md
@@ -116,20 +117,20 @@ EOF
     assert_output ""
 }
 
-@test "fails if template missing" {
+@test "build_prompt fails if template missing" {
     run build_prompt --template missing.md --summary diff.txt
     [ "$status" -ne 0 ]
     assert_output "template file not found: missing.md"
 }
 
-@test "fails if diff missing" {
+@test "build_prompt fails if diff missing" {
     write_file template.md "Hello"
     run build_prompt --template template.md --summary missing.txt
     [ "$status" -ne 0 ]
     assert_output "diff file not found: missing.txt"
 }
 
-@test "injects summary into prompt" {
+@test "build_prompt injects summary into prompt" {
     write_file template.md \
         "Summary:" \
         "[SUMMARY]" \
@@ -151,7 +152,7 @@ Output just the final content—no extra commentary or code fencing. Use only in
 EOF
 }
 
-@test "replaces all optional tokens" {
+@test "build_prompt replaces all optional tokens" {
     write_file template.md \
         "Project: [PROJECT_TITLE]" \
         "Version: [VERSION]" \
