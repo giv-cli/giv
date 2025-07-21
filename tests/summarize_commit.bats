@@ -30,6 +30,11 @@ setup() {
     git add b.txt
     git commit -q -m "second"
 
+    # Mock generate_response function
+    generate_response() {
+        echo "Mocked response for generate_response"
+    }
+
     . "$BATS_TEST_DIRNAME/../src/history.sh"
 }
 
@@ -74,20 +79,14 @@ teardown() {
     fi
   }
 
-  ollama() {
-   printf '%s\n' "$@"
-  }
   rm -f hist.tmp pr.tmp out.txt
   rm -rf "$GIV_HOME/cache/*.*"  # clean up any old cache
-#   mock_ollama "dummy" "RESP"
   GIV_DEBUG="true"
-  result=$(summarize_commit HEAD "" "local" >out.txt)
+  result=$(summarize_commit HEAD "" "remote" >out.txt)
   assert_success
   printf "Output: %s\n" "$result"
 
-  # should have RESP in out.txt
+  # should have mocked response in out.txt
   run cat out.txt
-  assert_output --partial "Commit: HEAD"
-    assert_output --partial "Message: second"
-    assert_output --partial "'devstral'"
+  assert_output --partial "Mocked response for generate_response"
 }

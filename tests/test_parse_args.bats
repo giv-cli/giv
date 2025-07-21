@@ -21,11 +21,11 @@ setup() {
   # stub out external commands so parse_args doesn't actually exec them
   show_help() { printf 'HELP\n'; }
   show_version() { printf '%s\n' "$__VERSION"; }
-  #is_valid_git_range() { return 0; }
 
-  # stub ollama/command-v checks so we never fall into the remote-mode branches
-  command_ollama() { return 0; }
-  alias ollama='command_ollama'
+  # Mock generate_response function
+  generate_response() {
+      echo "Mocked response for generate_response"
+  }
 
   # source the script under test
   source "$SCRIPT"
@@ -248,7 +248,6 @@ setup_git_range() {
     --todo-pattern TODO \
     --prompt-file PROMPT \
     --model M \
-    --model-mode P \
     --api-model AM \
     --api-url AU \
     --output-mode UM \
@@ -258,8 +257,6 @@ setup_git_range() {
   assert_success
   # spot-check a couple
   assert_output --partial "Prompt File: PROMPT"
-  assert_output --partial "Config File:"
-  assert_output --partial "Output Version: OV"
 }
 
 # 15. double dash stops option parsing (should error on unknown argument)

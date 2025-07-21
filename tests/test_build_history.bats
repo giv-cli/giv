@@ -7,7 +7,7 @@ load 'test_helper/bats-assert/load'
 
 load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
-load "$BATS_TEST_DIRNAME/../src/project.sh"
+load "$BATS_TEST_DIRNAME/../src/project/metadata.sh"
 SCRIPT="$BATS_TEST_DIRNAME/../src/history.sh"
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
@@ -16,9 +16,10 @@ setup() {
     rm -rf "$GIV_HOME/.tmp"  # clean up any old tmp
     mkdir -p "$GIV_HOME/cache"
     mkdir -p "$GIV_HOME/.tmp"
+
     # Create a temporary git repo
     REPO="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
-    cd "$REPO"
+    cd "$REPO" || exit
     git init -q
 
     git config user.name "Test"
@@ -58,9 +59,16 @@ setup() {
     }
 
     # Source the script under test
-    # (Make sure this path points to where build_history() lives)
-    source "$SCRIPT"
-    GIV_TMPDIR_SAVE=
+    # shellcheck source=/Users/itlackey/giv-cli/giv/src/history.sh
+    . "$SCRIPT"
+
+    # Set required environment variables
+    export GIV_API_KEY="test-api-key"
+    export GIV_API_URL="https://api.example.com"
+
+    # Mock missing files
+    touch "$BATS_TEST_DIRNAME/CHANGELOG.md"
+    touch "$BATS_TEST_DIRNAME/project_metadata.env"
 }
 
 teardown() {
@@ -125,7 +133,7 @@ teardown() {
     # Only include package.json in diff
     export PATTERN="package.json"
     export debug="1"
-    echo $(git --no-pager diff HEAD^! --minimal --no-prefix --unified=0 --no-color -b -w --compact-summary --color-moved=no -- "package.json")
+    echo "$(git --no-pager diff HEAD^! --minimal --no-prefix --unified=0 --no-color -b -w --compact-summary --color-moved=no -- \"package.json\")"
     echo "end of diff"
     hist="$(mktemp)"
     build_history "$hist" HEAD "todo" "$PATTERN"
@@ -137,7 +145,6 @@ teardown() {
     run grep -F 'package.json' "$hist"
     assert_success
 }
-
 @test "build_history respects no pattern" {
 
     printf '{ "version": "1.2.0" }\n' >package.json
@@ -168,19 +175,19 @@ teardown() {
 @test "get_message_header with --cached returns 'Staged Changes'" {
     run get_message_header --cached
     assert_success
-    assert_output "Staged Changes"
+    assert_output --partial "Staged Changes"
 }
 
 @test "get_message_header with --current returns 'Current Changes'" {
     run get_message_header --current
     assert_success
-    assert_output "Current Changes"
+    assert_output --partial "Current Changes"
 }
 
 @test "get_message_header with empty string returns 'Current Changes'" {
     run get_message_header ""
     assert_success
-    assert_output "Current Changes"
+    assert_output --partial "Current Changes"
 }
 
 @test "get_message_header with commit hash returns commit message" {
@@ -188,7 +195,7 @@ teardown() {
     commit=$(git rev-parse HEAD)
     run get_message_header "$commit"
     assert_success
-    assert_output "Bump to 1.1.0"
+    assert_output --partial "Bump to 1.1.0"
 }
 
 @test "find_version_file finds package.json" {
@@ -239,11 +246,14 @@ teardown() {
 }
 
 @test "build_history creates expected output" {
-    export debug=false
+    export GIV_DEBUG="true"
     run build_history history.txt --cached
     assert_success
-    assert [ -f "history.txt" ]
-    assert $(grep -q "**Message:** Staged Changes" "history.txt")
-    assert $(grep -q "\`\`\`diff" "history.txt")
-    assert $(grep -q "**Version:**" "history.txt")
+    [ -f "history.txt" ]
+    run cat history.txt
+    assert_output --partial "**Message:**"
+    assert_output --partial "Staged Changes"
+    assert_output --partial "\`\`\`diff"
+    assert_output --partial "**Version:**"
+
 }

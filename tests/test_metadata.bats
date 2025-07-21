@@ -13,6 +13,8 @@ export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src/project"
 
 setup() {
   mkdir -p "$GIV_CACHE_DIR"
+  export ENV_FILE="$GIV_HOME/env_file" # Initialize ENV_FILE with a valid path
+  touch "$ENV_FILE" # Ensure the file exists
 }
 
 teardown() {

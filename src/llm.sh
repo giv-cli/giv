@@ -114,6 +114,7 @@ extract_content_from_response() {
 generate_remote() {
     content=$(cat "$1")
 
+    print_debug "Generating remote response with content: $GIV_API_MODEL"
     # Check required environment variables
     if [ -z "${GIV_API_MODEL}" ] || [ -z "${GIV_API_URL}" ] || [ -z "${GIV_API_KEY}" ]; then
         printf 'Error: Missing required environment variables for remote generation.\n' >&2
@@ -145,33 +146,6 @@ generate_remote() {
     echo "${result}"
 }
 
-run_local() {
-    # Check required environment variables
-    if [ -z "${GIV_MODEL}" ]; then
-        print_error "Missing required environment variable GIV_MODEL for local generation."
-        return 1
-    fi
-    print_debug "Running local generation with model: ${GIV_MODEL}"
-
-    # Backup original values of OLLAMA_TEMPERATURE and OLLAMA_NUM_CTX
-    orig_ollama_temperature="${OLLAMA_TEMPERATURE:-}"
-    orig_ollama_num_ctx="${OLLAMA_NUM_CTX:-}"
-
-    export OLLAMA_TEMPERATURE="${2:-0.9}"
-    export OLLAMA_NUM_CTX="${3:-32768}"
-
-    if [ "$GIV_DEBUG" = "true" ]; then
-        # shellcheck disable=SC2154
-        ollama run "${GIV_MODEL}" --verbose <"$1"
-    else
-        ollama run "${GIV_MODEL}" <"$1"
-    fi
-
-    # Reset to original values after the command completes
-    export OLLAMA_TEMPERATURE="${orig_ollama_temperature}"
-    export OLLAMA_NUM_CTX="${orig_ollama_num_ctx}"
-}
-
 # The `generate_response` function generates a response based on the specified mode.
 #
 # Parameters:
@@ -189,40 +163,15 @@ run_local() {
 #     - 'none': Outputs the content of the input file directly using `cat`.
 #     - Any other value: Calls the `run_local` function with the input file path as an argument, along with temperature and context window size if provided.
 generate_response() {
-    gen_mode="${2:-${GIV_MODEL_MODE:-auto}}"
-    temp="${3:-0.5}"         # Default to a neutral temperature of 0.5
-    ctx_window="${4:-32768}" # Default context window size
+    temp="${2:-0.5}"         # Default to a neutral temperature of 0.5
+    ctx_window="${3:-32768}" # Default context window size
 
-    print_debug "Generating response using gen_mode='$gen_mode', temperature=$temp, context window size=$ctx_window"
+    print_debug "Generating response with temperature=$temp, context window size=$ctx_window"
 
-    case ${gen_mode} in
-    auto)
-        print_debug "Auto mode selected, defaulting to 'local'"
-        gen_mode="local"
-        ;;
-    remote)
-        print_debug "Remote mode selected"
-        if ! generate_remote "$1" "$temp" "$ctx_window"; then
-            print_error "Failed to generate remote response"
-            return 1
-        fi
-        ;;
-    none)
-        print_debug "None mode selected, outputting file content"
-        cat "$1"
-        ;;
-    local)
-        print_debug "Local mode selected"
-        if ! run_local "$1" "$temp" "$ctx_window"; then
-            print_error "Failed to run local generation with ollama"
-            return 1
-        fi
-        ;;
-    *)
-        print_error "Unsupported gen_mode: $gen_mode"
+    if ! generate_remote "$1" "$temp" "$ctx_window"; then
+        print_error "Failed to generate remote response"
         return 1
-        ;;
-    esac
+    fi
 }
 
 
@@ -431,17 +380,15 @@ build_prompt() {
 generate_from_prompt() {
     prompt_file="$1"
     response_output_file="$2"
-    gen_mode="${3:-${GIV_MODEL_MODE:-${GIV_MODEL_MODE:-auto}}}"
-    temperature="${4:-0.9}"      # Default value for temperature
-    context_window="${5:-32768}" # Default value for context window
+    temperature="${3:-0.9}"      # Default value for temperature
+    context_window="${4:-32768}" # Default value for context window
 
     print_debug "Prompt file: $prompt_file"
     print_debug "Output file: $response_output_file"
-    print_debug "Model mode: $gen_mode"
 
     # 1) Invoke the AI
-    if ! res=$(generate_response "$prompt_file" "$gen_mode" "$temperature" "$context_window"); then
-        print_error "Failed to generate_response (mode=$gen_mode)"
+    if ! res=$(generate_response "$prompt_file" "$temperature" "$context_window"); then
+        print_error "Failed to generate_response"
         exit 1
     fi
 
@@ -461,3 +408,11 @@ generate_from_prompt() {
         exit 1
     fi
 }
+
+# Ensure GIV_DEBUG is initialized to avoid unbound variable errors.
+
+# Initialize GIV_DEBUG if not already set
+: "${GIV_DEBUG:=false}"
+
+# Ensure ENV_FILE is initialized to avoid unbound variable errors.
+: "${ENV_FILE:=/path/to/default/env/file}"

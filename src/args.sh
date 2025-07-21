@@ -154,7 +154,6 @@ parse_args() {
     print_debug "Setting initial variables"
     
     model=${GIV_MODEL:-'devstral'}
-    model_mode=${GIV_MODEL_MODE:-'auto'}
     api_model="${GIV_API_MODEL:-}"
     api_url="${GIV_API_URL:-}"
     api_key="${GIV_API_KEY:-}"
@@ -176,7 +175,6 @@ parse_args() {
     fi
     
     model=${GIV_MODEL:-${model:-'devstral'}}
-    model_mode=${GIV_MODEL_MODE:-${model_mode:-'auto'}}
     api_model=${GIV_API_MODEL:-${api_model}}
     api_url=${GIV_API_URL:-${api_url}}
     api_key=${GIV_API_KEY:-${api_key}}
@@ -281,10 +279,6 @@ parse_args() {
                 prompt_file=$2
                 shift 2
             ;;
-            --model-mode)
-                model_mode=$2
-                shift 2
-            ;;
             --model)
                 model=$2
                 shift 2
@@ -346,40 +340,8 @@ parse_args() {
         printf 'Error: --prompt-file is required for the document subcommand.\n' >&2
         exit 1
     fi
-    
-    # Determine ollama/remote mode once before parsing args
-    if [ "${model_mode}" = "auto" ] || [ "${model_mode}" = "local" ]; then
-        if ! command -v ollama >/dev/null 2>&1; then
-            print_debug "ollama not found, forcing remote mode (local model unavailable)"
-            model_mode="remote"
-            if [ -z "${api_key}" ]; then
-                print_warn "No local model and no API configured; outputting prompt template only."
-                model_mode="none"
-                GIV_DRY_RUN=true
-            fi
-            if [ -z "${api_url}" ]; then
-                print_warn "No local model and no API configured; outputting prompt template only."
-                model_mode="none"
-                GIV_DRY_RUN=true
-            fi
-        else
-            model_mode="local"
-        fi
-        elif [ "${model_mode}" = "remote" ]; then
-        if [ -z "${api_key}" ]; then
-            printf 'Error: Remote mode is enabled, but no API key provided (use --api-key or GIV_API_KEY).\n' >&2
-            exit 1
-        fi
-        if [ -z "${api_url}" ]; then
-            printf 'Error: Remote mode is enabled, but no API URL provided (use --api-url or GIV_API_URL).\n' >&2
-            exit 1
-        fi
-    fi
-    
-    [ "${model_mode}" = "none" ] && print_warn "Model mode set to \"none\", only prompt templates will be returned."
-    
+
     print_debug "Set global variables:"
-    GIV_MODEL_MODE="${model_mode:-}"
     GIV_MODEL="${model:-}"
     GIV_TODO_FILES="${todo_files:-}"
     GIV_TODO_PATTERN="${todo_pattern:-}"
@@ -395,12 +357,11 @@ parse_args() {
     GIV_CONFIG_FILE="${config_file}"
     GIV_DEBUG="${debug:-}"
     print_debug "Global variables set"
-    
+
     print_debug "Environment variables:"
     print_debug "  GIV_HOME: ${GIV_HOME:-}"
     print_debug "  GIV_TMP_DIR: ${GIV_TMP_DIR:-}"
     print_debug "  GIV_TMPDIR_SAVE: ${GIV_TMPDIR_SAVE:-}"
-    print_debug "  GIV_MODEL_MODE: ${GIV_MODEL_MODE:-}"
     print_debug "  GIV_MODEL: ${GIV_MODEL:-}"
     print_debug "  GIV_API_MODEL: ${GIV_API_MODEL:-}"
     print_debug "  GIV_API_URL: ${GIV_API_URL:-}"
@@ -418,7 +379,6 @@ parse_args() {
     print_debug "  Version File: ${GIV_VERSION_FILE:-}"
     print_debug "  Version Pattern: ${GIV_VERSION_PATTERN:-}"
     print_debug "  Model: ${GIV_MODEL:-}"
-    print_debug "  Model Mode: ${GIV_MODEL_MODE:-}"
     print_debug "  API Model: ${GIV_API_MODEL:-}"
     print_debug "  API URL: ${GIV_API_URL:-}"
     print_debug "  Output File: ${GIV_OUTPUT_FILE:-}"

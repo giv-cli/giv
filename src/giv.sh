@@ -149,28 +149,24 @@ if [ "${is_sourced}" -eq 0 ]; then
     case "${subcmd}" in
     message | msg) cmd_message "${GIV_REVISION}" \
         "${GIV_PATHSPEC}" \
-        "${GIV_TODO_PATTERN}" \
-        "${GIV_MODEL_MODE}" ;;
+        "${GIV_TODO_PATTERN}" ;;
     document | doc) cmd_document \
       "${prompt_file}" \
       "${GIV_REVISION}" \
       "${GIV_PATHSPEC}" \
       "${output_file:-}" \
-      "${GIV_MODEL_MODE}" \
       "0.7" "" ;;
     summary) cmd_document \
       "${GIV_TEMPLATE_DIR}/final_summary_prompt.md" \
       "${GIV_REVISION}" \
       "${GIV_PATHSPEC}" \
       "${output_file:-}" \
-      "${GIV_MODEL_MODE}" \
       "0.7" "" ;;
     release-notes) cmd_document \
       "${GIV_TEMPLATE_DIR}/release_notes_prompt.md" \
       "${GIV_REVISION}" \
       "${GIV_PATHSPEC}" \
       "${output_file:-$release_notes_file}" \
-      "${GIV_MODEL_MODE}" \
       "0.6" \
       "65536" ;;
     announcement)  cmd_document \
@@ -178,7 +174,6 @@ if [ "${is_sourced}" -eq 0 ]; then
       "${GIV_REVISION}" \
       "${GIV_PATHSPEC}" \
       "${output_file:-$announce_file}" \
-      "${GIV_MODEL_MODE}" \
       "0.5" \
       "65536" ;;
     changelog) cmd_changelog "${GIV_REVISION}" "${GIV_PATHSPEC}" ;;

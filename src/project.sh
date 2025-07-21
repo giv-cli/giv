@@ -1,4 +1,3 @@
-
 # Locate the project from the codebase. Looks for common project files
 # like package.json, pyproject.toml, setup.py, Cargo.toml, composer.json
 # build.gradle, pom.xml, etc. and extracts the project name.

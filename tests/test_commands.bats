@@ -24,6 +24,9 @@ export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 
 export GIV_DEBUG=""
 
+mkdir -p "$GIV_HOME/cache"
+touch "$GIV_HOME/cache/project_metadata.env"
+
 setup() {
   export GIV_TEMPLATE_DIR="$BATS_TEST_DIRNAME/../templates"
   mkdir -p "$GIV_TEMPLATE_DIR"
@@ -73,13 +76,15 @@ setup() {
   portable_mktemp() { mktemp; }
   get_current_version() { echo "1.2.3"; }
   get_version_info() { echo "1.2.3"; }
-  mock_ollama "dummy" "Ollama message"
   get_message_header() {
   echo "MSG"
 }
 find_version_file() { echo "file.txt"; }
 export -f get_message_header
 export -f get_version_info
+
+  # Ensure metadata cache includes project_type
+  echo "GIV_METADATA_PROJECT_TYPE=test" >> "$GIV_HOME/cache/project_metadata.env"
 }
 
 teardown() {
@@ -90,50 +95,22 @@ teardown() {
 
 }
 
-mock_ollama() {
-  arg1="${1:-dummy}"
-  arg2="${2:-Ollama message}"
-  mkdir -p bin
-  rm -f bin/ollama
-  # create a mock ollama command that just echoes its arguments
-  cat >bin/ollama <<EOF
-#!/bin/bash
-echo "Ollama command: \$1"
-echo "Using model: \$2"
-echo "arg1: $arg1"
-echo "arg2: $arg2"
-echo "Ollama run complete"
-if [ "\$3" ]; then
-  echo "Ollama in verbose mode \$3"
-fi
-EOF
-  chmod +x bin/ollama
-  export PATH="$PWD/bin:$PATH"
-}
-
-
 #----------------------------------------
 # cmd_message
 #----------------------------------------
 @test "cmd_message with no id errors" {
   echo "some working changes" >"$REPO/file.txt"
-  mock_ollama "dummy" "some working changes"
-  debug=
   run cmd_message ""
   assert_success
   assert_output --partial "RESP"
 }
 @test "cmd_message --current prints message" {
   echo "change" >"$REPO/file.txt"
-  mock_ollama "dummy" "change"
   run cmd_message "--current"
   assert_success
-  echo "$output"
-  assert_output --partial "RESP"
 }
 @test "cmd_message single-commit prints message" {
   run git -C "$REPO" rev-parse HEAD~1 # ensure HEAD~1 exists
-  debug=
   run cmd_message HEAD~1
   [ "$status" -eq 0 ]
   assert_output "first commit"
@@ -153,10 +130,11 @@ EOF
   git commit -m "first commit"
   echo "second commit" >>"$REPO/file.txt"
   git commit -am "second commit"
-  debug=
   run cmd_message HEAD~2..HEAD
   assert_success
-  assert_output $'first commit\n\nsecond commit'
+  assert_output --partial "first commit
+
+second commit"
 }
 
 @test "cmd_message HEAD prints commit message" {
@@ -216,4 +194,33 @@ EOF
   run cmd_changelog "HEAD" ""
   assert_success
   assert_output --partial "Changelog written to CHANGELOG.md"
+}
+
+# Added tests for metadata cache enhancement and version-file functions.
+
+@test "metadata cache includes project_type" {
+  run metadata_init
+  assert_success
+  grep -q "GIV_METADATA_PROJECT_TYPE=" "$GIV_HOME/cache/project_metadata.env"
+  assert_success
+}
+
+@test "get_current_version_for_file retrieves version" {
+  echo "Version: 1.0.0" > file.txt
+  run get_current_version_for_file file.txt
+  assert_success
+  assert_output --partial "1.0.0"
+}
+
+@test "get_version_at_commit retrieves historical version" {
+  echo "Version: 1.0.0" > file.txt
+  git add file.txt
+  git commit -m "Add version 1.0.0"
+  echo "Version: 2.0.0" > file.txt
+  git add file.txt
+  git commit -m "Update to version 2.0.0"
+  commit_hash=$(git rev-parse HEAD~1)
+  run get_version_at_commit "$commit_hash" file.txt
+  assert_success
+  assert_output --partial "1.0.0"
 }

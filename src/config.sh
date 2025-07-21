@@ -20,7 +20,6 @@ export GIV_REVISION="--current"
 export GIV_PATHSPEC=""
 
 ## Model and API configuration
-export GIV_MODEL_MODE="${GIV_MODEL_MODE:-'auto'}"
 export GIV_MODEL="${GIV_MODEL:-'devstral'}"
 export GIV_API_MODEL="${GIV_API_MODEL:-}"
 export GIV_API_URL="${GIV_API_URL:-}"
@@ -50,6 +49,9 @@ export changelog_file='CHANGELOG.md'
 export release_notes_file='RELEASE_NOTES.md'
 export announce_file='ANNOUNCEMENT.md'
 
+# Ensure ENV_FILE is initialized to avoid unbound variable errors.
+export ENV_FILE="${ENV_FILE:-$GIV_HOME/env_file}"
+
 # Validate GIV_TEMPLATE_DIR
 if [ -z "$GIV_TEMPLATE_DIR" ]; then
     GIV_TEMPLATE_DIR="$GIV_HOME/templates"
@@ -61,20 +63,3 @@ if [ ! -d "$GIV_TEMPLATE_DIR" ]; then
     printf 'Error: GIV_TEMPLATE_DIR does not point to a valid directory: %s\n' "$GIV_TEMPLATE_DIR" >&2
     exit 1
 fi
-
-# Validate GIV_MODEL_MODE
-valid_modes="local remote none auto"
-if ! echo "$valid_modes" | grep -qw "$GIV_MODEL_MODE"; then
-    #print_debug "Invalid GIV_MODEL_MODE: $GIV_MODEL_MODE. Defaulting to 'local'."
-    export GIV_MODEL_MODE="local"
-fi
-
-# # Ensure required templates exist
-# required_templates="final_summary_prompt.md message_prompt.md changelog_prompt.md release_notes_prompt.md announcement_prompt.md"
-
-# for template in $required_templates; do
-#     if [ ! -f "$GIV_TEMPLATE_DIR/$template" ]; then
-#         printf 'Error: Missing required template file: %s\n' "$GIV_TEMPLATE_DIR/$template" >&2
-#         exit 1
-#     fi
-# done

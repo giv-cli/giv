@@ -15,7 +15,6 @@ GIV_REVISION="--current"
 GIV_PATHSPEC=""
 
 ## Model and API configuration
-GIV_MODEL_MODE="auto"
 GIV_MODEL="devstral"
 GIV_API_MODEL=""
 GIV_API_URL=""

@@ -454,17 +454,12 @@ print_md_file() {
     glow "$1"
 }
 
-# This function prints markdown content.
-#
-# It first checks if the 'glow' command is available on the system.
-# If 'glow' is installed, it uses 'glow' to render the markdown content without numbering and with zero width.
-# If 'glow' is not installed, it falls back to calling the 'strip_markdown' function.
+# Added a new helper function to handle Markdown output.
+
 print_md() {
-    
-    #if is_glow_installed >/dev/null 2>&1; then
-    if [ "$(command -v glow)" ]; then
-        glow -n -w 0
+    if command -v glow >/dev/null 2>&1; then
+        glow -   # read from stdin
     else
-        strip_markdown
+        cat -
     fi
 }

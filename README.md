@@ -130,7 +130,6 @@ giv <subcommand> [revision] [pathspec] [OPTIONS]
 | `GIV_API_KEY`    | API key for remote model                           |
 | `GIV_API_URL`    | Endpoint default if `--api-url` is omitted         |
 | `GIV_MODEL`      | Default local model                                |
-| `GIV_MODEL_MODE` | `auto`, `local`, `remote`, `none` (overrides flag) |
 
 
 ## License

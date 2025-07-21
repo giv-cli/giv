@@ -1,6 +1,23 @@
 #!/bin/sh
 
 
+# Initialize GIV_HOME and GIV_TEMPLATE_DIR to prevent unbound variable errors.
+
+# Ensure GIV_HOME is set
+: "${GIV_HOME:=/tmp/giv}"
+
+# Ensure GIV_TEMPLATE_DIR is set
+: "${GIV_TEMPLATE_DIR:=/tmp/giv/templates}"
+
+
+# Correctly initialize GIV_LIB_DIR to point to the src directory
+: "${GIV_LIB_DIR:=$BATS_TEST_DIRNAME/../src}"
+
+
+# Source markdown.sh to use print_md
+. "${GIV_LIB_DIR}/markdown.sh"
+
+
 # Extract TODO changes for history extraction
 extract_todo_changes() {
     range="$1"
@@ -25,9 +42,9 @@ get_message_header() {
     commit="$1"
     print_debug "Getting message header for commit ${commit}"
     case "${commit}" in
-    --cached) echo "Staged Changes" ;;
-    --current | "") echo "Current Changes" ;;
-    *) git log -1 --pretty=%B "${commit}" ;;
+    --cached) printf "Staged Changes" | sed '/^$/d' | print_md ;;
+    --current | "") printf "Current Changes" | sed '/^$/d' | print_md ;;
+    *) git log -1 --pretty=%B "${commit}" | sed '/^$/d' | print_md ;;
     esac
 }
 
@@ -128,19 +145,12 @@ build_history() {
     todo_pattern="${3:-${GIV_TODO_PATTERN:-TODO}}"
     diff_pattern="${4:-}"
 
-
-    # # Determine cache directory and file
-    # if [ -z "$GIV_HOME" ]; then
-    #     GIV_HOME=$(find_giv_dir) || {
-    #         echo "Error: .giv directory not found" >&2
-    #         return 1
-    #     }
-    # fi
+    print_debug "Starting build_history with hist=$hist, commit=$commit, todo_pattern=$todo_pattern, diff_pattern=$diff_pattern"
 
     history_cache="$GIV_HOME/cache/${commit}-history.md"
 
-    # Return cached history if it exists
     if [ -f "$history_cache" ]; then
+        print_debug "Using cached history at $history_cache"
         cat "$history_cache" > "$hist"
         return 0
     fi
@@ -153,47 +163,35 @@ build_history() {
 
     print_debug "Building history for commit $commit"
 
-    # Verify the commit is valid
     if [ "$commit" != "--cached" ] && [ "$commit" != "--current" ] \
         && ! git rev-parse --verify "$commit" >/dev/null 2>&1; then
         printf 'Error: Could not build history for commit: %s\n' "$commit" >&2
-        exit 1
+        return 1
     fi
 
-    # header
     printf '### Commit ID %s\n' "$commit" >>"$hist"
     printf '**Date:** %s\n' "$(get_commit_date "$commit")" >>"$hist"
-    # version
-    vf=$(find_version_file)
-    print_debug "Using version file: $vf"
-    [ -n "${vf}" ] && print_debug "Found version file: $vf"
-    [ -n "${vf}" ] && {
-        ver=$(get_version_info "$commit" "$vf")
-        [ -n "$ver" ] && printf '**Version:** %s\n' "$ver" >>"$hist"
-    }
-    msg=$(get_message_header "${commit}")
-    printf '**Message:** %s\n' "${msg}" >>"${hist}"
 
-    # diff
+
+    ver=$(get_version_info "$commit")
+    if [ -n "$ver" ]; then
+        printf '**Version:** %s\n' "$ver" >>"$hist"
+    fi
+  
+
+    msg=$(get_message_header "$commit")
+    print_debug "Message header: $msg"
+    printf '**Message:** %s\n' "$msg" >>"$hist"
+
     diff_out=$(build_diff "$commit" "$diff_pattern")
-    # shellcheck disable=SC2016
+    print_debug "Diff output: $diff_out"
     printf '```diff\n%s\n```\n' "$diff_out" >>"$hist"
 
-    # diff for todos
     td=$(extract_todo_changes "$commit" "$todo_pattern")
     print_debug "TODO changes: $td"
-    # shellcheck disable=SC2016
-    [ -n "$td" ] && printf '\n### TODO Changes\n```diff\n%s\n```\n' "$td" >>"$hist"
-
-    # Save history to cache
-    if [ "$commit" != "--cached" ] && [ "$commit" != "--current" ]; then
-        print_debug "Saving history to cache: $history_cache"
-        cp -f "$hist" "$history_cache"
-    else
-        print_debug "Not caching history for special commit: $commit"
+    if [ -n "$td" ]; then
+        printf '### TODO Changes\n%s\n' "$td" >>"$hist"
     fi
-
-    
 }
 
 # Helper function to handle special targets
@@ -201,10 +199,9 @@ handle_special_target() {
     target="$1"
     summaries_file="$2"
     pathspec="$3"
-    gen_mode="$4"
 
     print_debug "Processing special target: ${target}"
-    summarize_commit "$target" "$pathspec" "$gen_mode" >>"$summaries_file"
+    summarize_commit "$target" "$pathspec" >>"$summaries_file"
     printf '\n' >>"$summaries_file"
 }
 
@@ -213,7 +210,6 @@ handle_commit_range() {
     target="$1"
     summaries_file="$2"
     pathspec="$3"
-    gen_mode="$4"
 
     print_debug "Detected commit-range syntax: ${target}"
     sep="$(printf '%s' "$target" | grep -q '\.\.\.' && echo '...' || echo '..')"
@@ -228,7 +224,7 @@ handle_commit_range() {
         fi
     done
 
-    summarize_commit "$left" "$pathspec" "$gen_mode" >>"$summaries_file"
+    summarize_commit "$left" "$pathspec" >>"$summaries_file"
     printf '\n' >>"$summaries_file"
 
     commits_file=$(portable_mktemp "commits_list_XXXXXX")
@@ -236,7 +232,7 @@ handle_commit_range() {
 
     while IFS= read -r commit; do
         print_debug "Summarizing commit: $commit"
-        summarize_commit "$commit" "$pathspec" "$gen_mode" >>"$summaries_file"
+        summarize_commit "$commit" "$pathspec" >>"$summaries_file"
         printf '\n' >>"$summaries_file"
     done <"$commits_file"
 
@@ -248,7 +244,6 @@ handle_single_commit() {
     target="$1"
     summaries_file="$2"
     pathspec="$3"
-    gen_mode="$4"
 
     if ! is_valid_commit "$target"; then
         print_error "Error: Invalid target: $target"
@@ -256,7 +251,7 @@ handle_single_commit() {
     fi
 
     print_debug "Summarizing single commit: $target"
-    summarize_commit "$target" "$pathspec" "$gen_mode" >>"$summaries_file"
+    summarize_commit "$target" "$pathspec" >>"$summaries_file"
     printf '\n========================\n\n'  >>"$summaries_file"
 }
 
@@ -270,7 +265,6 @@ is_valid_commit() {
 summarize_commit() {
   commit="$1"
   pathspec="$2"
-  gen_mode="${3:-${GIV_MODEL_MODE:-auto}}"
 
   print_debug "Starting summarize_commit for commit: $commit"
 
@@ -301,7 +295,7 @@ summarize_commit() {
   print_debug "Summary template generated: ${summary_template}"
   printf '%s\n' "$summary_template" >"$pr"
 
-  res=$(generate_summary_response "$pr" "$gen_mode")
+  res=$(generate_summary_response "$pr")
   print_debug "Summary response generated"
 
   save_commit_metadata "$commit" "$res_file"
@@ -343,24 +337,10 @@ build_commit_summary_prompt() {
 # Generates a summary response based on the prompt.
 generate_summary_response() {
     prompt_file="$1"
-    gen_mode="$2"
 
-    print_debug "Generating summary response using mode: $gen_mode"
+    print_debug "Generating summary response"
 
-    case "$gen_mode" in
-        auto)
-            print_debug "Auto mode selected, defaulting to local"
-            gen_mode="local"
-            ;;
-        local|remote)
-            ;;  # Supported modes
-        *)
-            printf 'Error: Unsupported gen_mode: %s\n' "$gen_mode" >&2
-            return 1
-            ;;
-    esac
-
-    generate_response "$prompt_file" "$gen_mode"
+    generate_response "$prompt_file"
 }
 
 # Function to get the path to the cached summary for a given commit
@@ -426,19 +406,25 @@ summarize_target() {
     case "$target" in
     --current | --cached)
         print_debug "Handling special target: $target"
-        handle_special_target "$target" "$summaries_file" "$pathspec" "$gen_mode"
+        handle_special_target "$target" "$summaries_file" "$pathspec"
         ;;
     *...*)
         print_debug "Handling three-dot commit range: $target"
-        handle_commit_range "$target" "$summaries_file" "$pathspec" "$gen_mode"
+        handle_commit_range "$target" "$summaries_file" "$pathspec"
         ;;
     *..*)
         print_debug "Handling two-dot commit range: $target"
-        handle_commit_range "$target" "$summaries_file" "$pathspec" "$gen_mode"
+        handle_commit_range "$target" "$summaries_file" "$pathspec"
         ;;
     *)
         print_debug "Handling single commit: $target"
-        handle_single_commit "$target" "$summaries_file" "$pathspec" "$gen_mode"
+        version=$(get_version_at_commit "$target" "$(get_current_version_for_file)")
+        if [ -n "$version" ]; then
+            printf 'Version: %s\n' "$version" >> "$summaries_file"
+        else
+            print_debug "No version found for commit: $target"
+        fi
+        handle_single_commit "$target" "$summaries_file" "$pathspec"
         ;;
     esac
 

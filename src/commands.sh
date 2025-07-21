@@ -47,7 +47,6 @@ cmd_message() {
     commit_id="${1:-}"
     pathspec="${2:-$GIV_PATHSPEC}" # New argument for PATHSPEC
     todo_pattern="${3:-$GIV_TODO_PATTERN}" # New argument for todo_pattern
-    model_mode="${4:-}" # New argument for model_mode
 
     if [ -z "${commit_id}" ]; then
         commit_id="--current"
@@ -64,7 +63,7 @@ cmd_message() {
         build_prompt --template "${GIV_TEMPLATE_DIR}/message_prompt.md" \
             --summary "${hist}" >"${pr}"
         print_debug "Generated prompt file ${pr}"
-        res=$(generate_response "${pr}" "${model_mode}" "0.9" "32768")        
+        res=$(generate_response "${pr}" "0.9" "32768")        
         if [ $? -ne 0 ]; then
             printf 'Error: Failed to generate AI response.\n' >&2
             exit 1
@@ -87,7 +86,7 @@ cmd_message() {
         case "${commit_id}" in
         *...*)
             print_debug "Processing three-dot range: ${commit_id}"
-            git --no-pager log --pretty=%B --left-right "${commit_id}" | sed '${/^$/d;}'
+            git --no-pager log --pretty=%B --left-right "${commit_id}" | sed -e '/^$/d'
             ;;
         *..*)
             print_debug "Processing two-dot range: ${commit_id}"
@@ -125,7 +124,7 @@ cmd_changelog() {
         printf 'Error: cannot create temp file for summaries\n' >&2
         exit 1
     }
-    if ! summarize_target "$revision" "$summaries_file" "$pathspec" "$GIV_MODEL_MODE"; then
+    if ! summarize_target "$revision" "$summaries_file" "$pathspec"; then
         printf 'Error: summarize_target failed\n' >&2
         rm -f "$summaries_file"
         exit 1
@@ -158,8 +157,7 @@ cmd_changelog() {
         rm -f "$summaries_file" "$tmp_prompt_file"
         exit 1
     }
-    if ! generate_from_prompt "$tmp_prompt_file" "$response_file" \
-            "$GIV_MODEL_MODE" "0.7"; then
+    if ! generate_from_prompt "$tmp_prompt_file" "$response_file" "0.7"; then
         printf 'Error: generate_from_prompt failed\n' >&2
         rm -f "$summaries_file" "$tmp_prompt_file" "$response_file"
         exit 1
@@ -237,10 +235,9 @@ cmd_document() {
     revision="${2:---current}"
     pathspec="${3:-}" # New GIV_PATHSPEC argument
     out="${4:-}"
-    mode="${5:-auto}"
-    temp="${6:-0.9}"
-    ctx="${7:-32768}"
-    shift 7
+    temp="${5:-0.9}"
+    ctx="${6:-32768}"
+    shift 6
 
     # validate template exists
     if [ ! -f "${prompt_tpl}" ]; then
@@ -254,7 +251,7 @@ cmd_document() {
     # 1) Summarize
     summaries=$(portable_mktemp "${doc_base}_summaries_XXXXXX")
     print_debug "Generating summaries to: ${summaries}"
-    summarize_target "${revision}" "${summaries}" "${pathspec}" "${mode}"
+    summarize_target "${revision}" "${summaries}" "${pathspec}"
 
     # bail if no summaries
     if [ ! -f "${summaries}" ]; then
@@ -279,8 +276,8 @@ cmd_document() {
 
     # 3) Generate final document
     if [ -n "${ctx}" ]; then
-        generate_from_prompt "${prompt_tmp}" "${out}" "${mode}" "${temp}" "${ctx}"
+        generate_from_prompt "${prompt_tmp}" "${out}" "${temp}" "${ctx}"
     else
-        generate_from_prompt "${prompt_tmp}" "${out}" "${mode}" "${temp}"
+        generate_from_prompt "${prompt_tmp}" "${out}" "${temp}"
     fi
 }
