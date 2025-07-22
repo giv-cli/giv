@@ -26,6 +26,7 @@ metadata_init() {
                 break
             fi
         done
+        print_debug "Detected provider: $DETECTED_PROVIDER"
     else
         provider_file="${GIV_LIB_DIR}/project/providers/provider_${GIV_METADATA_PROJECT_TYPE}.sh"
         if [ ! -f "$provider_file" ]; then
@@ -34,9 +35,9 @@ metadata_init() {
         fi
         . "$provider_file" || return 1
         DETECTED_PROVIDER="provider_${GIV_METADATA_PROJECT_TYPE}_detect"
+        print_debug "Provider set to: $DETECTED_PROVIDER"
     fi
 
-    print_debug "Detected provider: $DETECTED_PROVIDER"
     if [ -z "$DETECTED_PROVIDER" ]; then
         print_warn "No valid metadata provider detected."
     fi
@@ -64,9 +65,11 @@ metadata_init() {
     }
     if [ -n "$DETECTED_PROVIDER" ]; then
         coll="${DETECTED_PROVIDER%_detect}_collect"
-        "$coll" | while IFS="$(printf '\t')" read -r key val; do
+        print_debug "Raw output from $coll:" >&2
+        "$coll" | while IFS="=" read -r key val; do
+            print_debug "Processing line: key='$key', value='$val'" >&2
             [ -z "$key" ] && continue
-            esc_val=$(printf '%s' "$val" | sed 's/"/\\"/g')
+            esc_val=$(printf '%s' "$val" | sed 's/"/\\\\"/g')
             # Only add prefix if not already present
             if ! printf '%s' "$key" | grep -q '^GIV_METADATA_'; then
                 key="GIV_METADATA_$(printf '%s' "$key" | tr '[:lower:]' '[:upper:]')"
@@ -76,7 +79,8 @@ metadata_init() {
             # Remove any trailing = from key
             key="${key%%=*}"
             sed_inplace "/^$key=/d" "$METADATA_CACHE_FILE"
-        printf '%s="%s"\n' "$key" "$esc_val" >> "$METADATA_CACHE_FILE"
+            printf '%s=%s\n' "$key" "$val" >> "$METADATA_CACHE_FILE"
+            print_debug "Processed metadata: key=$key, value=$esc_val" >&2
         done
 
         # Add project_type to metadata
@@ -103,6 +107,7 @@ metadata_init() {
     # -------------------------
     # Ensure All Variables Have GIV_METADATA_ Prefix
     # -------------------------
+    print_debug "Ensuring all metadata variables have GIV_METADATA_ prefix"
     tmp_METADATA_CACHE_FILE="${METADATA_CACHE_FILE}.tmp"
     : > "$tmp_METADATA_CACHE_FILE"
     while IFS="=" read -r k v; do
@@ -117,6 +122,7 @@ metadata_init() {
         printf '%s="%s"\n' "$k" "$v" >> "$tmp_METADATA_CACHE_FILE"
     done < "$METADATA_CACHE_FILE"
     mv "$tmp_METADATA_CACHE_FILE" "$METADATA_CACHE_FILE"
+    print_debug "All metadata variables prefixed and saved to $METADATA_CACHE_FILE"
 
     # -------------------------
     # Export for current shell
@@ -132,6 +138,8 @@ metadata_init() {
         echo "Error: GIV_METADATA_PROJECT_TYPE not set after metadata_init" >&2
         return 1
     fi
+
+    print_debug "Writing metadata to cache file: $METADATA_CACHE_FILE"
 }
 
 # get_project_version: dispatch to the correct provider for version info

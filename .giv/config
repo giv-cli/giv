@@ -11,10 +11,10 @@
 
 
 ## Model and API configuration
-GIV_MODEL="devstral"
-GIV_API_URL="http://localhost:11434/v1/chat/completions"
-GIV_API_KEY="giv"
-GIV_API_MODEL="devstral"
+# GIV_MODEL="devstral"
+# GIV_API_URL="http://localhost:11434/v1/chat/completions"
+# GIV_API_KEY="giv"
+# GIV_API_MODEL="devstral"
 
 # ## Remote: groq API Configuration
 # GIV_API_URL="https://api.groq.com/openai/v1/chat/completions"

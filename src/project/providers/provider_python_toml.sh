@@ -9,9 +9,15 @@ provider_python_toml_collect() {
     # Extract metadata from pyproject.toml
     title=$(awk -F' *= *' '/^name *=/ { gsub(/"/, "", $2); print $2; exit }' pyproject.toml)
     version=$(awk -F' *= *' '/^version *=/ { gsub(/"/, "", $2); print $2; exit }' pyproject.toml)
-    echo "title	$title"
-    echo "version	$version"
-    echo "language	python"
+    description=$(awk -F' *= *' '/^description *=/ { gsub(/"/, "", $2); print $2; exit }' pyproject.toml)
+    author=$(awk -F' *= *' '/^\[tool.poetry.author\]/ {found=1} found && /^name *=/ { gsub(/"/, "", $2); print $2; exit }' pyproject.toml)
+    repository=$(awk -F' *= *' '/^\[tool.poetry.repository\]/ {found=1} found && /^url *=/ { gsub(/"/, "", $2); print $2; exit }' pyproject.toml)
+    echo "title=\"$title\""
+    echo "version=\"$version\""
+    echo "description=\"$description\""
+    echo "author=\"$author\""
+    echo "repository=\"$repository\""
+    echo "language=\"python\""
 }
 
 provider_python_toml_get_version() {

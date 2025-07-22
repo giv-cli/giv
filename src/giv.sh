@@ -48,7 +48,7 @@ compute_app_dir() {
     windows)
       printf '%s/giv' "${LOCALAPPDATA:-$HOME/AppData/Local}";;
     macos)
-      printf '%s/Library/Application Scripts/com.github.%s' "$HOME" "${REPO}";;
+      printf '%s/Library/Application Scripts/com.github.%s' "$HOME" "giv-cli/giv";;
   esac
 }
 
@@ -119,6 +119,8 @@ elif [ -d "/usr/local/share/giv/templates" ]; then
     TEMPLATE_DIR="/usr/local/share/giv/templates"
 elif [ -n "${SNAP:-}" ] && [ -d "${SNAP}/share/giv/templates" ]; then
     TEMPLATE_DIR="${SNAP}/share/giv/templates"
+elif [ -d "./templates" ]; then
+    TEMPLATE_DIR="./templates"
 else
     printf 'Error: Could not find giv template directory.\n' >&2
     exit 1

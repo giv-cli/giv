@@ -144,29 +144,53 @@ setup() {
 }
 
 
-# @test "get_version_info for --current extracts version from file" {
+@test "metadata_init caches all metadata for node_pkg project type" {
+  export GIV_METADATA_PROJECT_TYPE="node_pkg"
+  export GIV_DEBUG="true"
+  echo '{
+    "name": "Node Project",
+    "description": "A Node.js project",
+    "version": "1.2.3",
+    "repository": {"url": "https://github.com/node/repo"},
+    "author": "Node Author"
+  }' > package.json
+  rm -f "$GIV_HOME/project_metadata.env"
 
-#     run get_version_info --current package.json
-#     assert_success
-#     assert_output --partial "1.1.0"
-# }
+  metadata_init
 
-# @test "get_version_info for --cached extracts version from index" {
-#     echo "Version: 2.0.0" >package.json
-#     git add package.json
-#     run get_version_info --cached package.json
-#     assert_success
-#     assert_output --partial "2.0.0"
-# }
+  assert_success
+  run cat "$GIV_CACHE_DIR/project_metadata.env"
+  assert_output --partial 'GIV_METADATA_TITLE="Node Project"'
+  assert_output --partial 'GIV_METADATA_DESCRIPTION="A Node.js project"'
+  assert_output --partial 'GIV_METADATA_LATEST_VERSION="1.2.3"'
+  assert_output --partial 'GIV_METADATA_REPOSITORY_URL="https://github.com/node/repo"'
+  assert_output --partial 'GIV_METADATA_AUTHOR="Node Author"'
+}
 
-# @test "get_version_info for commit extracts version" {
-#     echo "Version: 3.1.4" >package.json
-#     git add package.json
-#     git commit -m "Update version"
-#     commit=$(git rev-parse HEAD)
-#     run get_version_info "$commit" package.json
-#     assert_success
-#     assert_output --partial "3.1.4"
-# }
+@test "metadata_init caches all metadata for python_toml project type" {
+  export GIV_METADATA_PROJECT_TYPE="python_toml"
+  export GIV_DEBUG="true"
+  cat <<EOF > pyproject.toml
+[tool.poetry]
+name = "Python Project"
+description = "A Python project"
+version = "2.3.4"
+[tool.poetry.repository]
+url = "https://github.com/python/repo"
+[tool.poetry.author]
+name = "Python Author"
+EOF
+  rm -f "$GIV_HOME/project_metadata.env"
+
+  metadata_init
+
+  assert_success
+  run cat "$GIV_CACHE_DIR/project_metadata.env"
+  assert_output --partial 'GIV_METADATA_TITLE="Python Project"'
+  assert_output --partial 'GIV_METADATA_DESCRIPTION="A Python project"'
+  assert_output --partial 'GIV_METADATA_VERSION="2.3.4"'
+  assert_output --partial 'GIV_METADATA_REPOSITORY="https://github.com/python/repo"'
+  assert_output --partial 'GIV_METADATA_AUTHOR="Python Author"'
+}
 
 

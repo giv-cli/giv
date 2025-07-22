@@ -235,7 +235,6 @@ parse_args() {
     fi
 
         print_debug "Parsing revision"
-        print_debug "${@}"
         # 3. Collect all non-option args as pattern (until first option or end)
         # Only collect pathspec if there are non-option args left AND they are not files like the script itself
         while [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; do
