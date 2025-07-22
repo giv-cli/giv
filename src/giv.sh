@@ -25,7 +25,22 @@ get_script_dir() {
         cd "$(dirname "${target}")" 2>/dev/null && pwd
     fi
 }
-# --- 5. Compute APP_DIR ---
+
+detect_platform() {
+  OS="$(uname -s)"
+  case "$OS" in
+    Linux*)
+      if [ -f /etc/wsl.conf ] || grep -qi microsoft /proc/version 2>/dev/null; then
+        printf 'windows'
+      else
+        printf 'linux'
+      fi;;
+    Darwin*)  printf 'macos';;
+    CYGWIN*|MINGW*|MSYS*) printf 'windows';;
+    *)         printf 'unsupported';;
+  esac
+}
+
 compute_app_dir() {
   case "$PLATFORM" in
     linux)
@@ -69,6 +84,8 @@ fi
 SCRIPT_DIR="$(get_script_dir "${SCRIPT_PATH}")"
 
 # Allow overrides for advanced/testing/dev
+
+PLATFORM="$(detect_platform)"
 APP_DIR="$(compute_app_dir)"
 printf 'Using giv app directory: %s\n' "${APP_DIR}"
 LIB_DIR=""
