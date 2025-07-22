@@ -17,6 +17,9 @@ print_warn() {
 print_error() {
     printf 'ERROR: %s\n' "$*" >&2
 }
+print_plain() {
+    printf '%s\n' "$*" >&2
+}
 # This function prints a markdown file using the 'glow' command.
 #
 # Usage: print_md_file <file>

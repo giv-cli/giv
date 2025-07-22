@@ -135,9 +135,13 @@ generate_remote() {
         -H "Content-Type: application/json" \
         -d "${body}")
 
-    if [ "$GIV_DEBUG" = "true" ]; then
-        echo "Response from remote API:" >&2
-        echo "${response}" >&2
+    print_debug "Response from remote API:"
+    print_debug "${response}"
+
+    if [ -z "${response}" ]; then
+        print_error "No response received from remote API: ${GIV_API_URL}"
+        print_plain "Please check your API key and URL configuration."
+        return 1
     fi
 
     # Extract the content field from the response
@@ -152,8 +156,7 @@ generate_response() {
 
     print_debug "Generating response with temperature=$temp, context window size=$ctx_window"
 
-    if ! generate_remote "$1" "$temp" "$ctx_window"; then
-        print_error "Failed to generate remote response"
+    if ! generate_remote "$1" "$temp" "$ctx_window"; then        
         return 1
     fi
 }
