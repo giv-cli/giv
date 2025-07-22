@@ -25,6 +25,18 @@ get_script_dir() {
         cd "$(dirname "${target}")" 2>/dev/null && pwd
     fi
 }
+# --- 5. Compute APP_DIR ---
+compute_app_dir() {
+  case "$PLATFORM" in
+    linux)
+      printf '%s/giv' "${XDG_DATA_HOME:-$HOME/.local/share}";;
+    windows)
+      printf '%s/giv' "${LOCALAPPDATA:-$HOME/AppData/Local}";;
+    macos)
+      printf '%s/Library/Application Scripts/com.github.%s' "$HOME" "${REPO}";;
+  esac
+}
+
 get_is_sourced(){
     # Detect if sourced (works in bash, zsh, dash, sh)
     _is_sourced=0
@@ -57,6 +69,8 @@ fi
 SCRIPT_DIR="$(get_script_dir "${SCRIPT_PATH}")"
 
 # Allow overrides for advanced/testing/dev
+APP_DIR="$(compute_app_dir)"
+printf 'Using giv app directory: %s\n' "${APP_DIR}"
 LIB_DIR=""
 TEMPLATE_DIR=""
 DOCS_DIR=""
@@ -64,8 +78,8 @@ DOCS_DIR=""
 # Library location (.sh files)
 if [ -n "${GIV_LIB_DIR:-}" ]; then
     LIB_DIR="${GIV_LIB_DIR}"
-elif [ -d "/usr/local/lib/giv" ]; then
-    LIB_DIR="/usr/local/lib/giv"
+elif [ -d "${APP_DIR}/src" ]; then
+    LIB_DIR="${APP_DIR}/src"
 elif [ -d "${SCRIPT_DIR}" ]; then
     # Local or system install: helpers in same dir
     LIB_DIR="${SCRIPT_DIR}"
@@ -77,11 +91,13 @@ else
 fi
 GIV_LIB_DIR="${LIB_DIR}"
 
+printf 'Using giv lib directory: %s\n' "${GIV_LIB_DIR}"
+
 # Template location
 if [ -n "${GIV_TEMPLATE_DIR:-}" ]; then
     TEMPLATE_DIR="${GIV_TEMPLATE_DIR}"
-elif [ -d "${LIB_DIR}/../templates" ]; then
-    TEMPLATE_DIR="${LIB_DIR}/../templates"
+elif [ -d "${APP_DIR}/templates" ]; then
+    TEMPLATE_DIR="${APP_DIR}/templates"
 elif [ -d "/usr/local/share/giv/templates" ]; then
     TEMPLATE_DIR="/usr/local/share/giv/templates"
 elif [ -n "${SNAP:-}" ] && [ -d "${SNAP}/share/giv/templates" ]; then
@@ -95,8 +111,8 @@ GIV_TEMPLATE_DIR="${TEMPLATE_DIR}"
 # Docs location (optional)
 if [ -n "${GIV_DOCS_DIR:-}" ]; then
     DOCS_DIR="${GIV_DOCS_DIR}"
-elif [ -d "${LIB_DIR}/../docs" ]; then
-    DOCS_DIR="${LIB_DIR}/../docs"
+elif [ -d "${APP_DIR}/docs" ]; then
+    DOCS_DIR="${APP_DIR}/docs"
 elif [ -d "/usr/local/share/giv/docs" ]; then
     DOCS_DIR="/usr/local/share/giv/docs"
 elif [ -n "${SNAP:-}" ] && [ -d "${SNAP}/share/giv/docs" ]; then
