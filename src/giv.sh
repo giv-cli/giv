@@ -163,6 +163,7 @@ is_sourced="$(get_is_sourced)"
 if [ "${is_sourced}" -eq 0 ]; then
     # Ensure .giv directory is initialized
     ensure_giv_dir_init
+    initialize_metadata
     portable_mktemp_dir
     parse_args "$@"
     metadata_init

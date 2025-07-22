@@ -18,6 +18,13 @@
         "subcmd",
         "unmatch"
     ],
+    "files.exclude": {
+        "**/.git": false,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true
+    },
     "todo-tree.general.tags": [
         "BUG",
         "HACK",
