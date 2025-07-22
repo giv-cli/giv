@@ -87,7 +87,7 @@ SCRIPT_DIR="$(get_script_dir "${SCRIPT_PATH}")"
 
 PLATFORM="$(detect_platform)"
 APP_DIR="$(compute_app_dir)"
-printf 'Using giv app directory: %s\n' "${APP_DIR}"
+[ "$GIV_DEBUG" = "true" ] && printf 'Using giv app directory: %s\n' "${APP_DIR}"
 LIB_DIR=""
 TEMPLATE_DIR=""
 DOCS_DIR=""
@@ -108,7 +108,7 @@ else
 fi
 GIV_LIB_DIR="${LIB_DIR}"
 
-printf 'Using giv lib directory: %s\n' "${GIV_LIB_DIR}"
+[ "$GIV_DEBUG" = "true" ] && printf 'Using giv lib directory: %s\n' "${GIV_LIB_DIR}"
 
 # Template location
 if [ -n "${GIV_TEMPLATE_DIR:-}" ]; then
@@ -149,8 +149,6 @@ GIV_DOCS_DIR="${DOCS_DIR}"
 . "${LIB_DIR}/markdown.sh"
 # shellcheck source=llm.sh
 . "${LIB_DIR}/llm.sh"
-# shellcheck source=project.sh
-. "${LIB_DIR}/project.sh"
 # shellcheck source=project/metadata.sh
 . "${LIB_DIR}/project/metadata.sh"
 # shellcheck source=history.sh
