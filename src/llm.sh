@@ -146,22 +146,6 @@ generate_remote() {
     echo "${result}"
 }
 
-# The `generate_response` function generates a response based on the specified mode.
-#
-# Parameters:
-#   $1 - Path to the input file.
-#   $2 (optional) - Mode for generating the response. Possible values are 'remote', 'none', or any other value for local generation.
-#   $3 (optional) - Temperature setting for the model, if applicable.
-#   $4 (optional) - Context window size for the model, if applicable.
-#
-# Description:
-#   The function determines the mode of operation based on the second argument ($2), falling back to the `GIV_MODEL_MODE` environment variable, and finally defaulting to 'auto'.
-#   If debugging is enabled (via the `debug` environment variable), it prints a debug message indicating the chosen mode.
-#
-#   Depending on the mode:
-#     - 'remote': Calls the `generate_remote` function with the input file path as an argument, along with temperature and context window size if provided.
-#     - 'none': Outputs the content of the input file directly using `cat`.
-#     - Any other value: Calls the `run_local` function with the input file path as an argument, along with temperature and context window size if provided.
 generate_response() {
     temp="${2:-0.5}"         # Default to a neutral temperature of 0.5
     ctx_window="${3:-32768}" # Default context window size
@@ -270,7 +254,7 @@ replace_metadata() {
 # using SUMMARY_FILE as the summary source.
 build_prompt() {
     # default tokens
-    project_title="$(get_project_title)"
+    project_title="${GIV_METADATA_TITLE:-}"
     version="${output_version:-${GIV_TOKEN_VERSION:-}}"
     example=""
     rules=""
@@ -359,23 +343,6 @@ build_prompt() {
     return
 }
 
-# Function to generate a response from a prompt file and write it to an output file.
-#
-# Parameters:
-#   $1 - Path to the prompt file (required).
-#   $2 - Path to the response output file (required).
-#   $3 - Generation mode. Defaults to GIV_MODEL_MODE or 'auto' if not set.
-#   $4 - Temperature for response generation. Default is 0.9.
-#   $5 - Context window size for response generation. Default is 32768.
-#
-# The function performs the following steps:
-# 1) Invokes the AI to generate a response based on the prompt file and parameters.
-# 2) If in dry-run mode or if no output file is specified, prints the response and exits.
-# 3) Otherwise, writes the generated response to the specified output file.
-#
-# Returns:
-#   0 - Success
-#   1 - Error (e.g., generate_response failed or unable to write to output file)
 generate_from_prompt() {
     prompt_file="$1"
     response_output_file="$2"

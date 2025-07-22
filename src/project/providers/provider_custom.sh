@@ -14,11 +14,11 @@ provider_custom_collect() {
   repository="${GIV_METADATA_PROJECT_REPOSITORY:-}"
   author="${GIV_METADATA_PROJECT_AUTHOR:-}"
 
-  [ -n "$title" ] && printf 'title="%s"\n' "$title"
-  [ -n "$description" ] && printf 'description="%s"\n' "$description"
-  [ -n "$version" ] && printf 'latest_version="%s"\n' "$version"
-  [ -n "$repository" ] && printf 'repository_url="%s"\n' "$repository"
-  [ -n "$author" ] && printf 'author="%s"\n' "$author"
+  [ -n "$title" ] && printf 'GIV_METADATA_TITLE="%s"\n' "$title"
+  [ -n "$description" ] && printf 'GIV_METADATA_DESCRIPTION="%s"\n' "$description"
+  [ -n "$version" ] && printf 'GIV_METADATA_LATEST_VERSION="%s"\n' "$version"
+  [ -n "$repository" ] && printf 'GIV_METADATA_REPOSITORY_URL="%s"\n' "$repository"
+  [ -n "$author" ] && printf 'GIV_METADATA_AUTHOR="%s"\n' "$author"
 }
 
 
@@ -33,19 +33,46 @@ provider_custom_get_version() {
     if [ -z "$GIV_VERSION_FILE" ]; then
         printf ""
         return 0
-
     fi
     if [ ! -f "$GIV_VERSION_FILE" ]; then
-         printf ""
+        printf ""
         return 0
     fi
-    parse_version "$(cat "$GIV_VERSION_FILE")"
+    # If file is JSON, extract "version" field (case-insensitive)
+    if grep -i -q '"version"' "$GIV_VERSION_FILE" 2>/dev/null; then
+        version=$(grep -i '"version"' "$GIV_VERSION_FILE" | sed -En 's/.*"[vV]ersion"[[:space:]]*:[[:space:]]*"([^\"]+)".*/\1/p' | head -n 1)
+        # If version is empty or does not match a version pattern, fallback
+        if [ -z "$version" ] || ! printf '%s' "$version" | grep -Eq '^[vV]?[0-9]+\.[0-9]+\.[0-9]+$'; then
+            parse_version "$(cat "$GIV_VERSION_FILE")"
+        else
+            printf '%s' "$version"
+        fi
+    else
+        parse_version "$(cat "$GIV_VERSION_FILE")"
+    fi
 }
 
 provider_custom_get_version_at_commit() {
     commit="$1"
-    file_content=$(git show "${commit}:${GIV_VERSION_FILE}") || return 1
-    parse_version "${file_content}"
+    file_content=""
+    # Try to get file content from commit, suppress errors
+    file_content=$(git show "${commit}:${GIV_VERSION_FILE}" 2>/dev/null)
+    if [ -z "$file_content" ]; then
+        printf ""
+        return 0
+    fi
+    # If file is JSON, extract "version" field (case-insensitive)
+    if printf '%s' "$file_content" | grep -i -q '"version"'; then
+        version=$(printf '%s' "$file_content" | grep -i '"version"' | sed -En 's/.*"[vV]ersion"[[:space:]]*:[[:space:]]*"([^\"]+)".*/\1/p' | head -n 1)
+        # If version is empty or does not match a version pattern, fallback
+        if [ -z "$version" ] || ! printf '%s' "$version" | grep -Eq '^[vV]?[0-9]+\.[0-9]+\.[0-9]+$'; then
+            parse_version "$file_content"
+        else
+            printf '%s' "$version"
+        fi
+    else
+        parse_version "$file_content"
+    fi
 }
 
 
@@ -64,5 +91,5 @@ provider_custom_get_version_at_commit() {
 parse_version() {
     #printf 'Parsing version from: %s\n' "$1" >&2
     # Accepts a string, returns version like v1.2.3 or 1.2.3
-    echo "$1" | sed -n -E 's/.*([vV]?[0-9]+\.[0-9]+\.[0-9]+).*/\1/p' | head -n 1
+    echo "$1" | sed -n -E "s/.*['\"]?([vV][0-9]+\.[0-9]+\.[0-9]+)['\"]?.*/\1/p;s/.*['\"]?([0-9]+\.[0-9]+\.[0-9]+)['\"]?.*/\1/p" | head -n 1
 }

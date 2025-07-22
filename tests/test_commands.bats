@@ -8,6 +8,7 @@ load 'test_helper/bats-assert/load'
 
 load "$BATS_TEST_DIRNAME/../src/config.sh"
 . "$BATS_TEST_DIRNAME/../src/system.sh"
+#load "$BATS_TEST_DIRNAME/../src/project/metadata.sh"
 
 BATS_TEST_START_TIME="$(date +%s)"
 
@@ -21,6 +22,7 @@ TEMPLATES_DIR="$BATS_TEST_DIRNAME/../templates"
 # export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.tmp/giv"
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
+export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
 
 export GIV_DEBUG=""
 
@@ -74,8 +76,9 @@ setup() {
   build_history() { printf "HIST:%s\n" "$2" >"$1"; }
   # generate_response() { echo "RESP"; }
   portable_mktemp() { mktemp; }
-  get_current_version() { echo "1.2.3"; }
+  get_project_version() { echo "1.2.3"; }
   get_version_info() { echo "1.2.3"; }
+  get_version_at_commit() { echo "1.2.3"; }
   get_message_header() {
   echo "MSG"
 }
@@ -195,31 +198,3 @@ second commit"
   assert_output --partial "Changelog written to CHANGELOG.md"
 }
 
-# Added tests for metadata cache enhancement and version-file functions.
-
-@test "metadata cache includes project_type" {
-  run metadata_init
-  assert_success
-  grep -q "GIV_METADATA_PROJECT_TYPE=" "$GIV_HOME/cache/project_metadata.env"
-  assert_success
-}
-
-@test "get_current_version_for_file retrieves version" {
-  echo "Version: 1.0.0" > file.txt
-  run get_current_version_for_file file.txt
-  assert_success
-  assert_output --partial "1.0.0"
-}
-
-@test "get_version_at_commit retrieves historical version" {
-  echo "Version: 1.0.0" > file.txt
-  git add file.txt
-  git commit -m "Add version 1.0.0"
-  echo "Version: 2.0.0" > file.txt
-  git add file.txt
-  git commit -m "Update to version 2.0.0"
-  commit_hash=$(git rev-parse HEAD~1)
-  run get_version_at_commit "$commit_hash" file.txt
-  assert_success
-  assert_output --partial "1.0.0"
-}

@@ -1,23 +1,5 @@
 #!/bin/sh
 
-
-# Initialize GIV_HOME and GIV_TEMPLATE_DIR to prevent unbound variable errors.
-
-# Ensure GIV_HOME is set
-: "${GIV_HOME:=/tmp/giv}"
-
-# Ensure GIV_TEMPLATE_DIR is set
-: "${GIV_TEMPLATE_DIR:=/tmp/giv/templates}"
-
-
-# Correctly initialize GIV_LIB_DIR to point to the src directory
-: "${GIV_LIB_DIR:=$BATS_TEST_DIRNAME/../src}"
-
-
-# Source markdown.sh to use print_md
-. "${GIV_LIB_DIR}/markdown.sh"
-
-
 # Extract TODO changes for history extraction
 extract_todo_changes() {
     range="$1"

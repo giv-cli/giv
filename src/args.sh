@@ -152,8 +152,7 @@ parse_args() {
     # -------------------------------------------------------------------
     print_debug "Setting initial variables"
     
-    model=${GIV_MODEL:-'devstral'}
-    api_model="${GIV_API_MODEL:-}"
+    api_model="${GIV_API_MODEL:-'devstral'}"
     api_url="${GIV_API_URL:-}"
     api_key="${GIV_API_KEY:-}"
     print_debug "Initial API settings: $api_url"
@@ -173,7 +172,6 @@ parse_args() {
         print_debug "No config file specified or found, using defaults."
     fi
     
-    model=${GIV_MODEL:-${model:-'devstral'}}
     api_model=${GIV_API_MODEL:-${api_model}}
     api_url=${GIV_API_URL:-${api_url}}
     api_key=${GIV_API_KEY:-${api_key}}
@@ -279,7 +277,7 @@ parse_args() {
                 shift 2
             ;;
             --model)
-                model=$2
+                api_model=$2
                 shift 2
             ;;
             --api-model)
@@ -341,7 +339,6 @@ parse_args() {
     fi
 
     print_debug "Set global variables:"
-    GIV_MODEL="${model:-}"
     GIV_TODO_FILES="${todo_files:-}"
     GIV_TODO_PATTERN="${todo_pattern:-}"
     GIV_API_MODEL="${api_model:-}"
@@ -361,7 +358,6 @@ parse_args() {
     print_debug "  GIV_HOME: ${GIV_HOME:-}"
     print_debug "  GIV_TMP_DIR: ${GIV_TMP_DIR:-}"
     print_debug "  GIV_TMPDIR_SAVE: ${GIV_TMPDIR_SAVE:-}"
-    print_debug "  GIV_MODEL: ${GIV_MODEL:-}"
     print_debug "  GIV_API_MODEL: ${GIV_API_MODEL:-}"
     print_debug "  GIV_API_URL: ${GIV_API_URL:-}"
     print_debug "Parsed options:"
@@ -377,21 +373,12 @@ parse_args() {
     print_debug "  TODO Pattern: ${GIV_TODO_PATTERN:-}"
     print_debug "  Version File: ${GIV_VERSION_FILE:-}"
     print_debug "  Version Pattern: ${GIV_VERSION_PATTERN:-}"
-    print_debug "  Model: ${GIV_MODEL:-}"
     print_debug "  API Model: ${GIV_API_MODEL:-}"
     print_debug "  API URL: ${GIV_API_URL:-}"
     print_debug "  Output File: ${GIV_OUTPUT_FILE:-}"
     print_debug "  Output Mode: ${GIV_OUTPUT_MODE:-}"
     print_debug "  Output Version: ${GIV_OUTPUT_VERSION:-}"
     print_debug "  Prompt File: ${GIV_PROMPT_FILE:-}"
-}
-
-is_valid_git_range() {
-    git rev-list "$1" >/dev/null 2>&1
-}
-
-is_valid_pattern() {
-    git ls-files --error-unmatch "$1" >/dev/null 2>&1
 }
 
 

@@ -29,7 +29,7 @@ setup() {
     # Create a package.json file for Node.js provider detection
     echo '{"name": "test-project", "version": "1.0.0"}' > package.json
 
-    export GIV_PROJECT_TYPE="custom"
+    export GIV_METADATA_PROJECT_TYPE="custom"
     export GIV_VERSION_FILE="version.txt"
     # Initialize metadata
     metadata_init
@@ -102,7 +102,7 @@ teardown() {
 # }
 
 @test "get_version_info detects version from current file" {
-    export GIV_PROJECT_TYPE="custom"
+    export GIV_METADATA_PROJECT_TYPE="custom"
     export GIV_VERSION_FILE="version.txt"
     echo "version = '1.2.3'" >"version.txt"
     run get_project_version "--current"

@@ -7,11 +7,12 @@ load 'test_helper/bats-assert/load'
 
 load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
-load "$BATS_TEST_DIRNAME/../src/project.sh"
+load "$BATS_TEST_DIRNAME/../src/project/metadata.sh"
 SCRIPT="$BATS_TEST_DIRNAME/../src/llm.sh"
 
 load "$SCRIPT"
 
+export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 

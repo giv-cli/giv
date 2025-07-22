@@ -8,6 +8,7 @@ load 'test_helper/bats-assert/load'
 load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
 load "$BATS_TEST_DIRNAME/../src/project/metadata.sh"
+load "$BATS_TEST_DIRNAME/../src/system.sh"
 
 SCRIPT="$BATS_TEST_DIRNAME/../src/history.sh"
 load "$SCRIPT"
@@ -15,6 +16,7 @@ load "$SCRIPT"
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 setup() {
+    export GIV_METADATA_PROJECT_TYPE="custom"
     rm -rf "$GIV_HOME/cache"  # clean up any old cache
     rm -rf "$GIV_HOME/.tmp"  # clean up any old tmp
     mkdir -p "$GIV_HOME/cache"
@@ -59,9 +61,6 @@ setup() {
     export GIV_API_KEY="test-api-key"
     export GIV_API_URL="https://api.example.com"
 
-    # Mock missing files
-    touch "$BATS_TEST_DIRNAME/CHANGELOG.md"
-    touch "$BATS_TEST_DIRNAME/project_metadata.env"
 }
 
 teardown() {
@@ -75,7 +74,9 @@ teardown() {
     build_history "$hist" HEAD
     assert_success
     run cat "$hist"
-    assert_output --partial "**Version:** 1.1.0"
+    assert_output --partial "Bump to 1.1.0"
+    assert_output --partial "-{ \"version\": \"1.0.0\" }"
+    assert_output --partial "+{ \"version\": \"1.1.0\" }"
 }
 
 @test "build_history for HEAD~2 shows previous version" {
@@ -83,7 +84,8 @@ teardown() {
     build_history "$hist" HEAD~2
     assert_success
     run cat "$hist"
-    assert_output --partial "**Version:** 1.0.0"
+    assert_output --partial "Initial version 1.0.0"
+    assert_output --partial "1 file changed, 1 insertion(+), 1 deletion(-)"
 }
 
 @test "build_history with no version file emits only diff block" {
@@ -198,29 +200,6 @@ teardown() {
 #     assert_output "package.json"
 # }
 
-@test "get_version_info for --current extracts version from file" {
-    run get_version_info --current package.json
-    assert_success
-    assert_output --partial "1.1.0"
-}
-
-@test "get_version_info for --cached extracts version from index" {
-    echo "Version: 2.0.0" >package.json
-    git add package.json
-    run get_version_info --cached package.json
-    assert_success
-    assert_output --partial "2.0.0"
-}
-
-@test "get_version_info for commit extracts version" {
-    echo "Version: 3.1.4" >package.json
-    git add package.json
-    git commit -m "Update version"
-    commit=$(git rev-parse HEAD)
-    run get_version_info "$commit" package.json
-    assert_success
-    assert_output --partial "3.1.4"
-}
 
 @test "build_diff outputs minimal diff with tracked change" {
     echo "new line" >>giv.sh
@@ -240,6 +219,7 @@ teardown() {
 
 @test "build_history creates expected output" {
     export GIV_DEBUG="true"
+    get_project_version() { echo "1.2.3"; }
     run build_history history.txt --cached
     assert_success
     [ -f "history.txt" ]

@@ -17,6 +17,39 @@ print_warn() {
 print_error() {
     printf 'ERROR: %s\n' "$*" >&2
 }
+# This function prints a markdown file using the 'glow' command.
+#
+# Usage: print_md_file <file>
+#
+# Arguments:
+#   <file> - The path to the markdown file to be printed.
+#
+# Returns:
+#   0 on success, 1 if no argument is provided or the file does not exist.
+print_md_file() {
+    ensure_glow
+    if [ -z "$1" ]; then
+        echo "Usage: view_md <file>"
+        return 1
+    fi
+    
+    if [ ! -f "$1" ]; then
+        echo "File not found: $1"
+        return 1
+    fi
+    
+    glow "$1"
+}
+
+# Added a new helper function to handle Markdown output.
+
+print_md() {
+    if command -v glow >/dev/null 2>&1; then
+        glow -   # read from stdin
+    else
+        cat -
+    fi
+}
 
 # -------------------------------------------------------------------
 # Filesystem helpers
@@ -97,4 +130,13 @@ ensure_giv_dir_init() {
     
     [ ! -f "$GIV_HOME/config" ] && cp "$GIV_DOCS_DIR/config.example" "$GIV_HOME/config"
     mkdir -p "$GIV_HOME" "$GIV_HOME/cache" "$GIV_HOME/.tmp" "$GIV_HOME/templates"
+}
+
+
+is_valid_git_range() {
+    git rev-list "$1" >/dev/null 2>&1
+}
+
+is_valid_pattern() {
+    git ls-files --error-unmatch "$1" >/dev/null 2>&1
 }

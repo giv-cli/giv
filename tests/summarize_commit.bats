@@ -7,11 +7,13 @@ load "$BATS_TEST_DIRNAME/../src/system.sh"
 load "$BATS_TEST_DIRNAME/../src/project.sh"
 load "$BATS_TEST_DIRNAME/../src/llm.sh"
 
-    export GIV_TEMPLATE_DIR="$BATS_TEST_DIRNAME/../templates"
-    export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_TEMPLATE_DIR="$BATS_TEST_DIRNAME/../templates"
+export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 setup() {
 
+    export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
     export GIV_DEBUG="true"
     TMP_REPO="$BATS_TEST_DIRNAME/.tmp/tmp_repo"
     rm -rf "$TMP_REPO"
@@ -82,11 +84,9 @@ teardown() {
   rm -f hist.tmp pr.tmp out.txt
   rm -rf "$GIV_HOME/cache/*.*"  # clean up any old cache
   GIV_DEBUG="true"
-  result=$(summarize_commit HEAD "" "remote" >out.txt)
+  run summarize_commit HEAD "" "remote"
   assert_success
-  printf "Output: %s\n" "$result"
+  printf "Output: %s\n" "$output"
 
-  # should have mocked response in out.txt
-  run cat out.txt
   assert_output --partial "Mocked response for generate_response"
 }

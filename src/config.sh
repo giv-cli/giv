@@ -20,13 +20,12 @@ export GIV_REVISION="--current"
 export GIV_PATHSPEC=""
 
 ## Model and API configuration
-export GIV_MODEL="${GIV_MODEL:-'devstral'}"
-export GIV_API_MODEL="${GIV_API_MODEL:-}"
-export GIV_API_URL="${GIV_API_URL:-}"
-export GIV_API_KEY="${GIV_API_KEY:-}"
+export GIV_API_MODEL="${GIV_API_MODEL:-'devstral'}"
+export GIV_API_URL="${GIV_API_URL:-'http://localhost:11434/v1/chat/completions'}"
+export GIV_API_KEY="${GIV_API_KEY:-'giv'}"
 
 ## Project details
-export GIV_PROJECT_TYPE="${GIV_PROJECT_TYPE:-auto}"
+export GIV_METADATA_PROJECT_TYPE="${GIV_METADATA_PROJECT_TYPE:-auto}"
 export GIV_VERSION_FILE="${GIV_VERSION_FILE:-}"
 export GIV_VERSION_PATTERN="${GIV_VERSION_PATTERN:-}"
 export GIV_TODO_PATTERN="${GIV_TODO_PATTERN:-}"

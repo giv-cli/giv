@@ -12,17 +12,20 @@
 
 ## Model and API configuration
 GIV_MODEL="devstral"
+GIV_API_URL="http://localhost:11434/v1/chat/completions"
+GIV_API_KEY="giv"
+GIV_API_MODEL="devstral"
 
-; ## Remote: groq API Configuration
-; GIV_API_URL="https://api.groq.com/openai/v1/chat/completions"
-; GIV_API_MODEL="compound-beta"
-; GIV_API_KEY="${GROQ_API_KEY:-}"
+# ## Remote: groq API Configuration
+# GIV_API_URL="https://api.groq.com/openai/v1/chat/completions"
+# GIV_API_MODEL="compound-beta"
+# GIV_API_KEY="${GROQ_API_KEY:-}"
 
 
-; ## Remote: OpenAI Compatible API Configuration
-; GIV_API_MODEL=gpt-4o-mini
-; GIV_API_URL=https://api.openai.com/v1/chat/completions
-; GIV_API_KEY="${OPENAI_API_KEY:-}"
+# ## Remote: OpenAI Compatible API Configuration
+# GIV_API_MODEL=gpt-4o-mini
+# GIV_API_URL=https://api.openai.com/v1/chat/completions
+# GIV_API_KEY="${OPENAI_API_KEY:-}"
 
 
 
@@ -32,7 +35,7 @@ GIV_TODO_PATTERN=""
 ### Comma-separated list of files or glob patterns to search for TODOs (e.g., "*.py,src/**/*.js")
 GIV_TODO_FILES="docs/todos.md"
 
-GIV_PROJECT_TYPE=custom
+GIV_METADATA_PROJECT_TYPE=custom
 GIV_VERSION_FILE="src/config.sh"
 
 ### Regex pattern to extract the version string from the version file (e.g., 'version\s*=\s*"([0-9\.]+)"')
