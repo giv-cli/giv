@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-
+export TMPDIR="/tmp"
 # Path to the script under test; adjust as needed
 SCRIPT="${BATS_TEST_DIRNAME}/../src/markdown.sh"
 HELPERS="${BATS_TEST_DIRNAME}/../src/system.sh"

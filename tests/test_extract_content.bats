@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-
+export TMPDIR="/tmp"
 mkdir -p "$BATS_TEST_DIRNAME/.logs"
 export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/error.log"
 load 'test_helper/bats-support/load'

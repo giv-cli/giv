@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-
+export TMPDIR="/tmp"
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src/project"
@@ -43,6 +43,7 @@ setup() {
         echo "Mocked response for generate_response"
     }
 
+    printf "TMPDIR: %s\n" "$TMPDIR" >&2
 }
 
 teardown() {
@@ -144,7 +145,7 @@ teardown() {
 }
 
 @test "summarize two-dot range with identical endpoints yields one summary" {
-    summaries=$(mktemp)
+    summaries=$(portable_mktemp "summary_XXXXXXX")
     range="$FIRST_SHA..$FIRST_SHA"
 
     run summarize_target "$range" "$summaries" "y"
@@ -155,7 +156,7 @@ teardown() {
 }
 
 @test "summarize three-dot range with identical endpoints yields one summary" {
-    summaries=$(mktemp)
+    summaries=$(portable_mktemp "summary_XXXXXXX")
     range="$FIRST_SHA...$FIRST_SHA"
 
     run summarize_target "$range" "$summaries" "z"
@@ -166,7 +167,7 @@ teardown() {
 }
 
 @test "summarize deeper two-dot range HEAD~1..HEAD writes two commits" {
-    summaries=$(mktemp)
+    summaries=$(portable_mktemp "summary_XXXXXXX")
     range="HEAD~1..HEAD"
 
     run summarize_target "$range" "$summaries" "w"
@@ -178,8 +179,7 @@ teardown() {
 }
 
 @test "summarize three-commit two-dot range HEAD~2..HEAD writes three commits" {
-    summaries=$(mktemp)
-
+    summaries=$(portable_mktemp "summary_XXXXXXX")
     echo "third" >c.txt
     git add c.txt
     git commit -q -m "third"
@@ -195,7 +195,7 @@ teardown() {
 }
 
 @test "summarize three-commit three-dot range HEAD~2...HEAD writes three commits" {
-    summaries=$(mktemp)
+    summaries=$(portable_mktemp "summary_XXXXXXX")
 
     echo "third" >c.txt
     git add c.txt
@@ -215,7 +215,7 @@ teardown() {
 # summarize_target
 #----------------------------------------
 @test "summarize_target on single-commit range" {
-  tmp="$(mktemp)"
+  tmp="$(portable_mktemp "summary_XXXXXXX")"
 
   generate_response() { echo "RESP"; }
   export debug="true"
@@ -234,7 +234,7 @@ teardown() {
 }
 
 @test "summarize_target on --current" {
-  tmp="$(mktemp)"
+  tmp="$(portable_mktemp "summary_XXXXXXX")"
   summarize_target --current "$tmp" ""
   run cat "$tmp"
   assert_output --partial 'Commit: --current'

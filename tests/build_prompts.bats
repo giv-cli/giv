@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+export TMPDIR="/tmp"
 load '../src/project/metadata.sh'
 load '../src/llm.sh'
 load 'test_helper/bats-support/load'
