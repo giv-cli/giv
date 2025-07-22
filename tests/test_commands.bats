@@ -69,11 +69,12 @@ setup() {
   generate_response() {
     print_debug "Mock generate_response called with args: $*"
     echo "RESP"
+    cat "$1" || true
   }
   export -f generate_response
   
   # make helper stubs
-  build_history() { printf "HIST:%s\n" "$2" >"$1"; }
+  #build_history() { printf "HIST:%s\n" "$2" >"$1"; }
   # generate_response() { echo "RESP"; }
   portable_mktemp() { mktemp; }
   get_project_version() { echo "1.2.3"; }
@@ -102,6 +103,7 @@ teardown() {
 #----------------------------------------
 @test "cmd_message with no id errors" {
   echo "some working changes" >"$REPO/file.txt"
+  export GIV_DEBUG="true"
   run cmd_message ""
   assert_success
   assert_output --partial "RESP"
@@ -110,6 +112,8 @@ teardown() {
   echo "change" >"$REPO/file.txt"
   run cmd_message "--current"
   assert_success
+  assert_output --partial "file.txt"
+  assert_output --partial "+change"
 }
 @test "cmd_message single-commit prints message" {
   run git -C "$REPO" rev-parse HEAD~1 # ensure HEAD~1 exists

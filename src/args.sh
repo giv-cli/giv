@@ -233,19 +233,26 @@ parse_args() {
         print_debug "Debug: No target specified, defaulting to current working tree."
         GIV_REVISION="--current"
     fi
-    
-    print_debug "Parsing revision"
-    # 3. Collect all non-option args as pattern (until first option or end)
-    while [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; do
-        # If the first argument is a pattern, collect it
-        print_debug "Collecting pattern: $1"
-        if [ -z "${GIV_PATHSPEC}" ]; then
-            GIV_PATHSPEC="$1"
-        else
-            GIV_PATHSPEC="${GIV_PATHSPEC} $1"
-        fi
-        shift
-    done
+
+        print_debug "Parsing revision"
+        print_debug "${@}"
+        # 3. Collect all non-option args as pattern (until first option or end)
+        # Only collect pathspec if there are non-option args left AND they are not files like the script itself
+        while [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; do
+            # Avoid setting pathspec to the script name itself (e.g., install.sh)
+            if [ "$1" = "$(basename "$0")" ]; then
+                print_debug "Skipping script name argument: $1"
+                shift
+                continue
+            fi
+            print_debug "Collecting pattern: $1"
+            if [ -z "${GIV_PATHSPEC}" ]; then
+                GIV_PATHSPEC="$1"
+            else
+                GIV_PATHSPEC="${GIV_PATHSPEC} $1"
+            fi
+            shift
+        done
     
     print_debug "Target and pattern parsed: ${GIV_REVISION}, ${GIV_PATHSPEC}"
     
