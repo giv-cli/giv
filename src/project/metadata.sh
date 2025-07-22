@@ -154,11 +154,19 @@ get_project_version() {
     fi
 
     #print_debug "Using version function: $fn for project type: $project_type"
-
     if command -v "$fn" >/dev/null 2>&1; then
-        "$fn" "$commit"
+        ver=""
+        if ver_out=$("$fn" "$commit" 2>/dev/null); then
+            ver="$ver_out"
+        else
+            #print_debug "Error: $fn failed to execute for commit $commit"
+            ver=""
+        fi
+        #print_debug "Version extracted: $ver"
+        printf '%s' "$ver"
+        return 0
     else
-        print_debug "Error: version function $fn not implemented for provider $project_type"
+        #print_debug "Error: version function $fn not implemented for provider $project_type"
         printf ""
         return 0
     fi
@@ -169,6 +177,15 @@ get_project_version() {
     fi
 }
 
+get_project_title() {
+    # Returns the project title from metadata or defaults to directory name
+    if [ -n "${GIV_METADATA_TITLE}" ]; then
+        printf '%s' "${GIV_METADATA_TITLE}"
+    else
+        dirname=$(basename "$PWD")
+        printf '%s' "$dirname"
+    fi
+}
 
 load_config_metadata(){
         # -------------------------

@@ -39,10 +39,11 @@ provider_custom_get_version() {
         return 0
     fi
     # If file is JSON, extract "version" field (case-insensitive)
-    if grep -i -q '"version"' "$GIV_VERSION_FILE" 2>/dev/null; then
-        version=$(grep -i '"version"' "$GIV_VERSION_FILE" | sed -En 's/.*"[vV]ersion"[[:space:]]*:[[:space:]]*"([^\"]+)".*/\1/p' | head -n 1)
+    if grep -i -q 'version' "$GIV_VERSION_FILE" 2>/dev/null; then
+        #print_debug "Extracting version from file: $GIV_VERSION_FILE"
+        version=$(grep -i 'version' "$GIV_VERSION_FILE" | sed -En 's/.*[vV]ersion"[[:space:]]*:[[:space:]]*([^\"]+)".*/\1/p' | head -n 1)
         # If version is empty or does not match a version pattern, fallback
-        if [ -z "$version" ] || ! printf '%s' "$version" | grep -Eq '^[vV]?[0-9]+\.[0-9]+\.[0-9]+$'; then
+        if [ -z "$version" ]; then
             parse_version "$(cat "$GIV_VERSION_FILE")"
         else
             printf '%s' "$version"
@@ -62,7 +63,7 @@ provider_custom_get_version_at_commit() {
         return 0
     fi
     # If file is JSON, extract "version" field (case-insensitive)
-    if printf '%s' "$file_content" | grep -i -q '"version"'; then
+    if printf '%s' "$file_content" | grep -i -q 'version'; then
         version=$(printf '%s' "$file_content" | grep -i '"version"' | sed -En 's/.*"[vV]ersion"[[:space:]]*:[[:space:]]*"([^\"]+)".*/\1/p' | head -n 1)
         # If version is empty or does not match a version pattern, fallback
         if [ -z "$version" ] || ! printf '%s' "$version" | grep -Eq '^[vV]?[0-9]+\.[0-9]+\.[0-9]+$'; then
@@ -89,7 +90,7 @@ provider_custom_get_version_at_commit() {
 #   A string representing the extracted version number, or an empty string if no valid version
 #   is found in the input.
 parse_version() {
-    #printf 'Parsing version from: %s\n' "$1" >&2
+    #print_debug "Parsing version from: $1"
     # Accepts a string, returns version like v1.2.3 or 1.2.3
     echo "$1" | sed -n -E "s/.*['\"]?([vV][0-9]+\.[0-9]+\.[0-9]+)['\"]?.*/\1/p;s/.*['\"]?([0-9]+\.[0-9]+\.[0-9]+)['\"]?.*/\1/p" | head -n 1
 }

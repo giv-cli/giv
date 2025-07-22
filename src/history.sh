@@ -154,13 +154,14 @@ build_history() {
     printf '### Commit ID %s\n' "$commit" >>"$hist"
     printf '**Date:** %s\n' "$(get_commit_date "$commit")" >>"$hist"
 
-
+    print_debug "Getting version for commit $commit"
     ver=$(get_project_version "$commit")
     if [ -n "$ver" ]; then
+        print_debug "Version found: $ver"
         printf '**Version:** %s\n' "$ver" >>"$hist"
     fi
   
-
+    print_debug "Getting message header for commit $commit"
     msg=$(get_message_header "$commit")
     print_debug "Message header: $msg"
     printf '**Message:** %s\n' "$msg" >>"$hist"
@@ -266,7 +267,7 @@ summarize_commit() {
   print_debug "Temporary files created: hist=$hist, prompt=$pr, res_file=$res_file"
 
   generate_commit_history "$hist" "$commit" "$pathspec"
-  sc_version=$(get_commit_version "$commit")
+  sc_version=$(get_project_version "$commit")
   print_debug "Commit version: $sc_version"
 
   summary_template=$(build_commit_summary_prompt "$sc_version" "$hist")
@@ -356,21 +357,6 @@ save_commit_metadata() {
     printf 'Commit: %s\n' "$commit" >> "$metadata_file"
     printf 'Date: %s\n' "$(get_commit_date "$commit")" >> "$metadata_file"
     printf 'Message: %s\n' "$(get_message_header "$commit")" >> "$metadata_file"
-}
-
-# Function to get the version information for a given commit
-get_commit_version() {
-    commit="$1"
-    version_file="$(find_version_file)"
-
-    if [ -z "$version_file" ]; then
-        print_debug "No version file found for commit: $commit"
-        echo ""
-        return
-    fi
-
-    print_debug "Getting version info for commit $commit from $version_file"
-    git show "$commit:$version_file" 2>/dev/null | grep -Eo 'version[[:space:]]*[:=][[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*[:=][[:space:]]*"([^"]+)"/\1/'
 }
 
 summarize_target() {

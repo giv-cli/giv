@@ -8,7 +8,7 @@ set -eu
 
 IFS='
 '
-
+GIV_DEBUG="${GIV_DEBUG:-}"
 # -------------------------------------------------------------------
 # Path detection for libraries, templates, and docs (POSIX compatible)
 # -------------------------------------------------------------------
