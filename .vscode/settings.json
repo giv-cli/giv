@@ -3,12 +3,19 @@
         "changesish",
         "devstral",
         "dotenv",
+        "getline",
         "giv",
+        "inplace",
+        "insec",
+        "newc",
+        "newf",
         "ollama",
         "PATHSPEC",
         "pypi",
         "pyproject",
-        "subcmd"
+        "RLENGTH",
+        "subcmd",
+        "unmatch"
     ],
     "[bats]": {
 

@@ -5,6 +5,9 @@ shell=sh
 severity=warnings
 external-sources=true
 
+# Exclude files under the tests folder
+exclude-path=tests/*
+
 # # Disable notices about things that are intentionally non-POSIX or acceptable
 # disable = \
 #   SC2039,  # In POSIX sh, some features are undefined

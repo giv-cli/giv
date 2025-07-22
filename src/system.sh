@@ -59,25 +59,25 @@ print_md() {
 # -------------------------------------------------------------------
 remove_tmp_dir() {
     if [ -z "${GIV_TMPDIR_SAVE:-}" ]; then
-        print_debug "Removing temporary directory: $GIV_TMP_DIR"
+        print_debug "Removing temporary directory: ${GIV_TMP_DIR}"
         
         # Remove the temporary directory if it exists
-        if [ -n "$GIV_TMP_DIR" ] && [ -d "$GIV_TMP_DIR" ]; then
-            rm -rf "$GIV_TMP_DIR"
-            print_debug "Removed temporary directory $GIV_TMP_DIR"
+        if [ -n "${GIV_TMP_DIR}" ] && [ -d "${GIV_TMP_DIR}" ]; then
+            rm -rf "${GIV_TMP_DIR}"
+            print_debug "Removed temporary directory ${GIV_TMP_DIR}"
         else
             print_debug 'No temporary directory to remove.'
         fi
         GIV_TMP_DIR="" # Clear the variable
     else
-        print_debug "Preserving temporary directory: $GIV_TMP_DIR"
+        print_debug "Preserving temporary directory: ${GIV_TMP_DIR}"
         return 0
     fi
 }
 
 # Portable mktemp: fallback if mktemp not available
 portable_mktemp_dir() {
-    base_path="${GIV_TMP_DIR:-TMPDIR:-$GIV_HOME/tmp}"
+    base_path="${GIV_TMP_DIR:-TMPDIR:-${GIV_HOME}/tmp}"
     mkdir -p "${base_path}"
     
     # Ensure only one subfolder under $TMPDIR/giv exists per execution of the script
@@ -96,9 +96,9 @@ portable_mktemp_dir() {
 
 # Portable mktemp: fallback if mktemp not available
 portable_mktemp() {
-    [ -z "$GIV_TMP_DIR" ] && portable_mktemp_dir
+    [ -z "${GIV_TMP_DIR}" ] && portable_mktemp_dir
     
-    mkdir -p "$GIV_TMP_DIR"
+    mkdir -p "${GIV_TMP_DIR}"
     
     if command -v mktemp >/dev/null 2>&1; then
         mktemp "${GIV_TMP_DIR}/$1"
@@ -110,12 +110,12 @@ portable_mktemp() {
 
 find_giv_dir() {
     dir=$(pwd)
-    while [ "$dir" != "/" ]; do
-        if [ -d "$dir/.giv" ]; then
-            printf '%s\n' "$dir/.giv"
+    while [ "${dir}" != "/" ]; do
+        if [ -d "${dir}/.giv" ]; then
+            printf '%s\n' "${dir}/.giv"
             return 0
         fi
-        dir=$(dirname "$dir")
+        dir=$(dirname "${dir}")
     done
     printf '%s\n' "$(pwd)/.giv"
 }
@@ -128,11 +128,11 @@ ensure_giv_dir_init() {
     
     if [ ! -d "${GIV_HOME}" ]; then
         print_debug "Initializing .giv directory..."
-        mkdir -p "$GIV_HOME"
+        mkdir -p "${GIV_HOME}"
     fi
-    
-    [ ! -f "$GIV_HOME/config" ] && cp "$GIV_DOCS_DIR/config.example" "$GIV_HOME/config"
-    mkdir -p "$GIV_HOME" "$GIV_HOME/cache" "$GIV_HOME/.tmp" "$GIV_HOME/templates"
+
+    [ ! -f "${GIV_HOME}/config" ] && cp "${GIV_DOCS_DIR}/config.example" "${GIV_HOME}/config"
+    mkdir -p "${GIV_HOME}" "${GIV_HOME}/cache" "${GIV_HOME}/.tmp" "${GIV_HOME}/templates"
 }
 
 

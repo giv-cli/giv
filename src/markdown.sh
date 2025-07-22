@@ -72,7 +72,7 @@ normalize_blank_lines() {
     NF { print; prev=1 }
     !NF { if (prev) print; prev=0 }
     END { if (prev) print "" }
-    ' "$in" >"$in".norm && mv "$in".norm "$in"
+    ' "${in}" >"${in}".norm && mv "${in}".norm "${in}"
 }
 
 # extract_section <section_name> <markdown_file> [<header_id>]
