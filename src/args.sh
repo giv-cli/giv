@@ -49,6 +49,8 @@ Subcommands
   release-notes          Generate release notes for a tagged release
   announcement           Create a marketing-style announcement
   document               Generate custom content using your own prompt template
+  init                   Initialize or update giv configuration
+  config                 Initialize or update giv configuration values
   available-releases     List script versions
   update                 Self-update giv
 
@@ -103,7 +105,7 @@ parse_args() {
         ;;
         message | msg | summary | changelog \
         | document | doc | release-notes | announcement \
-        | available-releases | update | init)
+        | available-releases | update | init | config)
             subcmd=$1
             shift
         ;;
@@ -182,8 +184,8 @@ parse_args() {
     todo_files="${GIV_TODO_FILES:-*todo*}"
     output_mode="${GIV_OUTPUT_MODE:-auto}"
     output_version="${GIV_OUTPUT_VERSION:-auto}"
-    version_file="${GIV_VERSION_FILE:-}"
-    version_pattern="${GIV_VERSION_PATTERN:-}"
+    version_file="${GIV_PROJECT_VERSION_FILE:-}"
+    version_pattern="${GIV_PROJECT_VERSION_PATTERN:-}"
     prompt_file="${GIV_PROMPT_FILE:-}"
     
     print_debug "Parsing revision"
@@ -354,8 +356,8 @@ parse_args() {
     GIV_OUTPUT_MODE="${output_mode:-}"
     GIV_OUTPUT_VERSION="${output_version:-}"
     GIV_PROMPT_FILE="${prompt_file:-}"  # Default to empty if unset
-    GIV_VERSION_FILE="${version_file:-}"
-    GIV_VERSION_PATTERN="${version_pattern:-}"  # Default to empty if unset
+    GIV_PROJECT_VERSION_FILE="${version_file:-}"
+    GIV_PROJECT_VERSION_PATTERN="${version_pattern:-}"  # Default to empty if unset
     GIV_CONFIG_FILE="${config_file}"
     GIV_DEBUG="${debug:-}"
     print_debug "Global variables set"
@@ -377,8 +379,8 @@ parse_args() {
     print_debug "  Config Loaded: ${is_config_loaded}"
     print_debug "  TODO Files: ${GIV_TODO_FILES}"
     print_debug "  TODO Pattern: ${GIV_TODO_PATTERN:-}"
-    print_debug "  Version File: ${GIV_VERSION_FILE:-}"
-    print_debug "  Version Pattern: ${GIV_VERSION_PATTERN:-}"
+    print_debug "  Version File: ${GIV_PROJECT_VERSION_FILE:-}"
+    print_debug "  Version Pattern: ${GIV_PROJECT_VERSION_PATTERN:-}"
     print_debug "  API Model: ${GIV_API_MODEL:-}"
     print_debug "  API URL: ${GIV_API_URL:-}"
     print_debug "  Output File: ${GIV_OUTPUT_FILE:-}"

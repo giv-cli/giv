@@ -75,15 +75,15 @@ parse_version() {
 }
 
 # Finds and returns the path to a version file in the current directory.
-# The function checks if the variable 'GIV_VERSION_FILE' is set and points to an existing file.
+# The function checks if the variable 'GIV_PROJECT_VERSION_FILE' is set and points to an existing file.
 # If not, it searches for common version files (package.json, pyproject.toml, setup.py, Cargo.toml, composer.json, build.gradle, pom.xml).
 # If none are found, it attempts to locate a 'giv.sh' script using git.
 # If no suitable file is found, it returns an empty string.
 # helper: finds the version file path
 find_version_file() {
     print_debug "Finding version file..."
-    if [ -n "${GIV_VERSION_FILE}" ] && [ -f "${GIV_VERSION_FILE}" ]; then
-        echo "${GIV_VERSION_FILE}"
+    if [ -n "${GIV_PROJECT_VERSION_FILE}" ] && [ -f "${GIV_PROJECT_VERSION_FILE}" ]; then
+        echo "${GIV_PROJECT_VERSION_FILE}"
         return
     fi
     for vf in package.json pyproject.toml setup.py Cargo.toml composer.json build.gradle pom.xml; do

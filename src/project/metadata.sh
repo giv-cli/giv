@@ -46,9 +46,9 @@ metadata_init() {
 
     # Set GIV_METADATA_PROJECT_TYPE for later use
     GIV_METADATA_PROJECT_TYPE="${DETECTED_PROVIDER#provider_}"
-    # If provider is set to "custom", ensure the GIV_VERSION_FILE is set
-    if [ "${GIV_METADATA_PROJECT_TYPE}" = "custom" ] && [ -z "${GIV_VERSION_FILE}" ]; then
-        print_warn "GIV_VERSION_FILE must be set for custom projects."
+    # If provider is set to "custom", ensure the GIV_PROJECT_VERSION_FILE is set
+    if [ "${GIV_METADATA_PROJECT_TYPE}" = "custom" ] && [ -z "${GIV_PROJECT_VERSION_FILE}" ]; then
+        print_warn "GIV_PROJECT_VERSION_FILE must be set for custom projects."
     fi
 
     # -------------------------

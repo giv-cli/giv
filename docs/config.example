@@ -23,10 +23,10 @@ GIV_API_KEY="${OPENAI_API_KEY:-}"
 
 ## Project details
 ### Path to the file containing the project version (e.g., "pyproject.toml" or "package.json")
-GIV_VERSION_FILE=""
+GIV_PROJECT_VERSION_FILE=""
 
 ### Regex pattern to extract the version string from the version file (e.g., 'version\s*=\s*"([0-9\.]+)"')
-GIV_VERSION_PATTERN=""
+GIV_PROJECT_VERSION_PATTERN=""
 
 ### Regex pattern to identify TODO comments in code (e.g., 'TODO:(.*)')
 GIV_TODO_PATTERN=""

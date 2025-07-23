@@ -29,7 +29,7 @@ setup() {
     echo '{"name": "test-project", "version": "1.0.0"}' > package.json
 
     export GIV_METADATA_PROJECT_TYPE="custom"
-    export GIV_VERSION_FILE="version.txt"
+    export GIV_PROJECT_VERSION_FILE="version.txt"
     # Initialize metadata
     metadata_init
 }
@@ -102,7 +102,7 @@ teardown() {
 
 @test "get_version_info detects version from current file" {
     export GIV_METADATA_PROJECT_TYPE="custom"
-    export GIV_VERSION_FILE="version.txt"
+    export GIV_PROJECT_VERSION_FILE="version.txt"
     echo "version = '1.2.3'" >"version.txt"
     run get_project_version "--current"
     assert_success
@@ -110,7 +110,7 @@ teardown() {
 }
 
 @test "get_version_info detects version from cached file" {
-    export GIV_VERSION_FILE="version.txt"
+    export GIV_PROJECT_VERSION_FILE="version.txt"
     echo "version = '1.2.3'" >"version.txt"
     git add "version.txt"
     run get_project_version "--cached"
@@ -123,7 +123,7 @@ teardown() {
     git add "version.txt"
     git commit -m "Add version file"
     commit_hash=$(git rev-parse HEAD)
-    export GIV_VERSION_FILE="version.txt"
+    export GIV_PROJECT_VERSION_FILE="version.txt"
     run get_project_version "$commit_hash"
     assert_success
     assert_equal "$output" "1.2.3"
@@ -131,7 +131,7 @@ teardown() {
 
 @test "get_version_info detects version with v-prefix" {
     export GIV_METADATA_PROJECT_TYPE="custom"
-    export GIV_VERSION_FILE="version.txt"
+    export GIV_PROJECT_VERSION_FILE="version.txt"
     echo "version = 'v1.2.3'" >"version.txt"
     run get_project_version "--current"
     assert_success
@@ -139,15 +139,15 @@ teardown() {
 }
 
 @test "get_version_info returns empty string if no version found" {
-    export GIV_VERSION_FILE="version.txt"
-    echo "No version here" >"$GIV_VERSION_FILE"
+    export GIV_PROJECT_VERSION_FILE="version.txt"
+    echo "No version here" >"$GIV_PROJECT_VERSION_FILE"
     run get_project_version "--current"
     assert_success
     assert_equal "$output" ""
 }
 
 @test "get_version_info handles missing file gracefully" {
-    export GIV_VERSION_FILE="nonexistent_file.txt"
+    export GIV_PROJECT_VERSION_FILE="nonexistent_file.txt"
     run get_project_version "--current"
     assert_success
     assert_equal "$output" ""
@@ -185,7 +185,7 @@ teardown() {
 }
 
 @test "get_version_info handles multiple version strings and picks the first one" {
-    export GIV_VERSION_FILE="version.txt"
+    export GIV_PROJECT_VERSION_FILE="version.txt"
     metadata_init
     cat >"version.txt" <<EOF
 version = '1.2.3'
@@ -203,7 +203,7 @@ EOF
 }
 
 @test "get_version_info detects version from file in specific commit with multiple versions" {
-    export GIV_VERSION_FILE="version.txt"
+    export GIV_PROJECT_VERSION_FILE="version.txt"
     export GIV_METADATA_PROJECT_TYPE="custom"
     cat >"version.txt" <<EOF
 version = '1.2.3'

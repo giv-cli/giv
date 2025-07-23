@@ -42,7 +42,7 @@ setup() {
 @test "metadata_init creates cache directory and .env file" {
   export GIV_DEBUG="true"
   export GIV_METADATA_PROJECT_TYPE="custom"
-  export GIV_VERSION_FILE="version.txt"
+  export GIV_PROJECT_VERSION_FILE="version.txt"
   run metadata_init
   assert_success
   [ -d "$GIV_CACHE_DIR" ]
@@ -105,8 +105,8 @@ setup() {
 
 @test "metadata cache includes project_type" {
   export GIV_METADATA_PROJECT_TYPE="custom"
-  export GIV_VERSION_FILE="version.txt"
-  echo "version = '1.0.0'" > "$GIV_VERSION_FILE"
+  export GIV_PROJECT_VERSION_FILE="version.txt"
+  echo "version = '1.0.0'" > "$GIV_PROJECT_VERSION_FILE"
   run metadata_init
   assert_success
   run cat "$GIV_CACHE_DIR/project_metadata.env"
@@ -117,7 +117,7 @@ setup() {
 
 @test "get_project_version retrieves version" {
   echo "Version: 1.0.0" > file.txt
-  export GIV_VERSION_FILE="file.txt"
+  export GIV_PROJECT_VERSION_FILE="file.txt"
   export GIV_METADATA_PROJECT_TYPE="custom"
   metadata_init
   run get_project_version --current
@@ -133,7 +133,7 @@ setup() {
   git add file.txt
   git commit -m "Update to version 2.0.0"
   commit_hash=$(git rev-parse HEAD~1)
-  export GIV_VERSION_FILE="file.txt"
+  export GIV_PROJECT_VERSION_FILE="file.txt"
   export GIV_METADATA_PROJECT_TYPE="custom"
   export GIV_DEBUG="true"
   metadata_init

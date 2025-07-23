@@ -158,9 +158,59 @@ GIV_DOCS_DIR="${DOCS_DIR}"
 # shellcheck source=commands.sh
 . "${LIB_DIR}/commands.sh"
 
+subcmd=""
+parse_subcommand() {
+    
+    
+    # Restore original arguments for main parsing
+    # 1. Subcommand or help/version must be first
+    if [ $# -eq 0 ]; then
+        print_error "No arguments provided."
+        exit 1
+    fi
+    case "$1" in
+        -h | --help | help)
+            show_help
+            exit 0
+        ;;
+        -v | --version)
+            show_version
+            exit 0
+        ;;
+        message | msg | summary | changelog \
+        | document | doc | release-notes | announcement \
+        | available-releases | update | init | config)
+            subcmd=$1
+            shift
+        ;;
+        *)
+            echo "First argument must be a subcommand or -h/--help/-v/--version"
+            show_help
+            exit 1
+        ;;
+    esac
+    
+}
 
 is_sourced="$(get_is_sourced)"
 if [ "${is_sourced}" -eq 0 ]; then
+    parse_subcommand "$@"
+    if [ -z "${subcmd}" ]; then
+        subcmd="message"  # Default to message if no subcommand provided
+    fi
+    print_debug "Subcommand: ${subcmd}"
+
+    if [ "$subcmd" = "init" ]; then
+        ensure_giv_dir_init
+        initialize_metadata
+        exit 0
+    elif [ "$subcmd" = "config" ]; then
+        ensure_giv_dir_init
+        "${GIV_LIB_DIR}/commands/config.sh" "$@"
+        exit 0
+    fi
+
+
     # Ensure .giv directory is initialized
     ensure_giv_dir_init
     initialize_metadata
@@ -181,6 +231,10 @@ if [ "${is_sourced}" -eq 0 ]; then
 
     # Dispatch logic
     case "${subcmd}" in
+    config)
+        print_debug "Running config command"
+        "${GIV_LIB_DIR}/commands/config.sh" "$@"        
+        ;;
     message | msg) cmd_message "${GIV_REVISION}" \
         "${GIV_PATHSPEC}" \
         "${GIV_TODO_PATTERN}" ;;
