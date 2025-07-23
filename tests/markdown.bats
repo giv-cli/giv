@@ -6,11 +6,11 @@ SCRIPT="${BATS_TEST_DIRNAME}/../src/markdown.sh"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
 load "$SCRIPT"
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 
 
 

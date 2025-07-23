@@ -7,7 +7,7 @@ load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
-load "$BATS_TEST_DIRNAME/../src/project/metadata.sh"
+load "$BATS_TEST_DIRNAME/../src/project_metadata.sh"
 load "$BATS_TEST_DIRNAME/../src/llm.sh"
 # Source the script under test
 load "$BATS_TEST_DIRNAME/../src/history.sh"

@@ -22,7 +22,8 @@ giv_config() {
             fi
             # Check for malformed lines
             if [ -s "$GIV_CONFIG_FILE" ]; then
-                if grep -qvE '^[^=]+=[^\n]*$' "$GIV_CONFIG_FILE"; then
+                # Updated malformed config check to ignore empty lines and lines with only whitespace
+                if grep -qvE '^(#|[^=]+=[^\n]*|[[:space:]]*)$' "$GIV_CONFIG_FILE"; then
                     echo "Malformed config" >&2
                     return 1
                 fi
@@ -39,6 +40,8 @@ giv_config() {
                     *=*)
                         echo "$line"
                         ;;
+                    *)
+                    ;;
                 esac
             done < "$GIV_CONFIG_FILE"
             ;;
@@ -111,7 +114,8 @@ giv_config() {
                     return 1
                 fi
                 if [ -s "$GIV_CONFIG_FILE" ]; then
-                    if grep -qvE '^[^=]+=[^\n]*$' "$GIV_CONFIG_FILE"; then
+                    # Updated malformed config check to ignore empty lines and lines with only whitespace
+                    if grep -qvE '^(#|[^=]+=[^\n]*|[[:space:]]*)$' "$GIV_CONFIG_FILE"; then
                         echo "Malformed config" >&2
                         return 1
                     fi

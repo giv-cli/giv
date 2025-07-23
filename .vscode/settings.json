@@ -7,7 +7,9 @@
         "giv",
         "inplace",
         "insec",
+        "LOCALAPPDATA",
         "mktemp",
+        "MSYS",
         "newc",
         "newf",
         "ollama",
@@ -16,6 +18,7 @@
         "pyproject",
         "RLENGTH",
         "subcmd",
+        "toplevel",
         "unmatch"
     ],
     "files.exclude": {

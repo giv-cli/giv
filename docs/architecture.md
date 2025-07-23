@@ -32,6 +32,10 @@ The main script, **giv.sh**, locates the library, template, and docs directories
 
 **metadata.sh** extracts project titles and version information from common project files like `package.json`, `pyproject.toml`, and `setup.py`. It also supports custom version file detection ([metadata.sh][7]).
 
+### Centralized Metadata Retrieval
+
+**project_metadata.sh** now includes a centralized function, `get_metadata_value`, which retrieves metadata values (e.g., version, title) based on the project type. This function is used across scripts like `history.sh` and `llm.sh` to ensure consistent and modular metadata management. The project type is detected during initialization and stored in the configuration for runtime use.
+
 ### History Extraction
 
 **history.sh** provides utilities for summarizing Git history, extracting TODO changes, and caching summaries ([history.sh][8]).
@@ -177,8 +181,8 @@ This should give you a clear view of how the scripts interconnect, the data each
 [5]: /src/markdown.sh "markdown.sh"
 [6]: /src/llm.sh
 [7]: /src/metadata.sh
-[8]: /src/history.sh 
-[9]: /src/commands.sh 
+[8]: /src/history.sh
+[9]: /src/commands.sh
 
 Across the giv-CLI tool, there are five primary **data domains**—each holding specific values—and the `document` subcommand orchestrates several modules in a well-defined call sequence. Below is a data-structure diagram showing the domains and their key contents, then a detailed sequence diagram illustrating exactly how `giv document` runs under the hood.
 

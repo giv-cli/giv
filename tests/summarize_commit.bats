@@ -1,15 +1,15 @@
 #!/usr/bin/env bats
 export TMPDIR="/tmp"
+export GIV_TEMPLATE_DIR="$BATS_TEST_DIRNAME/../templates"
+export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
+export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
+export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
 load "$BATS_TEST_DIRNAME/../src/llm.sh"
 
-export GIV_TEMPLATE_DIR="$BATS_TEST_DIRNAME/../templates"
-export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 setup() {
 
     export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"

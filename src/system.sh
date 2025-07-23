@@ -107,6 +107,26 @@ portable_mktemp() {
     fi
 }
 
+load_env_file() {
+    # Try to load .env from current directory
+    env_file="${PWD}/.env"
+
+    # If not found, try to find git root and load .env from there
+    if [ ! -f "${env_file}" ]; then
+        if git_root=$(git rev-parse --show-toplevel 2>/dev/null); then
+            env_file="${git_root}/.env"
+        fi
+    fi
+
+    if [ -f "${env_file}" ]; then
+        print_debug "Sourcing environment file: ${env_file}"
+        # shellcheck disable=SC1090
+        . "${env_file}"
+        print_debug "Loaded environment file: ${env_file}"
+    else
+        print_debug "No .env file found in current directory or git root."
+    fi
+}
 
 find_giv_dir() {
     dir=$(pwd)

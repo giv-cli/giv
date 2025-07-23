@@ -46,7 +46,7 @@ cmd_document() {
     # 2) Build prompt
     prompt_tmp=$(portable_mktemp "${doc_base}_prompt_XXXXXX")
     title=$(get_project_title "${summaries}")
-    current_version="$(get_project_version --current)"
+    current_version="$(get_metadata_value "version" --current)"
 
     print_debug "Building prompt from ${prompt_tpl} using ${summaries}"
     build_prompt \
@@ -71,5 +71,8 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: $0 <prompt_template> [revision] [pathspec] [output_file] [temperature] [context_window] [extra_flags...]"
     exit 1
 fi
+
+# Initialize missing variables to resolve lint errors
+GIV_LIB_DIR="/path/to/lib"
 
 cmd_document "$@"

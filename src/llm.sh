@@ -269,7 +269,7 @@ build_prompt() {
     # resolve version if unset or 'auto'
     if [ -z "${version}" ] || [ "${version}" = "auto" ]; then
         print_debug "No version set or version is 'auto', trying to find it from version file"
-        version="$(get_project_version --current)"
+        version="$(get_metadata_value "version" --current)"
     fi
 
     # parse named options
@@ -376,4 +376,15 @@ generate_from_prompt() {
         print_error "Failed to write response to $response_output_file"
         exit 1
     fi
+}
+
+# Replace direct metadata retrieval with centralized function
+get_project_version() {
+  commit="$1"
+  get_metadata_value "version" "$commit"
+}
+
+get_project_title() {
+  commit="$1"
+  get_metadata_value "title" "$commit"
 }

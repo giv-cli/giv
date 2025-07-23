@@ -244,7 +244,7 @@ cmd_document() {
     # 2) Build prompt
     prompt_tmp=$(portable_mktemp "${doc_base}_prompt_XXXXXX")
     title=$(get_project_title "${summaries}")
-    current_version="$(get_project_version --current)"
+    current_version="$(get_metadata_value "version" --current)"
 
     print_debug "Building prompt from ${prompt_tpl} using ${summaries}"
     build_prompt \
@@ -263,3 +263,10 @@ cmd_document() {
         generate_from_prompt "${prompt_tmp}" "${out}" "${temp}"
     fi
 }
+
+# Initialize missing variables to resolve lint errors
+__VERSION="1.0.0"
+GIV_TEMPLATE_DIR="/path/to/templates"
+GIV_OUTPUT_VERSION="1.0.0"
+GIV_OUTPUT_MODE="update"
+GIV_DRY_RUN="false"

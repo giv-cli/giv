@@ -43,13 +43,18 @@ detect_platform() {
 }
 
 compute_app_dir() {
-  case "$PLATFORM" in
-    linux)
-      printf '%s/giv' "${XDG_DATA_HOME:-$HOME/.local/share}";;
+  # If running from local repo (e.g., ./src/giv.sh), use $PWD/src as lib dir
+  if [ -f "$PWD/src/giv.sh" ]; then
+    printf '%s' "$PWD"
+    return
+  fi
+  case "${PLATFORM}" in
     windows)
-      printf '%s/giv' "${LOCALAPPDATA:-$HOME/AppData/Local}";;
+      printf '%s/giv' "${LOCALAPPDATA:-${HOME}/AppData/Local}";;
     macos)
-      printf '%s/Library/Application Scripts/com.github.%s' "$HOME" "giv-cli/giv";;
+      printf '%s/Library/Application Scripts/com.github.%s' "${HOME}" "giv-cli/giv";;
+    *)
+      printf '%s/giv' "${XDG_DATA_HOME:-${HOME}/.local/share}";;
   esac
 }
 
@@ -62,14 +67,13 @@ elif [ -n "${ZSH_VERSION:-}" ] && [ -n "${(%):-%x}" ]; then
     SCRIPT_PATH="${(%):-%x}"
 fi
 SCRIPT_DIR="$(get_script_dir "${SCRIPT_PATH}")"
+export SCRIPT_DIR
 
 # Allow overrides for advanced/testing/dev
 PLATFORM="$(detect_platform)"
 APP_DIR="$(compute_app_dir)"
-[ "$GIV_DEBUG" = "true" ] && printf 'Using giv app directory: %s\n' "${APP_DIR}"
+[ "${GIV_DEBUG}" = "true" ] && printf 'Using giv app directory: %s\n' "${APP_DIR}"
 LIB_DIR=""
-TEMPLATE_DIR=""
-DOCS_DIR=""
 
 # Library location (.sh files)
 if [ -n "${GIV_LIB_DIR:-}" ]; then
@@ -82,12 +86,12 @@ elif [ -d "${SCRIPT_DIR}" ]; then
 elif [ -n "${SNAP:-}" ] && [ -d "${SNAP}/lib/giv" ]; then
     LIB_DIR="${SNAP}/lib/giv"
 else
-    printf 'Error: Could not find giv lib directory. %s\n' "$SCRIPT_PATH" >&2
+    printf 'Error: Could not find giv lib directory. %s\n' "${SCRIPT_PATH}" >&2
     exit 1
 fi
 GIV_LIB_DIR="${LIB_DIR}"
 
-[ "$GIV_DEBUG" = "true" ] && printf 'Using giv lib directory: %s\n' "${GIV_LIB_DIR}"
+[ "${GIV_DEBUG}" = "true" ] && printf 'Using giv lib directory: %s\n' "${GIV_LIB_DIR}"
 
 # shellcheck source=./init.sh
 . "$GIV_LIB_DIR/init.sh"
@@ -95,6 +99,7 @@ GIV_LIB_DIR="${LIB_DIR}"
 
 # Ensure initialization steps
 ensure_giv_dir_init
+initialize_metadata
 #metadata_init
 #portable_mktemp_dir
 

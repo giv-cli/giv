@@ -2,20 +2,20 @@
 export TMPDIR="/tmp"
 mkdir -p "$BATS_TEST_DIRNAME/.logs"
 export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/error.log"
-load 'test_helper/bats-support/load'
-load 'test_helper/bats-assert/load'
-
-load "$BATS_TEST_DIRNAME/../src/config.sh"
-load "$BATS_TEST_DIRNAME/../src/system.sh"
-load "$BATS_TEST_DIRNAME/../src/project/metadata.sh"
-SCRIPT="$BATS_TEST_DIRNAME/../src/llm.sh"
-
-load "$SCRIPT"
 
 export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 
+load 'test_helper/bats-support/load'
+load 'test_helper/bats-assert/load'
+
+load "$BATS_TEST_DIRNAME/../src/config.sh"
+load "$BATS_TEST_DIRNAME/../src/system.sh"
+load "$BATS_TEST_DIRNAME/../src/project_metadata.sh"
+SCRIPT="$BATS_TEST_DIRNAME/../src/llm.sh"
+
+load "$SCRIPT"
 setup() {
     mkdir -p "$GIV_TMP_DIR"
     TMPDIR_REPO="$(mktemp -d -p "$GIV_TMP_DIR")"

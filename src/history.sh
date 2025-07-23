@@ -1,5 +1,12 @@
 #!/bin/sh
 
+# Explicitly initialize GIV_HOME and GIV_TEMPLATE_DIR
+: "${GIV_HOME:=$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.giv}"
+: "${GIV_TEMPLATE_DIR:=${GIV_HOME}/templates}"
+
+# Ensure GIV_HOME and GIV_TEMPLATE_DIR are initialized
+. "$(dirname "$0")/commands/config.sh"
+
 # Extract TODO changes for history extraction
 extract_todo_changes() {
     range="$1"
@@ -61,7 +68,7 @@ get_commit_date() {
 
 print_commit_metadata() {
     commit="$1"
-    commit_version="$(get_project_version "$commit")"
+    commit_version="$(get_metadata_value "version" "$commit")"
     printf '**Project Title:*** %s\n' "$(get_project_title)"
     printf '**Version:*** %s\n' "${commit_version}"
     printf '**Commit ID:*** %s\n' "$commit"
@@ -160,7 +167,7 @@ build_history() {
     printf '**Date:** %s\n' "$(get_commit_date "$commit")" >>"$hist" || { print_error "Failed to write commit date to history file"; return 1; }
 
     print_debug "Getting version for commit $commit"
-    ver=$(get_project_version "$commit") || { print_error "Failed to get project version for commit: $commit"; return 1; }
+    ver=$(get_metadata_value "version" "$commit") || { print_error "Failed to get project version for commit: $commit"; return 1; }
     if [ -n "$ver" ]; then
         print_debug "Version found: $ver"
         printf '**Version:** %s\n' "$ver" >>"$hist" || { print_error "Failed to write version to history file"; return 1; }
@@ -276,7 +283,7 @@ summarize_commit() {
     return 1
   fi
 
-  sc_version=$(get_project_version "$commit") || { print_error "Failed to get project version for $commit"; return 1; }
+  sc_version=$(get_metadata_value "version" "$commit") || { print_error "Failed to get project version for $commit"; return 1; }
   print_debug "Commit version: $sc_version"
 
   summary_template=$(build_commit_summary_prompt "$sc_version" "$hist")
