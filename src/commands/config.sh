@@ -1,6 +1,8 @@
 #!/bin/sh
 # giv-config.sh: Git-style config manager for .giv/config
 
+set -eu
+
 : "${GIV_HOME:=$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.giv}"
 : "${GIV_CONFIG_FILE:=${GIV_HOME}/config}"
 
@@ -15,22 +17,27 @@ touch "$GIV_CONFIG_FILE" || exit 1
 
 giv_config() {
     case "$1" in
-        --list | "")
+        --list) # List all configuration values
             cat "$GIV_CONFIG_FILE"
             ;;
-        --get)
+        --get) # Get a specific configuration value
             key="$2"
             grep -E "^$key=" "$GIV_CONFIG_FILE" | cut -d'=' -f2-
             ;;
-        --unset)
+        --unset) # Remove a specific configuration value
             key="$2"
             tmpfile=$(mktemp)
             grep -v -E "^$key=" "$GIV_CONFIG_FILE" > "$tmpfile"
             mv "$tmpfile" "$GIV_CONFIG_FILE"
             ;;
+        --set) # Set a specific configuration value
+            key="$2"
+            value="$3"
+            echo "$key=$value" >> "$GIV_CONFIG_FILE"
+            ;;
         -*)
             echo "Unknown option: $1" >&2
-            echo "Usage: giv config [--list] [--get key] [--unset key] [key] [value]" >&2
+            echo "Usage: giv config [--list] [--get key] [--unset key] [--set key value] [key] [value]" >&2
             return 1
             ;;
         *)

@@ -47,10 +47,15 @@ get_commit_date() {
 
     if [ "$commit" = "--current" ] || [ "$commit" = "--cached" ]; then
         # Return the current date for special cases
-        date +"%Y-%m-%d"
+        date +"%Y-%m-%d" || { print_error "Failed to retrieve current date"; return 1; }
     else
         # Get the date of the specified commit
-        git show -s --format=%ci "$commit" | cut -d' ' -f1
+        commit_date=$(git show -s --format=%ci "$commit" 2>/dev/null | cut -d' ' -f1)
+        if [ -z "$commit_date" ]; then
+            print_error "Failed to retrieve date for commit: $commit"
+            return 1
+        fi
+        printf '%s' "$commit_date"
     fi
 }
 
@@ -137,7 +142,7 @@ build_history() {
         return 0
     fi
 
-    : >"$hist"
+    : >"$hist" || { print_error "Failed to create history file: $hist"; return 1; }
 
     if [ -z "$commit" ]; then
         commit="--current"
@@ -147,33 +152,33 @@ build_history() {
 
     if [ "$commit" != "--cached" ] && [ "$commit" != "--current" ] \
         && ! git rev-parse --verify "$commit" >/dev/null 2>&1; then
-        printf 'Error: Could not build history for commit: %s\n' "$commit" >&2
+        print_error "Error: Could not build history for commit: $commit"
         return 1
     fi
 
-    printf '### Commit ID %s\n' "$commit" >>"$hist"
-    printf '**Date:** %s\n' "$(get_commit_date "$commit")" >>"$hist"
+    printf '### Commit ID %s\n' "$commit" >>"$hist" || { print_error "Failed to write commit ID to history file"; return 1; }
+    printf '**Date:** %s\n' "$(get_commit_date "$commit")" >>"$hist" || { print_error "Failed to write commit date to history file"; return 1; }
 
     print_debug "Getting version for commit $commit"
-    ver=$(get_project_version "$commit")
+    ver=$(get_project_version "$commit") || { print_error "Failed to get project version for commit: $commit"; return 1; }
     if [ -n "$ver" ]; then
         print_debug "Version found: $ver"
-        printf '**Version:** %s\n' "$ver" >>"$hist"
+        printf '**Version:** %s\n' "$ver" >>"$hist" || { print_error "Failed to write version to history file"; return 1; }
     fi
   
     print_debug "Getting message header for commit $commit"
-    msg=$(get_message_header "$commit")
+    msg=$(get_message_header "$commit") || { print_error "Failed to get message header for commit: $commit"; return 1; }
     print_debug "Message header: $msg"
-    printf '**Message:** %s\n' "$msg" >>"$hist"
+    printf '**Message:** %s\n' "$msg" >>"$hist" || { print_error "Failed to write message to history file"; return 1; }
 
-    diff_out=$(build_diff "$commit" "$diff_pattern")
+    diff_out=$(build_diff "$commit" "$diff_pattern") || { print_error "Failed to build diff for commit: $commit"; return 1; }
     print_debug "Diff output: $diff_out"
-    printf '```diff\n%s\n```\n' "$diff_out" >>"$hist"
+    printf '```diff\n%s\n```\n' "$diff_out" >>"$hist" || { print_error "Failed to write diff to history file"; return 1; }
 
-    td=$(extract_todo_changes "$commit" "$todo_pattern")
+    td=$(extract_todo_changes "$commit" "$todo_pattern") || { print_error "Failed to extract TODO changes for commit: $commit"; return 1; }
     print_debug "TODO changes: $td"
     if [ -n "$td" ]; then
-        printf '### TODO Changes\n%s\n' "$td" >>"$hist"
+        printf '### TODO Changes\n%s\n' "$td" >>"$hist" || { print_error "Failed to write TODO changes to history file"; return 1; }
     fi
 }
 
@@ -260,35 +265,37 @@ summarize_commit() {
     return 0
   fi
 
-  hist=$(create_temp_file "hist.${commit}")
-  pr=$(create_temp_file "prompt.${commit}")
-  res_file=$(create_temp_file "summary.${commit}")
+  hist=$(create_temp_file "hist.${commit}") || { print_error "Failed to create temp file for history"; return 1; }
+  pr=$(create_temp_file "prompt.${commit}") || { print_error "Failed to create temp file for prompt"; return 1; }
+  res_file=$(create_temp_file "summary.${commit}") || { print_error "Failed to create temp file for summary"; return 1; }
 
   print_debug "Temporary files created: hist=$hist, prompt=$pr, res_file=$res_file"
 
-  generate_commit_history "$hist" "$commit" "$pathspec"
-  sc_version=$(get_project_version "$commit")
+  if ! generate_commit_history "$hist" "$commit" "$pathspec"; then
+    print_error "Failed to generate commit history for $commit"
+    return 1
+  fi
+
+  sc_version=$(get_project_version "$commit") || { print_error "Failed to get project version for $commit"; return 1; }
   print_debug "Commit version: $sc_version"
 
   summary_template=$(build_commit_summary_prompt "$sc_version" "$hist")
   if [ -z "$summary_template" ]; then
     print_error "Failed to build summary prompt template for commit: $commit"
-    exit 1
+    return 1
   fi
   print_debug "Summary template generated: ${summary_template}"
   printf '%s\n' "$summary_template" >"$pr"
 
-  res=$(generate_summary_response "$pr")
-  print_debug "Summary response generated"
+  # Generate response and write to cache
+  if ! generate_response "$pr" >"$res_file"; then
+    print_error "Failed to generate response for commit: $commit"
+    return 1
+  fi
 
-  save_commit_metadata "$commit" "$res_file"
-  print_debug "Commit metadata saved"
-  printf '\n\n' >>"$res_file"
-  echo "$res" >>"$res_file"
-
-  cache_summary "$commit" "$res_file"
-  print_debug "Summary cached"
-  cat "$res_file"
+  mv "$res_file" "$summary_cache"
+  print_debug "Summary cached at: $summary_cache"
+  cat "$summary_cache"
 }
 
 # Generates commit history and saves it to a temporary file.
@@ -298,7 +305,10 @@ generate_commit_history() {
     pathspec="$3"
 
     print_debug "Generating commit history for commit: $commit"
-    build_history "$hist_file" "$commit" "$pathspec"
+    if ! build_history "$hist_file" "$commit" "$pathspec"; then
+        print_error "Failed to build history for commit: $commit"
+        return 1
+    fi
 }
 
 # Builds a summary prompt based on the commit history.
@@ -311,10 +321,13 @@ build_commit_summary_prompt() {
 
     if [ ! -f "$template_file" ]; then
         print_error "Template file not found: $template_file"
-        exit 1
+        return 1
     fi
 
-    build_prompt --version "$version" --template "$template_file" --summary "$hist_file"
+    if ! build_prompt --version "$version" --template "$template_file" --summary "$hist_file"; then
+        print_error "Failed to build prompt for version: $version"
+        return 1
+    fi
 }
 
 # Generates a summary response based on the prompt.

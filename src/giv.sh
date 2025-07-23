@@ -6,6 +6,7 @@ set -eu
 # Ensure our temp-dir cleanup always runs:
 # trap 'remove_tmp_dir' EXIT INT TERM
 
+
 IFS='
 '
 GIV_DEBUG="${GIV_DEBUG:-}"
@@ -52,27 +53,6 @@ compute_app_dir() {
   esac
 }
 
-get_is_sourced(){
-    # Detect if sourced (works in bash, zsh, dash, sh)
-    _is_sourced=0
-    # shellcheck disable=SC2296
-    # if [ "${BATS_TEST_FILENAME:-}" ]; then
-    #     _is_sourced=1
-    # el
-    if [ "$(basename -- "$0")" = "sh" ] || [ "$(basename -- "$0")" = "-sh" ]; then
-        _is_sourced=1
-    elif [ "${0##*/}" = "dash" ] || [ "${0##*/}" = "-dash" ]; then
-        _is_sourced=1
-    elif [ -n "${ZSH_EVAL_CONTEXT:-}" ] && case $ZSH_EVAL_CONTEXT in *:file) true;; *) false;; esac; then
-        _is_sourced=1
-    elif [ -n "${KSH_VERSION:-}" ] && [ -n "${.sh.file:-}" ] && [ "${.sh.file}" != "" ] && [ "${.sh.file}" != "$0" ]; then
-        _is_sourced=1
-    elif [ -n "${BASH_VERSION:-}" ] && [ -n "${BASH_SOURCE:-}" ] && [ "${BASH_SOURCE}" != "$0" ]; then
-        _is_sourced=1
-    fi
-    echo "${_is_sourced}"
-}
-
 # Try to detect the actual script path
 SCRIPT_PATH="$0"
 # shellcheck disable=SC2296
@@ -84,7 +64,6 @@ fi
 SCRIPT_DIR="$(get_script_dir "${SCRIPT_PATH}")"
 
 # Allow overrides for advanced/testing/dev
-
 PLATFORM="$(detect_platform)"
 APP_DIR="$(compute_app_dir)"
 [ "$GIV_DEBUG" = "true" ] && printf 'Using giv app directory: %s\n' "${APP_DIR}"
@@ -110,186 +89,25 @@ GIV_LIB_DIR="${LIB_DIR}"
 
 [ "$GIV_DEBUG" = "true" ] && printf 'Using giv lib directory: %s\n' "${GIV_LIB_DIR}"
 
-# Template location
-if [ -n "${GIV_TEMPLATE_DIR:-}" ]; then
-    TEMPLATE_DIR="${GIV_TEMPLATE_DIR}"
-elif [ -d "${APP_DIR}/templates" ]; then
-    TEMPLATE_DIR="${APP_DIR}/templates"
-elif [ -d "/usr/local/share/giv/templates" ]; then
-    TEMPLATE_DIR="/usr/local/share/giv/templates"
-elif [ -n "${SNAP:-}" ] && [ -d "${SNAP}/share/giv/templates" ]; then
-    TEMPLATE_DIR="${SNAP}/share/giv/templates"
-elif [ -d "./templates" ]; then
-    TEMPLATE_DIR="./templates"
+# shellcheck source=./init.sh
+. "$GIV_LIB_DIR/init.sh"
+
+
+# Ensure initialization steps
+ensure_giv_dir_init
+#metadata_init
+#portable_mktemp_dir
+
+# Parse global options and subcommand
+parse_global_args "$@"
+
+if [ -f "${GIV_LIB_DIR}/commands/${subcmd}.sh" ]; then
+    # Delegate to the subcommand script
+    printf 'Executing subcommand: %s\n' "${subcmd}"
+    "${GIV_LIB_DIR}/commands/${subcmd}.sh" "$@"
+    exit 0
 else
-    printf 'Error: Could not find giv template directory.\n' >&2
+    echo "Unknown subcommand: ${subcmd}" >&2
+    echo "Available subcommands: $(ls ${GIV_LIB_DIR}/commands | sed 's/\.sh$//')" >&2
     exit 1
-fi
-GIV_TEMPLATE_DIR="${TEMPLATE_DIR}"
-
-# Docs location (optional)
-if [ -n "${GIV_DOCS_DIR:-}" ]; then
-    DOCS_DIR="${GIV_DOCS_DIR}"
-elif [ -d "${APP_DIR}/docs" ]; then
-    DOCS_DIR="${APP_DIR}/docs"
-elif [ -d "/usr/local/share/giv/docs" ]; then
-    DOCS_DIR="/usr/local/share/giv/docs"
-elif [ -n "${SNAP:-}" ] && [ -d "${SNAP}/share/giv/docs" ]; then
-    DOCS_DIR="${SNAP}/share/giv/docs"
-else
-    DOCS_DIR=""  # It's optional; do not fail if not found
-fi
-GIV_DOCS_DIR="${DOCS_DIR}"
-
-# shellcheck source=./config.sh
-. "${LIB_DIR}/config.sh"
-# shellcheck source=./system.sh
-. "${LIB_DIR}/system.sh"
-# shellcheck source=./args.sh
-. "${LIB_DIR}/args.sh"
-# shellcheck source=markdown.sh
-. "${LIB_DIR}/markdown.sh"
-# shellcheck source=llm.sh
-. "${LIB_DIR}/llm.sh"
-# shellcheck source=project/metadata.sh
-. "${LIB_DIR}/project/metadata.sh"
-# shellcheck source=history.sh
-. "${LIB_DIR}/history.sh"
-# shellcheck source=commands.sh
-. "${LIB_DIR}/commands.sh"
-
-subcmd=""
-parse_subcommand() {
-    
-    
-    # Restore original arguments for main parsing
-    # 1. Subcommand or help/version must be first
-    if [ $# -eq 0 ]; then
-        print_error "No arguments provided."
-        exit 1
-    fi
-    case "$1" in
-        -h | --help | help)
-            show_help
-            exit 0
-        ;;
-        -v | --version)
-            show_version
-            exit 0
-        ;;
-        message | msg | summary | changelog \
-        | document | doc | release-notes | announcement \
-        | available-releases | update | init | config)
-            subcmd=$1
-            shift
-        ;;
-        *)
-            echo "First argument must be a subcommand or -h/--help/-v/--version"
-            show_help
-            exit 1
-        ;;
-    esac
-    
-}
-
-is_sourced="$(get_is_sourced)"
-if [ "${is_sourced}" -eq 0 ]; then
-    parse_subcommand "$@"
-    if [ -z "${subcmd}" ]; then
-        subcmd="message"  # Default to message if no subcommand provided
-    fi
-    print_debug "Subcommand: ${subcmd}"
-
-    if [ "$subcmd" = "init" ]; then
-        ensure_giv_dir_init
-        initialize_metadata
-        exit 0
-    elif [ -f "${GIV_LIB_DIR}/commands/${subcmd}.sh" ]; then
-        ensure_giv_dir_init
-        "${GIV_LIB_DIR}/commands/${subcmd}.sh" "$@"
-        exit 0
-    fi
-
-
-    # Ensure .giv directory is initialized
-    ensure_giv_dir_init
-    initialize_metadata
-    portable_mktemp_dir
-    parse_args "$@"
-    metadata_init
-
-    
-
-    # # Verify the PWD is a valid git repository
-    # if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    #     printf 'Error: Current directory is not a valid git repository.\n'
-    #     exit 1
-    # fi
-    # # Enable debug mode if requested
-    # if [ "${debug}" = "true" ]; then
-    #     set -x
-    # fi
-
-    
-    # Dispatch logic
-    case "${subcmd}" in
-    config)
-        print_debug "Running config command"
-        "${GIV_LIB_DIR}/commands/config.sh" "$@"        
-        ;;
-    message | msg) cmd_message "${GIV_REVISION}" \
-        "${GIV_PATHSPEC}" \
-        "${GIV_TODO_PATTERN}" ;;
-    document | doc) cmd_document \
-      "${prompt_file}" \
-      "${GIV_REVISION}" \
-      "${GIV_PATHSPEC}" \
-      "${output_file:-}" \
-      "0.7" "" ;;
-    summary) cmd_document \
-      "${GIV_TEMPLATE_DIR}/final_summary_prompt.md" \
-      "${GIV_REVISION}" \
-      "${GIV_PATHSPEC}" \
-      "${output_file:-}" \
-      "0.7" "" ;;
-    release-notes) cmd_document \
-      "${GIV_TEMPLATE_DIR}/release_notes_prompt.md" \
-      "${GIV_REVISION}" \
-      "${GIV_PATHSPEC}" \
-      "${output_file:-$release_notes_file}" \
-      "0.6" \
-      "65536" ;;
-    announcement)  cmd_document \
-      "${GIV_TEMPLATE_DIR}/announcement_prompt.md" \
-      "${GIV_REVISION}" \
-      "${GIV_PATHSPEC}" \
-      "${output_file:-$announce_file}" \
-      "0.5" \
-      "65536" ;;
-    changelog) cmd_changelog "${GIV_REVISION}" "${GIV_PATHSPEC}" ;;
-    help)
-        show_help
-        exit 0
-        ;;
-    available-releases)
-        get_available_releases
-        ;;
-    update)
-        run_update "latest"
-        ;;
-    init)
-        ensure_giv_dir_init
-        if [ -d "${GIV_TEMPLATE_DIR}" ]; then
-            cp -r "${GIV_TEMPLATE_DIR}"/* "$GIV_HOME/templates/"
-            print_info "Templates copied to $GIV_HOME/templates."
-        else
-            print_error "Template directory not found: ${GIV_TEMPLATE_DIR}"
-            exit 1
-        fi
-        ;;
-    *) cmd_message "${GIV_REVISION}" ;;
-    esac
-
-    # Clean up temporary directory if it was created
-    remove_tmp_dir
 fi

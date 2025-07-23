@@ -1,0 +1,35 @@
+# GIV Configuration Example
+## Check the docs/configuration.md for more details.
+
+## Debugging
+### Set to "true" to enable debug mode, which provides detailed logging
+GIV_DEBUG=""
+### If set to "true", enables dry run mode (no changes will be made)
+GIV_DRY_RUN=""
+### Set to "true" to preserve temporary directories after execution for debugging purposes
+GIV_TMPDIR_SAVE=""
+
+## Default git revision and pathspec
+### GIV_REVISION="--current" uses the currently checked-out git branch or commit.
+GIV_REVISION="--current"
+GIV_PATHSPEC=""
+
+## Model and API configuration
+GIV_MODEL="devstral"
+GIV_API_MODEL=""
+GIV_API_URL=""
+### Uses the OPENAI_API_KEY environment variable if set, otherwise empty
+GIV_API_KEY="${OPENAI_API_KEY:-}"
+
+## Project details
+### Path to the file containing the project version (e.g., "pyproject.toml" or "package.json")
+GIV_VERSION_FILE=""
+
+### Regex pattern to extract the version string from the version file (e.g., 'version\s*=\s*"([0-9\.]+)"')
+GIV_VERSION_PATTERN=""
+
+### Regex pattern to identify TODO comments in code (e.g., 'TODO:(.*)')
+GIV_TODO_PATTERN=""
+
+### Comma-separated list of files or glob patterns to search for TODOs (e.g., "*.py,src/**/*.js")
+GIV_TODO_FILES=""

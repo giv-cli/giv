@@ -1,19 +1,7 @@
 # GIV Configuration Variables
 export __VERSION="0.3.0-beta"
 
-## Directory locations
-export GIV_LIB_DIR="${GIV_LIB_DIR:-}"
-export GIV_DOCS_DIR="${GIV_DOCS_DIR:-}"
-export GIV_TEMPLATE_DIR="${GIV_TEMPLATE_DIR:-}"
-export GIV_HOME="${GIV_HOME:-$(pwd)/.giv}"
-export GIV_TMP_DIR="${GIV_TMP_DIR:-$GIV_HOME/.tmp}"
-export GIV_CACHE_DIR="${GIV_CACHE_DIR:-$GIV_HOME/cache}"
-export GIV_CONFIG_FILE="${GIV_CONFIG_FILE:-}"
 
-## Debugging
-export GIV_DEBUG="${GIV_DEBUG:-}"
-export GIV_DRY_RUN="${GIV_DRY_RUN:-}"
-export GIV_TMPDIR_SAVE="${GIV_TMPDIR_SAVE:-true}"
 
 ## Default git revision and pathspec
 export GIV_REVISION="--current"

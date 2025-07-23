@@ -83,75 +83,20 @@ EOF
 # Returns:
 #   0 if parsing is successful, non-zero on error.
 parse_args() {
-    subcmd=''
-    
-    config_file=""
-    is_config_loaded=false
-    
-    # Restore original arguments for main parsing
-    # 1. Subcommand or help/version must be first
-    if [ $# -eq 0 ]; then
-        print_error "No arguments provided."
-        exit 1
-    fi
-    case "$1" in
-        -h | --help | help)
-            show_help
-            exit 0
-        ;;
-        -v | --version)
-            show_version
-            exit 0
-        ;;
-        message | msg | summary | changelog \
-        | document | doc | release-notes | announcement \
-        | available-releases | update | init | config)
-            subcmd=$1
-            shift
-        ;;
-        *)
-            echo "First argument must be a subcommand or -h/--help/-v/--version"
-            show_help
-            exit 1
-        ;;
-    esac
-    
-    # Preserve original arguments for later parsing
+    # Parse global options and subcommand first
+    parse_global_args "$@"
+
+    # Restore remaining arguments for subcommand-specific parsing
     set -- "$@"
-    
-    # Early config file parsing (handle both --config-file and --config-file=)
+
+    # Early config file parsing
     config_file="${GIV_HOME}/config"
-    i=1
-    while [ $i -le $# ]; do
-        eval "arg=\${$i}"
-        # shellcheck disable=SC2154
-        case "$arg" in
-            --config-file)
-                next=$((i + 1))
-                if [ $next -le $# ]; then
-                    eval "config_file=\${$next}"
-                    print_debug "Debug: Found config file argument: --config-file ${config_file}"
-                    break
-                else
-                    print_error "--config-file requires a file path argument."
-                    exit 1
-                fi
-            ;;
-            --config-file=*)
-                config_file="${arg#--config-file=}"
-                print_debug "Found config file argument: --config-file=${config_file}"
-                break
-            ;;
-            *)
-                # Not a config file argument, continue parsing
-            ;;
-        esac
-        i=$((i + 1))
-    done
-    
-    # -------------------------------------------------------------------
-    # Config file handling (early parse)
-    # -------------------------------------------------------------------
+    if [ -f "${config_file}" ]; then
+        print_debug "Sourcing config file: ${config_file}"
+        # shellcheck disable=SC1090
+        . "${config_file}"
+    fi
+
     print_debug "Setting initial variables"
     
     api_model="${GIV_API_MODEL:-'devstral'}"
@@ -387,6 +332,75 @@ parse_args() {
     print_debug "  Output Mode: ${GIV_OUTPUT_MODE:-}"
     print_debug "  Output Version: ${GIV_OUTPUT_VERSION:-}"
     print_debug "  Prompt File: ${GIV_PROMPT_FILE:-}"
+}
+
+# Parses global options and the subcommand
+parse_global_args() {
+    subcmd=''
+
+    # Check if no arguments are provided
+    if [ $# -eq 0 ]; then
+        print_error "No arguments provided."
+        exit 1
+    fi
+
+    # Parse the first argument as a subcommand or help/version
+    case "$1" in
+        -h | --help | help)
+            show_help
+            exit 0
+        ;;
+        -v | --version)
+            show_version
+            exit 0
+        ;;
+        message | msg | summary | changelog \
+        | document | doc | release-notes | announcement \
+        | available-releases | update | init | config)
+            subcmd=$1
+            shift
+        ;;
+        *)
+            echo "First argument must be a subcommand or -h/--help/-v/--version"
+            show_help
+            exit 1
+        ;;
+    esac
+
+    # Preserve remaining arguments for later parsing
+    set -- "$@"
+
+    # Parse global options
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --verbose)
+                GIV_DEBUG="true"
+                shift
+            ;;
+            --dry-run)
+                GIV_DRY_RUN="true"
+                shift
+            ;;
+            --config-file)
+                config_file=$2
+                shift 2
+            ;;
+            --config-file=*)
+                config_file="${1#--config-file=}"
+                shift
+            ;;
+            *)
+                # Stop parsing on the first non-global option
+                break
+            ;;
+        esac
+    done
+
+    # Export parsed global variables
+    export GIV_DEBUG
+    export GIV_DRY_RUN
+    export config_file
+    export subcmd
 }
 
 
