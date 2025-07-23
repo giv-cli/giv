@@ -204,9 +204,9 @@ if [ "${is_sourced}" -eq 0 ]; then
         ensure_giv_dir_init
         initialize_metadata
         exit 0
-    elif [ "$subcmd" = "config" ]; then
+    elif [ -f "${GIV_LIB_DIR}/commands/${subcmd}.sh" ]; then
         ensure_giv_dir_init
-        "${GIV_LIB_DIR}/commands/config.sh" "$@"
+        "${GIV_LIB_DIR}/commands/${subcmd}.sh" "$@"
         exit 0
     fi
 
@@ -218,6 +218,8 @@ if [ "${is_sourced}" -eq 0 ]; then
     parse_args "$@"
     metadata_init
 
+    
+
     # # Verify the PWD is a valid git repository
     # if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     #     printf 'Error: Current directory is not a valid git repository.\n'
@@ -228,7 +230,7 @@ if [ "${is_sourced}" -eq 0 ]; then
     #     set -x
     # fi
 
-
+    
     # Dispatch logic
     case "${subcmd}" in
     config)

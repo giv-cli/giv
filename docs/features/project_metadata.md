@@ -1,157 +1,90 @@
 Lets implement this feature:
 
-Extendable Project-Level Metadata Architecture for giv
 
-Objective
+# Simplified Project-Level Metadata Architecture for giv
 
-Augment giv so that rich project metadata is collected once per invocation (early in the run pipeline) from:
+## Objective
 
-1. Known project types via provider scripts (e.g. Node, Python, Rust, Go).
+Make project metadata collection simple, reliable, and portable by:
 
-2. User configuration (override or supplement autodetected values) via .giv/config.
+1. Detecting project type and setting all relevant metadata during initialization (in `initialize_metadata` and `detect_project_type`).
+2. Storing all metadata in `.giv/config` using the `giv config` subcommand.
+3. Allowing user overrides and custom metadata via the same config mechanism.
+4. Having `project/metadata.sh` simply read metadata from config or call specialized functions for each project type if needed.
 
-3. Custom project type definitions allowing users to specify metadata or files to parse.
+This approach eliminates the need for a complex provider registry/orchestration. Instead, project type and metadata are set up front, and all prompt logic can rely on a single, consistent metadata source.
 
-The collected metadata—cached under .giv/cache—will be exposed to all prompt-building logic, enabling templates (announcements, release notes, README generation, etc.) to incorporate:
 
-title
 
-url (homepage or documentation)
+## High-Level Architecture Changes
 
-description
+1. **Initialization Phase:**
+   - During `initialize_metadata`, the script calls `detect_project_type` to determine the project type and set all relevant metadata keys (type, version file, version pattern, etc.) using `giv config`.
+   - The user is prompted for any missing or custom values, which are also set in `.giv/config`.
 
-repository\_url
+2. **Metadata Storage:**
+   - All metadata is stored in `.giv/config` in .env format, managed by the `giv config` subcommand.
+   - User overrides and custom metadata are handled the same way.
 
-latest\_version
+3. **Metadata Access:**
+   - `project/metadata.sh` simply reads metadata from `.giv/config` (using `giv config --get <key>` or by sourcing the file).
+   - If specialized logic is needed for a project type, it can be implemented as a function and called by `metadata.sh`.
 
-language
+4. **Prompt Integration:**
+   - Prompt logic (e.g., in `llm.sh`) reads metadata from the config/cache and supports token replacement as before.
 
-license
 
-author / authors
 
-dependencies (list)
+## Provider Logic (Refactored)
 
-dev\_dependencies (list)
+Instead of a registry of provider scripts, project type detection and metadata collection are handled directly in `detect_project_type` and `initialize_metadata`. For each known project type, the script sets the appropriate metadata keys in `.giv/config`.
 
-scripts (build, test, etc.)
+If a project type requires more advanced metadata extraction, a specialized function can be called during initialization or by `metadata.sh` as needed.
 
-vcs info (default branch, commit SHA, tag count)
 
-This POSIX-compliant design ensures portability across /bin/sh implementations.
 
----
-
-High-Level Architecture Changes
-
-1. Metadata Phase: Add a metadata\_init call immediately after argument parsing in giv.sh.
-
-2. Provider Registry: Under project/providers/, each provider\_<id>.sh implements detection and collection functions in POSIX shell.
-
-3. Orchestrator: New project/metadata.sh sources providers, detects, prioritizes, collects, merges, caches, and exports metadata.
-
-4. Prompt Integration: Extend llm.sh’s build\_prompt to inject metadata from cache and support \${{meta.<key>}} tokens.
-
-5. Configuration: Add keys in .giv/config:
-
-GIV\_PROJECT\_TYPE to force a provider or set to "auto" for autodetection
-
-GIV\_PROJECT\_METADATA\_FILE for external .env file
-
----
-
-Provider Interface (POSIX Shell)
-
-Each provider\_<id>.sh must define:
-
-# Detect presence (0 = yes, >0 = no)
-
-provider\_<id>\_detect() {
-
-# e.g. \[ -f "package.json" \]
-
-return 1
-}
-
-# Collect metadata: output KEY\tVALUE per line
-
-provider\_<id>\_collect() {
-
-# echo "title\tMy Project"
-
-}
-
----
-
-Directory Layout
+## Directory Layout
 
 project/
-metadata.sh # orchestrator
-providers/
-provider\_node\_pkg.sh
-provider\_python\_pep621.sh
-provider\_generic\_git.sh
+  metadata.sh # reads metadata from config or calls specialized functions
 .giv/
-cache/
-project\_metadata.env
-config # overrides
+  cache/
+    project_metadata.env
+  config # all metadata and overrides
 
----
 
-Simplified Orchestration Flow (POSIX Steps)
-
-1. Determine Provider:
-
-if [ "$GIV\_PROJECT\_TYPE" = "custom" ]; then
-[ -f "$GIV\_HOME/project\_provider.sh" ] && . "$GIV\_HOME/project\_provider.sh"
-elif [ "$GIV\_PROJECT\_TYPE" = "auto" ]; then
-for f in "$GIV\_LIB\_DIR/project/providers"/*.sh; do
-. "$f"
-provider\_detect=$(set | awk -F'=' '/^provider\_.\*\_detect=/ { sub("()","",\$1); print \$1 }')
-for fn in \$provider\_detect; do
-\$fn && DETECTED\_PROVIDER="\$fn" && break
 done
-[ -n "$DETECTED_PROVIDER" ] && break
-done
-else
-. "$GIV\_LIB\_DIR/project/providers/provider\_${GIV\_PROJECT\_TYPE}.sh"
-fi
 
-2. Collect Metadata:
+## Simplified Metadata Flow
 
-if [ -n "$DETECTED\_PROVIDER" ]; then
-coll=${DETECTED\_PROVIDER%_detect}\_collect
-$coll | while IFS="\t" read -r key val; do
-printf '%s=%s\n' "$key" "${val//"/\\"}" >> "$GIV\_CACHE\_DIR/project\_metadata.env"
-done
-fi
+1. **Initialization:**
+   - `initialize_metadata` calls `detect_project_type`, which sets all relevant metadata keys in `.giv/config` using `giv config`.
+   - User is prompted for any missing values.
 
-3. Apply Overrides:
+2. **Metadata Access:**
+   - `project/metadata.sh` reads metadata from `.giv/config` (using `giv config --get <key>` or by sourcing the file).
+   - If needed, calls specialized functions for additional metadata extraction.
 
-[ -f "$GIV\_HOME/project\_metadata.env" ] && . "$GIV\_HOME/project\_metadata.env"
+3. **Export:**
+   - Metadata is exported to the shell environment for use by prompt logic and other scripts.
 
-4. Export:
-
-# shell export
-
-set -a
-. "$GIV\_CACHE\_DIR/project\_metadata.env"
-set +a
-
----
-
-Cache Format
-
-project\_metadata.env: simple KEY=value lines
-
-Example project\_metadata.env:
 
 title=My Project
 author=Jane Doe
 latest\_version=1.2.3
 repository\_url=https://github.com/org/repo.git
 
----
+## Cache Format
+
+project_metadata.env: simple KEY=value lines, generated from `.giv/config` and any additional logic.
+
+Example project_metadata.env:
+
+GIV_METADATA_TITLE="My Project"
+GIV_METADATA_AUTHOR="Jane Doe"
+GIV_METADATA_LATEST_VERSION="1.2.3"
+GIV_METADATA_REPOSITORY_URL="https://github.com/org/repo.git"
+
 
 Prompt Token Usage
 
@@ -163,16 +96,27 @@ Repo: [repository_url]
 Desc: [description]
 License: [license]
 
----
 
-Configuration (.giv/config)
 
-GIV\_PROJECT\_TYPE=auto
-GIV\_PROJECT\_METADATA\_FILE=metadata.env
-GIV\_PROJECT\_METADATA\_EXTRA<<'EOF'
-owner.team=platform
-tier=gold
-EOF
+## Configuration (.giv/config)
+
+All metadata keys are managed using the `giv config` subcommand, which stores them in `.giv/config` in .env format (e.g., `GIV_PROJECT_TYPE=auto`).
+
+Example usage:
+
+```sh
+giv config project.type auto
+giv config project.metadata_file metadata.env
+giv config project.metadata_extra "owner.team=platform\ntier=gold"
+```
+
+This will result in a `.giv/config` file like:
+
+```
+GIV_PROJECT_TYPE="auto"
+GIV_PROJECT_METADATA_FILE="metadata.env"
+GIV_PROJECT_METADATA_EXTRA="owner.team=platform\ntier=gold"
+```
 
 ---
 
@@ -194,24 +138,13 @@ Testing & Validation Checklist
 
 ---
 
-Implementation Checklist
 
-\[ \] Create project/metadata.sh orchestrator (POSIX)
+## Implementation Checklist
 
-\[ \] Build built-in providers: node\_pkg, python\_pep621, generic\_git
-
-\[ \] Source custom providers from $GIV\_HOME/project\_provider.sh
-
-\[ \] Write metadata to .giv/cache/project\_metadata.env
-
-\[ \] Update giv.sh to call metadata\_init
-
-\[ \] Extend llm.sh build\_prompt for \${{meta.\*}} tokens
-
-\[ \] Add config parsing in args.sh or config.sh
-
-\[ \] Add --refresh-metadata support
-
-\[ \] Write Bats tests for detection, caching, overrides
-
-\[ \] Document usage in README
+- [ ] Refactor initialization to set all metadata in `.giv/config` using `giv config` (in `initialize_metadata` and `detect_project_type`).
+- [ ] Remove provider registry/orchestration logic; handle all detection and metadata setting up front.
+- [ ] Update `project/metadata.sh` to read from config or call specialized functions as needed.
+- [ ] Update prompt logic to use the new metadata flow.
+- [ ] Add --refresh-metadata support.
+- [ ] Write Bats tests for detection, caching, overrides.
+- [ ] Document usage in README.
