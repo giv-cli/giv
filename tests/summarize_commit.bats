@@ -22,6 +22,9 @@ setup() {
     mkdir -p "$TMP_REPO/.giv/cache"
     mkdir -p "$TMP_REPO/.giv/templates"
     cd "$TMP_REPO" || exit 1
+    git init
+    git config user.name "Test"
+    git config user.email "test@example.com"
     echo ".giv/" > .gitignore
     git add .gitignore
     git commit -q -m "add .gitignore"

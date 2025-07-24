@@ -13,7 +13,7 @@ load "$BATS_TEST_DIRNAME/../src/llm.sh"
 load "$BATS_TEST_DIRNAME/../src/history.sh"
 
 setup() {
-    export GIV_METADATA_PROJECT_TYPE="custom"
+    export GIV_PROJECT_TYPE="custom"
     export GIV_TEMPLATE_DIR="$BATS_TEST_DIRNAME/../templates"
     export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
 

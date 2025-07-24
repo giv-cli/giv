@@ -28,7 +28,7 @@ setup() {
     # Create a version.txt file for custom project type
     echo "version = '1.0.0'" > version.txt
     export GIV_PROJECT_VERSION_FILE="version.txt"
-    export GIV_METADATA_PROJECT_TYPE="custom"
+    export GIV_PROJECT_TYPE="custom"
     
     # Ensure $GIV_HOME/config exists for all tests
     mkdir -p "$GIV_HOME"
@@ -49,7 +49,7 @@ teardown() {
 }
 
 @test "get_version_info detects version from current file" {
-    export GIV_METADATA_PROJECT_TYPE="custom"
+    export GIV_PROJECT_TYPE="custom"
     export GIV_PROJECT_VERSION_FILE="version.txt"
     echo "version = '1.2.3'" >"version.txt"
     run get_metadata_value "version" "--current"
@@ -78,7 +78,7 @@ teardown() {
 }
 
 @test "get_version_info detects version with v-prefix" {
-    export GIV_METADATA_PROJECT_TYPE="custom"
+    export GIV_PROJECT_TYPE="custom"
     export GIV_PROJECT_VERSION_FILE="version.txt"
     echo "version = 'v1.2.3'" >"version.txt"
     run get_metadata_value "version" "--current"
@@ -148,7 +148,7 @@ EOF
 
 @test "get_version_info detects version from file in specific commit with multiple versions" {
     export GIV_PROJECT_VERSION_FILE="version.txt"
-    export GIV_METADATA_PROJECT_TYPE="custom"
+    export GIV_PROJECT_TYPE="custom"
     cat >"version.txt" <<EOF
 version = '1.2.3'
 version = '2.3.4'

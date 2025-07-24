@@ -7,7 +7,7 @@ IFS="$(printf '\n\t')"
 
 # Defaults
 ## Directory locations
-export GIV_HOME="${GIV_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo "${HOME}/.giv")}"
+export GIV_HOME="${GIV_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo "${HOME}")/.giv}"
 export GIV_LIB_DIR="${GIV_LIB_DIR:-}"
 export GIV_DOCS_DIR="${GIV_DOCS_DIR:-}"
 export GIV_TEMPLATE_DIR="${GIV_TEMPLATE_DIR:-}"
@@ -126,6 +126,7 @@ fi
 
 # Export resolved globals
 export GIV_LIB_DIR GIV_TEMPLATE_DIR GIV_DOCS_DIR
+[ "${GIV_DEBUG}" = "true" ] && printf 'Using giv home directory: %s\n' "${GIV_HOME}"
 [ "${GIV_DEBUG}" = "true" ] && printf 'Using giv lib directory: %s\n' "${GIV_LIB_DIR}"
 [ "${GIV_DEBUG}" = "true" ] && printf 'Using giv template directory: %s\n' "${GIV_TEMPLATE_DIR}"
 [ "${GIV_DEBUG}" = "true" ] && printf 'Using giv docs directory: %s\n' "${GIV_DOCS_DIR}"

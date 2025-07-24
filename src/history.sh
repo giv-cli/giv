@@ -6,12 +6,10 @@
 
 # Ensure GIV_HOME and GIV_TEMPLATE_DIR are initialized
 
-# Source config and project_metadata for tests and runtime
-if [ -n "$BATS_TEST_DIRNAME" ]; then
-  . "$BATS_TEST_DIRNAME/../src/commands/config.sh"
+# Source project_metadata for tests and runtime
+if [ -n "${BATS_TEST_DIRNAME:-}" ]; then
   . "$BATS_TEST_DIRNAME/../src/project_metadata.sh"
 else
-  . "$(dirname "$0")/commands/config.sh"
   . "$(dirname "$0")/project_metadata.sh"
 fi
 
@@ -84,6 +82,27 @@ print_commit_metadata() {
     printf '**Message:** %s\n' "$(get_message_header "$commit")"
 }
 
+
+# Get git diff output for a commit and write to file
+get_diff() {
+    commit="$1"
+    diff_pattern="$2"
+    output_file="$3"
+    
+    print_debug "Getting diff for commit: $commit with pattern: $diff_pattern"
+    
+    case "$commit" in
+        --cached)
+            git --no-pager diff --cached --unified=3 --no-prefix --color=never -- $diff_pattern > "$output_file" 2>/dev/null || true
+            ;;
+        --current | "")
+            git --no-pager diff --unified=3 --no-prefix --color=never -- $diff_pattern > "$output_file" 2>/dev/null || true
+            ;;
+        *)
+            git --no-pager diff "${commit}^!" --unified=3 --no-prefix --color=never -- $diff_pattern > "$output_file" 2>/dev/null || true
+            ;;
+    esac
+}
 
 # helper: builds main diff output (tracked + optional untracked)
 build_diff() {
@@ -189,10 +208,12 @@ build_history() {
     printf '**Date:** %s\n' "$(get_commit_date "$commit")" >>"$hist" || { print_error "Failed to write commit date to history file"; return 1; }
 
     print_debug "Getting version for commit $commit"
-    ver=$(get_metadata_value "version" "$commit") || { print_error "Failed to get project version for commit: $commit"; return 1; }
+    ver=$(get_metadata_value "version" "$commit" 2>/dev/null || true)
     if [ -n "$ver" ]; then
         print_debug "Version found: $ver"
         printf '**Version:** %s\n' "$ver" >>"$hist" || { print_error "Failed to write version to history file"; return 1; }
+    else
+        print_debug "No version found for commit $commit"
     fi
   
     print_debug "Getting message header for commit $commit"
@@ -289,9 +310,15 @@ summarize_commit() {
   print_debug "Summary cache path: $summary_cache"
 
   if [ -f "$summary_cache" ]; then
-    print_debug "Cache hit for commit: $commit"
-    cat "$summary_cache"
-    return 0
+    # Check if cache has proper metadata format (starts with "Commit:")
+    if head -1 "$summary_cache" | grep -q "^Commit:"; then
+      print_debug "Cache hit for commit: $commit with proper metadata"
+      cat "$summary_cache"
+      return 0
+    else
+      print_debug "Cache exists but lacks metadata, regenerating for commit: $commit"
+      rm -f "$summary_cache"
+    fi
   fi
 
   hist=$(portable_mktemp "hist.${commit}.XXXXXXX") || { print_error "Failed to create temp file for history"; return 1; }
@@ -305,7 +332,7 @@ summarize_commit() {
     return 1
   fi
 
-  sc_version=$(get_metadata_value "version" "$commit") || { print_error "Failed to get project version for $commit"; return 1; }
+  sc_version=$(get_metadata_value "version" "$commit" 2>/dev/null || true)
   print_debug "Commit version: $sc_version"
 
   summary_template=$(build_commit_summary_prompt "$sc_version" "$hist")
@@ -322,8 +349,15 @@ summarize_commit() {
     return 1
   fi
 
-  mv "$res_file" "$summary_cache"
+  # Prepend commit metadata to the response
+  tmp_output=$(portable_mktemp "output.${commit}.XXXXXXX") || { print_error "Failed to create temp output file"; return 1; }
+  print_debug "Saving commit metadata for: $commit"
+  save_commit_metadata "$commit" "$tmp_output"
+  cat "$res_file" >> "$tmp_output"
+  
+  mv "$tmp_output" "$summary_cache"
   print_debug "Summary cached at: $summary_cache"
+  print_debug "Final output contains: $(head -1 "$summary_cache")"
   cat "$summary_cache"
 }
 

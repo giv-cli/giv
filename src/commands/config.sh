@@ -3,20 +3,18 @@
 
 set -eu
 
+# Ensure GIV_HOME points to the .giv directory
 : "${GIV_HOME:=$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.giv}"
+# Ensure GIV_CONFIG_FILE points to the config file within .giv directory  
 : "${GIV_CONFIG_FILE:=${GIV_HOME}/config}"
 
 
 
-# If called as 'giv.sh config ...', shift off the 'config' argument
-if [ "${1:-}" = "config" ]; then
-    shift
-fi
+# Configuration management functions
+# This file should only be executed by the dispatcher, not sourced by other scripts
 
-# Default to --list if no arguments
-if [ $# -eq 0 ]; then
-    set -- --list
-fi
+# Configuration management functions are defined below
+# Execution logic is at the end of the file
 
 # Centralized key normalization
 normalize_key() {
@@ -26,7 +24,7 @@ normalize_key() {
             printf ''
             ;;
         *)
-            printf '%s' "$1" | tr '[:lower:].' '[:upper:]_'
+            printf 'GIV_%s' "$1" | tr '[:lower:].' '[:upper:]_'
             ;;
     esac
 }
@@ -42,10 +40,17 @@ giv_config() {
             # Check for malformed lines
             if [ -s "$GIV_CONFIG_FILE" ]; then
                 # Updated malformed config check to ignore empty lines and lines with only whitespace
-                if grep -qvE '^(#|[^=]+=[^\n]*|[[:space:]]*)$' "$GIV_CONFIG_FILE"; then
-                    printf '%s\n' "Malformed config" >&2
-                    return 1
-                fi
+                # Simple validation: check for lines that don't contain = and aren't comments or empty
+                while IFS= read -r line; do
+                    case "$line" in
+                        '#'*|'') continue ;;  # Skip comments and empty lines
+                        *=*) continue ;;      # Valid config line
+                        *)
+                            printf '%s\n' "Malformed config line: $line" >&2
+                            return 1
+                            ;;
+                    esac
+                done < "$GIV_CONFIG_FILE"
             fi
             # Convert GIV_... keys to user keys for output
             while IFS= read -r line; do
@@ -87,6 +92,8 @@ giv_config() {
                 givkey="$(normalize_key "$key")"
                 val=$(grep -E "^$givkey=" "$GIV_CONFIG_FILE" | cut -d'=' -f2-)
             fi
+            # Remove surrounding quotes if present
+            val=$(printf '%s' "$val" | sed 's/^"\(.*\)"$/\1/')
             printf '%s\n' "$val"
             ;;
         --unset|unset)
@@ -139,7 +146,7 @@ giv_config() {
                 fi
                 if [ -s "$GIV_CONFIG_FILE" ]; then
                     # Updated malformed config check to ignore empty lines and lines with only whitespace
-                    if grep -qvE '^(#|[^=]+=[^\n]*|[[:space:]]*)$' "$GIV_CONFIG_FILE"; then
+                    if grep -qvE '^(#|[^=]+=.*|[[:space:]]*)$' "$GIV_CONFIG_FILE"; then
                         printf '%s\n' "Malformed config" >&2
                         return 1
                     fi
@@ -149,6 +156,8 @@ giv_config() {
                     givkey="$(normalize_key "$key")"
                     val=$(grep -E "^$givkey=" "$GIV_CONFIG_FILE" | cut -d'=' -f2-)
                 fi
+                # Remove surrounding quotes if present
+                val=$(printf '%s' "$val" | sed 's/^"\(.*\)"$/\1/')
                 printf '%s\n' "$val"
             else
                 mkdir -p "$GIV_HOME"
@@ -166,5 +175,15 @@ giv_config() {
             ;;
     esac
 }
+
+# Execute the config command when this script is run by the dispatcher
+if [ "${1:-}" = "config" ]; then
+    shift
+fi
+
+# Default to --list if no arguments  
+if [ $# -eq 0 ]; then
+    set -- --list
+fi
 
 giv_config "$@"

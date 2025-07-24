@@ -97,14 +97,21 @@ GIV_LIB_DIR="${LIB_DIR}"
 . "$GIV_LIB_DIR/init.sh"
 
 
-# Ensure initialization steps
+# Ensure basic directory initialization
 ensure_giv_dir_init
-initialize_metadata
-#metadata_init
-#portable_mktemp_dir
 
-# Parse global options and subcommand
+# Parse global options and subcommand first (for help/version)
 parse_global_args "$@"
+
+# Initialize metadata only for commands that need it (not help/version)
+case "${subcmd:-}" in
+    help|-h|--help|version|-v|--version)
+        # Skip metadata initialization for help/version
+        ;;
+    *)
+        initialize_metadata
+        ;;
+esac
 
 if [ -f "${GIV_LIB_DIR}/commands/${subcmd}.sh" ]; then
     # Delegate to the subcommand script
