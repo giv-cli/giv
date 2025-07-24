@@ -36,7 +36,6 @@ setup() {
     git add b.txt
     git commit -q -m "second"
     SECOND_SHA=$(git rev-parse HEAD)
-    metadata_init
 
     # Mock generate_response function
     generate_response() {
@@ -44,6 +43,12 @@ setup() {
     }
 
     printf "TMPDIR: %s\n" "$TMPDIR" >&2
+
+    # Ensure $GIV_HOME/config exists for all tests
+    mkdir -p "$GIV_HOME"
+    echo "GIV_API_KEY=XYZ" >"$GIV_HOME/config"
+    echo "GIV_API_URL=TEST_URL" >>"$GIV_HOME/config"
+    echo "GIV_API_MODEL=TEST_MODEL" >>"$GIV_HOME/config"
 }
 
 teardown() {

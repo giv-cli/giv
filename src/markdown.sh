@@ -1,3 +1,12 @@
+# Guard Glow usage for markdown output
+print_md_file() {
+    file="$1"
+    if [ -t 1 ] && command -v glow >/dev/null 2>&1; then
+        glow -p "$file"
+    else
+        cat "$file"
+    fi
+}
 #!/bin/sh
 # POSIX-sh helpers for inserting/updating Markdown sections
 

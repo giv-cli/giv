@@ -101,38 +101,82 @@ get_metadata_value() {
   key="$1"
   commit="${2:-HEAD}"
 
-  if [ "$GIV_PROJECT_TYPE" = "auto" ]; then
-    GIV_PROJECT_TYPE=$(detect_project_type)
+  # Always detect project type if set to auto
+  project_type="${GIV_PROJECT_TYPE:-auto}"
+  if [ "$project_type" = "auto" ]; then
+    project_type=$(detect_project_type)
   fi
 
-  case "$GIV_PROJECT_TYPE" in
+  case "$project_type" in
     node)
       file="package.json"
-      parser=metadata_parse_node
+      if ! content=$(metadata_get_file_content "$file" "$commit"); then
+        return 1
+      fi
+      if command -v jq >/dev/null 2>&1; then
+        value=$(printf '%s' "$content" | jq -r ".${key}")
+        [ "$value" = "null" ] && value=""
+      else
+        value=$(printf '%s' "$content" | awk -v k="$key" '
+          BEGIN { found=0 }
+          $0 ~ "\""k"\"" {
+            match($0, "\""k"\"[[:space:]]*:[[:space:]]*\"([^\"]+)\"", arr)
+            if (arr[1] != "") {
+              print arr[1]
+              found=1
+              exit
+            }
+          }
+          END { if (!found) exit 1 }
+        ')
+      fi
       ;;
     python)
       file="pyproject.toml"
-      parser=metadata_parse_python
+      if ! content=$(metadata_get_file_content "$file" "$commit"); then
+        return 1
+      fi
+      if [ "$key" = "version" ]; then
+        value=$(printf '%s' "$content" | awk '/^\[project\]/{flag=1;next}/^\[/{flag=0}flag' | grep -m1 -E '^version[[:space:]]*=' | sed -r 's/^version[[:space:]]*=[[:space:]]*"(.*)".*/\1/')
+      else
+        value=$(printf '%s' "$content" | awk -v k="$key" '
+          section=""
+          /^\[project\]/ { section="project"; next }
+          /^\[/ { section=""; next }
+          section == "project" {
+            if ($0 ~ k"[[:space:]]*=") {
+              match($0, k"[[:space:]]*=[[:space:]]*\"([^\"]+)\"", arr)
+              if (arr[1] != "") {
+                print arr[1]
+                exit
+              }
+            }
+          }
+        ')
+      fi
       ;;
     custom)
       file="${GIV_PROJECT_VERSION_FILE:-version.txt}"
-      parser=metadata_parse_custom
+      if ! content=$(metadata_get_file_content "$file" "$commit"); then
+      return 1
+      fi
+      value=$(printf '%s' "$content" | awk -v k="$key" '
+      BEGIN { IGNORECASE = 1 }
+      $0 ~ k {
+        match($0, k "[[:space:]]*=[[:space:]]*\"([^\"]+)\"", arr)
+        if (arr[1] != "") {
+          print arr[1]
+          exit
+        }
+      }
+      ')
       ;;
     *)
-      echo "Unsupported project type: $GIV_PROJECT_TYPE" >&2
-      return 1
+      value=""
       ;;
   esac
 
-  if ! content=$(metadata_get_file_content "$file" "$commit"); then
-    echo "Error: Could not read $file at commit $commit" >&2
-    return 1
+  if [ -n "$value" ]; then
+    echo "$value"
   fi
-
-  if ! value="$($parser "$content" "$key")"; then
-    echo "Key '$key' not found in $file at commit $commit" >&2
-    return 1
-  fi
-
-  echo "$value"
 }

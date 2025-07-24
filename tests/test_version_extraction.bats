@@ -29,12 +29,13 @@ setup() {
     echo "version = '1.0.0'" > version.txt
     export GIV_PROJECT_VERSION_FILE="version.txt"
     export GIV_METADATA_PROJECT_TYPE="custom"
+    
+    # Ensure $GIV_HOME/config exists for all tests
+    mkdir -p "$GIV_HOME"
+    echo "GIV_API_KEY=XYZ" >"$GIV_HOME/config"
+    echo "GIV_API_URL=TEST_URL" >>"$GIV_HOME/config"
+    echo "GIV_API_MODEL=TEST_MODEL" >>"$GIV_HOME/config"
 
-    # Initialize metadata
-    metadata_init || {
-        echo "Failed to initialize metadata" >&2
-        exit 1
-    }
 }
 
 teardown() {
@@ -101,8 +102,7 @@ teardown() {
 }
 
 @test "get_version_info detects version from JSON file" {
-    export GIV_METADATA_PROJECT_TYPE="node_pkg"
-    metadata_init
+    export GIV_METADATA_PROJECT_TYPE="node"
     echo '{"version": "1.2.3"}' >"package.json"
     run get_metadata_value "version" "--current"
     assert_success
@@ -110,8 +110,7 @@ teardown() {
 }
 
 @test "get_version_info detects version from cached JSON file" {
-    export GIV_METADATA_PROJECT_TYPE="node_pkg"
-    metadata_init
+    export GIV_METADATA_PROJECT_TYPE="node"
     echo '{"version": "1.2.3"}' >"package.json"
     git add "package.json"
     run get_metadata_value "version" "--cached"
@@ -120,8 +119,7 @@ teardown() {
 }
 
 @test "get_version_info detects version from specific commit JSON file" {
-    export GIV_METADATA_PROJECT_TYPE="node_pkg"
-    metadata_init
+    export GIV_METADATA_PROJECT_TYPE="node"
     echo '{"version": "1.2.3"}' >"package.json"
     git add "package.json"
     git commit -m "Add JSON version file"
@@ -133,7 +131,6 @@ teardown() {
 
 @test "get_version_info handles multiple version strings and picks the first one" {
     export GIV_PROJECT_VERSION_FILE="version.txt"
-    metadata_init
     cat >"version.txt" <<EOF
 version = '1.2.3'
 version = '2.3.4'

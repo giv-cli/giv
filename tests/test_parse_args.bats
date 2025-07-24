@@ -39,6 +39,12 @@ setup() {
   echo "GIV_TMPDIR_SAVE=" >>"tmp.cfg"
   chmod +r tmp.cfg
   GIV_TMPDIR_SAVE=
+
+  # Ensure $GIV_HOME/config exists for all tests
+  mkdir -p "$GIV_HOME"
+  echo "GIV_API_KEY=XYZ" >"$GIV_HOME/config"
+  echo "GIV_API_URL=TEST_URL" >>"$GIV_HOME/config"
+  echo "GIV_API_MODEL=TEST_MODEL" >>"$GIV_HOME/config"
 }
 
 teardown() {
@@ -188,33 +194,30 @@ setup_git_range() {
 
 # 8. default TARGET → --current
 @test "no target given defaults to --current" {
-  run parse_args message --verbose
+  run parse_args summary --verbose
   assert_success
   assert_output --partial "Revision: --current"
 }
 
 # 9. --staged maps to --cached
 @test "--staged becomes --cached internally" {
-  run parse_args message --staged --verbose
+  run parse_args summary --staged --verbose
   assert_success
-  # note: code prints the raw "$1" again, but your logic sets TARGET="--cached"
   assert_output --partial "Revision: --cached"
 }
 
 # 10. explicit git-range target
 @test "invalid git range as target" {
-  run parse_args changelog v1..v2 --verbose
+  run parse_args summary v1..v2 --verbose
   assert_failure
-  # cat $output >> "$ERROR_LOG" # capture output for debugging (uncomment only when debugging)
   assert_output --partial "ERROR: Invalid commit range: v1..v2"
 }
 # 10. explicit git-range target
 
 @test "valid git range as target" {
   setup_git_range
-  run parse_args changelog v1..v2 --verbose
+  run parse_args summary v1..v2 --verbose
   assert_success
-  # cat $output >> "$ERROR_LOG" # capture output for debugging (uncomment only when debugging)
   assert_output --partial "Revision: v1..v2"
 }
 
@@ -228,15 +231,14 @@ setup_git_range() {
 
 # 12. global flags: --dry-run
 @test "--dry-run sets dry_run=true" {
-  run parse_args release-notes --dry-run --verbose
+  run parse_args summary --dry-run --verbose
   assert_success
   assert_output --partial "Pathspec:"
-  # dry_run itself isn’t printed, but no error means flag was accepted
 }
 
 # 13. unknown option after subcommand
 @test "unknown option errors out" {
-  run parse_args message --no-such-flag
+  run parse_args summary --no-such-flag
   [ "$status" -eq 1 ]
   assert_output --partial "Unknown option or argument: --no-such-flag"
 }
@@ -255,7 +257,6 @@ setup_git_range() {
     --version-file VER \
     --verbose
   assert_success
-  # spot-check a couple
   assert_output --partial "Prompt File: PROMPT"
 }
 

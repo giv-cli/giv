@@ -5,7 +5,15 @@
 : "${GIV_TEMPLATE_DIR:=${GIV_HOME}/templates}"
 
 # Ensure GIV_HOME and GIV_TEMPLATE_DIR are initialized
-. "$(dirname "$0")/commands/config.sh"
+
+# Source config and project_metadata for tests and runtime
+if [ -n "$BATS_TEST_DIRNAME" ]; then
+  . "$BATS_TEST_DIRNAME/../src/commands/config.sh"
+  . "$BATS_TEST_DIRNAME/../src/project_metadata.sh"
+else
+  . "$(dirname "$0")/commands/config.sh"
+  . "$(dirname "$0")/project_metadata.sh"
+fi
 
 # Extract TODO changes for history extraction
 extract_todo_changes() {
@@ -83,23 +91,37 @@ build_diff() {
     diff_pattern="$2"
 
     # Build git diff command as a string (POSIX-compatible, no arrays)
-    diff_cmd="git --no-pager diff"
-    case "$commit" in
-    --cached) diff_cmd="$diff_cmd --cached" ;;
-    --current | "") ;;
-    *) diff_cmd="$diff_cmd ${commit}^!" ;;
-    esac
-    print_debug "Building diff for commit ${commit} with pattern ${diff_pattern}"
+    # Use consolidated get_diff logic
+    diff_file=$(mktemp)
+    get_diff "$commit" "$diff_pattern" "$diff_file"
+    diff_output=$(cat "$diff_file")
+    rm -f "$diff_file"
+    # handle untracked files (unchanged)
+    untracked=$(git ls-files --others --exclude-standard)
+    OLD_IFS=$IFS
+    IFS='
+'
+    for f in $untracked; do
+        [ ! -f "$f" ] && continue
+        if [ -n "$diff_pattern" ]; then
+            case "$f" in
+            $diff_pattern) ;;
+            *) continue ;;
+            esac
+        fi
+        extra=$(git --no-pager diff --no-prefix --unified=0 --no-color -b -w \
+            --minimal --compact-summary --color-moved=no \
+            --no-index /dev/null "$f" 2>/dev/null || true)
+        if [ -n "$diff_output" ] && [ -n "$extra" ]; then
+            diff_output="${diff_output}
+            ${extra}"
+        elif [ -n "$extra" ]; then
+            diff_output="$extra"
+        fi
+    done
+    IFS=$OLD_IFS
 
-    diff_cmd="$diff_cmd --minimal --no-prefix --unified=3 --no-color -b -w --compact-summary --color-moved=no"
-    if [ -n "${diff_pattern}" ]; then
-        diff_cmd="$diff_cmd -- \"$diff_pattern\""
-    fi
-
-    print_debug "$diff_cmd"
-    # shellcheck disable=SC2086
-    diff_output=$(eval "$diff_cmd")
-
+    printf '%s\n' "$diff_output"
     # handle untracked files
     untracked=$(git ls-files --others --exclude-standard)
     OLD_IFS=$IFS
@@ -259,7 +281,7 @@ is_valid_commit() {
 # Modularized summarize_commit function
 summarize_commit() {
   commit="$1"
-  pathspec="$2"
+  pathspec="${2:-}"
 
   print_debug "Starting summarize_commit for commit: $commit"
 
@@ -272,9 +294,9 @@ summarize_commit() {
     return 0
   fi
 
-  hist=$(create_temp_file "hist.${commit}") || { print_error "Failed to create temp file for history"; return 1; }
-  pr=$(create_temp_file "prompt.${commit}") || { print_error "Failed to create temp file for prompt"; return 1; }
-  res_file=$(create_temp_file "summary.${commit}") || { print_error "Failed to create temp file for summary"; return 1; }
+  hist=$(portable_mktemp "hist.${commit}.XXXXXXX") || { print_error "Failed to create temp file for history"; return 1; }
+  pr=$(portable_mktemp "prompt.${commit}.XXXXXXX") || { print_error "Failed to create temp file for prompt"; return 1; }
+  res_file=$(portable_mktemp "summary.${commit}.XXXXXXX") || { print_error "Failed to create temp file for summary"; return 1; }
 
   print_debug "Temporary files created: hist=$hist, prompt=$pr, res_file=$res_file"
 
@@ -365,7 +387,12 @@ cache_summary() {
 # Function to create a temporary file with a given prefix
 create_temp_file() {
     prefix="$1"
-    mktemp "${GIV_TMP_DIR:-/tmp}/${prefix}.XXXXXX"
+    tmpdir="${GIV_TMP_DIR:-/tmp}"
+    mkdir -p "$tmpdir"
+    tmpfile=$(mktemp "$tmpdir/${prefix}.XXXXXX")
+    # Only clean up the temp file, not the whole temp dir
+    trap 'rm -f "$tmpfile"' EXIT
+    echo "$tmpfile"
 }
 
 # Function to save metadata for a given commit
@@ -421,3 +448,4 @@ summarize_target() {
 
 # # Ensure the temporary directory exists
 mkdir -p "${GIV_TMP_DIR:-/tmp}"
+

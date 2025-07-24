@@ -1,0 +1,20 @@
+name: Dash Shell CI
+
+on:
+  push:
+    branches: [ "main", "spike/config" ]
+  pull_request:
+    branches: [ "main", "spike/config" ]
+
+jobs:
+  dash-shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dash and bats
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dash bats
+      - name: Run Bats tests with dash
+        run: |
+          SHELL=/bin/dash bats tests/

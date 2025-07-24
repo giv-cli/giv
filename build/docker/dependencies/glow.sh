@@ -45,7 +45,7 @@ install_from_github() {
     esac
     
     tag=$(curl -fsSL https://api.github.com/repos/charmbracelet/glow/releases/latest |
-    grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    grep '"tag_name":' | sed -r 's/.*"([^"]+)".*/\1/')
     file="glow_${tag#v}_${os}_${arch}.tar.gz"
     
     tmpdir=$(mktemp -d)
@@ -82,8 +82,8 @@ install_from_github() {
 # installs it from GitHub. It then verifies whether the installation was successful.
 #
 # Exits with status 1 if the installation fails.
-ensure_glow() {
-    if is_installed; then
+install_glow() {
+    if is_glow_installed; then
         echo "✔ glow already installed: $(command -v glow)"
         return
     fi
@@ -95,7 +95,7 @@ ensure_glow() {
         install_from_github
     fi
     
-    if ! is_installed; then
+    if ! is_glow_installed; then
         echo "Installation failed. See https://github.com/charmbracelet/glow#installation"
         exit 1
     fi

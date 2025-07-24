@@ -130,24 +130,26 @@ generate_remote() {
         "${GIV_API_MODEL}" "${escaped_content}")
 
     # shellcheck disable=SC2154
-    response=$(curl -s -X POST "${GIV_API_URL}" \
-        -H "Authorization: Bearer ${GIV_API_KEY}" \
-        -H "Content-Type: application/json" \
-        -d "${body}")
+    response=$(curl -sS --fail -H "Authorization: Bearer ${GIV_API_KEY}" -H "Content-Type: application/json" -d "${body}" "${GIV_API_URL}")
 
     print_debug "Response from remote API:"
     print_debug "${response}"
 
     if [ -z "${response}" ]; then
-        print_error "No response received from remote API: ${GIV_API_URL}"
-        print_plain "Please check your API key and URL configuration."
-        return 1
+        print_error "Empty response from API"
+        exit 1
     fi
-
-    # Extract the content field from the response
-    result=$(extract_content_from_response "${response}")
-
-    echo "${result}"
+    # Try to extract content using jq if available
+    if command -v jq >/dev/null 2>&1; then
+        content=$(printf '%s' "$response" | jq -r '.choices[0].message.content')
+    else
+        content=$(extract_content_from_response "${response}")
+    fi
+    if [ -z "$content" ] || [ "$content" = "null" ]; then
+        print_error "No content in AI response"
+        exit 1
+    fi
+    echo "$content"
 }
 
 generate_response() {

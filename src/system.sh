@@ -100,11 +100,16 @@ portable_mktemp() {
     
     mkdir -p "${GIV_TMP_DIR}"
     
+    local tmpfile
     if command -v mktemp >/dev/null 2>&1; then
-        mktemp "${GIV_TMP_DIR}/$1"
+       tmpfile=$(mktemp "${GIV_TMP_DIR}/$1")
     else
-        echo "${GIV_TMP_DIR}/giv.$$.$(date +%s)"
+        tmpfile="${GIV_TMP_DIR}/giv.$$.$(date +%s)"
     fi
+    printf '%s\n' "$tmpfile"
+
+    # Only clean up the temp file, not the whole temp dir
+    trap 'rm -f "$tmpfile"' EXIT
 }
 
 load_env_file() {

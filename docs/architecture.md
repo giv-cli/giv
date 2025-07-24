@@ -1,6 +1,13 @@
 # Architecture
 
-A quick overview: giv is a POSIX-compliant shell script suite whose main entrypoint (giv.sh) initializes environment and dispatches subcommands. It sources modular libraries for configuration, system utilities, argument parsing, Markdown handling, LLM integration, project metadata, history extraction, and subcommand implementations. Major workflows include commit summarization (via summarize\_commit), changelog generation (cmd\_changelog), release-notes and announcements (via cmd\_document), and a generic document driver. Data domains span Git metadata (commits, diffs, tags), project metadata (version files, project titles), AI prompt templates, and generated summaries. Caching under `.giv/cache` avoids redundant work. Below are the details.
+A quick overview: giv is a POSIX-compliant shell script suite w### Changelog Generation
+
+The `changelog.sh` subcommand follows:
+
+1. Summarize commits/ranges with `summarize_target`.
+2. Build the changelog prompt (`changelog_prompt.md`) via `build_prompt`.
+3. Generate content (`generate_from_prompt`).
+4. Update `CHANGELOG.md` using `manage_section` and append a "Managed by giv" link.n entrypoint (`giv.sh`) initializes the environment and dispatches subcommands. It sources modular libraries for configuration, system utilities, argument parsing, Markdown handling, LLM integration, project metadata, history extraction, and subcommand implementations. Major workflows include commit summarization (via `summarize_commit`), changelog generation (via `changelog.sh`), release-notes and announcements (via `document.sh`), and a generic document driver. Data domains span Git metadata (commits, diffs, tags), project metadata (version files, project titles), AI prompt templates, and generated summaries. Caching under `.giv/cache` avoids redundant work. Below are the details.
 
 ## Repository Structure
 
@@ -10,7 +17,7 @@ The main script, **giv.sh**, locates the library, template, and docs directories
 
 ### Configuration Module
 
-**config.sh** exports globals for version (`__VERSION`), directory paths (`GIV_HOME`, `GIV_TMP_DIR`, `GIV_CACHE_DIR`), debugging flags, default Git revision/pathspec, AI model and API settings, project tokens, and default output filenames (`CHANGELOG.md`, etc.) ([config.sh][2]).
+**config.sh** centralizes all configuration logic. It exports globals for version (`__VERSION`), directory paths (`GIV_HOME`, `GIV_TMP_DIR`, `GIV_CACHE_DIR`), debugging flags, default Git revision/pathspec, AI model and API settings, project tokens, and default output filenames (`CHANGELOG.md`, etc.). All configuration keys are normalized via a dedicated `normalize_key()` function to ensure consistent access and override precedence. The module also handles loading from `.giv/config`, environment variables, and CLI arguments, applying a strict order of precedence and robust error handling for missing or malformed config values. This guarantees predictable, portable configuration across all scripts and environments. ([config.sh][2])
 
 ### System Utilities
 
@@ -22,32 +29,56 @@ The main script, **giv.sh**, locates the library, template, and docs directories
 
 ### Markdown Handling
 
-**markdown.sh** implements `manage_section` for append/prepend/update of Markdown sections, `append_link` to add links, utilities for stripping and normalizing Markdown (`strip_markdown`, `normalize_blank_lines`), and Markdown viewing via `glow` ([markdown.sh][5]).
+**markdown.sh** implements `manage_section` for append/prepend/update of Markdown sections, `append_link` to add links, utilities for stripping and normalizing Markdown (`strip_markdown`, `normalize_blank_lines`), and Markdown viewing via `glow` (with fallback to `cat` if unavailable) ([markdown.sh][5]).
 
 ### LLM Integration
 
-**llm.sh** handles JSON-escaping (`json_escape`), remote API calls (`generate_remote` via curl), local inference (`run_local` via Ollama), response parsing (`extract_content_from_response`), and high-level `generate_response`, along with prompt token replacement (`replace_tokens`), prompt building (`build_prompt`), and execution (`generate_from_prompt`) ([llm.sh][6]).
-
-### Project Metadata
-
-**metadata.sh** extracts project titles and version information from common project files like `package.json`, `pyproject.toml`, and `setup.py`. It also supports custom version file detection ([metadata.sh][7]).
+**llm.sh** handles JSON-escaping (`json_escape`), remote API calls (`generate_remote` via curl), local inference (`run_local` via Ollama), response parsing (`extract_content_from_response`), and high-level `generate_response`, along with prompt token replacement (`replace_tokens`), prompt building (`build_prompt`), and execution (`generate_from_prompt`). It includes robust error handling and a fallback to `jq` for JSON parsing ([llm.sh][6]).
 
 ### Centralized Metadata Retrieval
 
-**project_metadata.sh** now includes a centralized function, `get_metadata_value`, which retrieves metadata values (e.g., version, title) based on the project type. This function is used across scripts like `history.sh` and `llm.sh` to ensure consistent and modular metadata management. The project type is detected during initialization and stored in the configuration for runtime use.
+**project_metadata.sh** includes a centralized function, `get_metadata_value`, which retrieves metadata values (e.g., version, title) based on the project type. This function is used across scripts like `history.sh` and `llm.sh` to ensure consistent and modular metadata management. The project type is detected during initialization and stored in the configuration for runtime use.
 
 ### History Extraction
 
-**history.sh** provides utilities for summarizing Git history, extracting TODO changes, and caching summaries ([history.sh][8]).
+**history.sh** provides utilities for summarizing Git history, extracting TODO changes, and caching summaries. It consolidates diff logic in a single `get_diff` function and ensures strict error handling and cleanup of temporary files ([history.sh][8]).
 
 ### Subcommand Implementations
 
-**commands.sh** ties everything into user-facing commands: `cmd_message` for AI draft commit messages, `cmd_changelog` for changelog updates (using `manage_section`), `cmd_document` as a generic driver for release-notes, announcements, custom docs, and maintenance commands (`show_version`, `get_available_releases`, `run_update`) ([commands.sh][9]).
+Each subcommand in the `giv` CLI is implemented as a separate `.sh` script located in the `src/commands/` folder. The main `giv.sh` script detects the subcommand and delegates execution to the corresponding script. The architecture has recently evolved to support a more generic and modular approach:
+
+1. **Generic Document Driver (`document.sh`)**:
+   - Subcommands like `announcement.sh`, `release-notes.sh`, and `summary.sh` now act as thin wrappers that delegate their functionality to `document.sh`.
+   - These scripts pass specific templates (e.g., `announcement_prompt.md`, `release_notes_prompt.md`, `final_summary_prompt.md`) to `document.sh` for processing.
+   - The `document` subcommand itself allows arbitrary prompt files via `--prompt-file`, supporting custom document types and workflows.
+
+2. **Direct Implementations**:
+   - Scripts like `changelog.sh` and `message.sh` currently implement their logic directly, but there is an ongoing migration to unify all document-like subcommands under the generic driver for consistency and maintainability.
+   - These scripts handle argument parsing, Git history summarization, and AI prompt generation within the script.
+
+3. **Shared Functionality**:
+   - Common argument parsing and utility functions are provided by `document_args.sh` and other shared scripts. The new `parse_document_args` function is used for all document-related subcommands to ensure consistent flag handling (e.g., `--prompt-file`, `--project-type`).
+
+4. **Execution Flow and Error Handling**:
+   - The main `giv.sh` script identifies the subcommand and executes the corresponding `.sh` file from the `commands` folder.
+   - If the subcommand script is not found, an error message is displayed with a list of available subcommands.
+   - All subcommands now include improved error handling: missing dependencies, invalid config, or failed AI calls are surfaced to the user with clear messages and exit codes. Optional dependencies (e.g., Glow, Ollama, GitHub CLI) are checked at runtime, and warnings are issued if unavailable.
+
+This modular structure ensures that each subcommand is self-contained and easy to maintain, while shared functionality is centralized for reuse. The ongoing migration aims to further unify subcommand logic and reduce duplication.
+## Testing and Error Handling
+
+- The project includes an extensive test suite under `tests/`, covering all major workflows and edge cases. Tests are run in sandboxed environments to ensure reliability and portability.
+- Error handling is robust: missing dependencies, invalid config, or failed AI calls result in clear user-facing messages and non-zero exit codes. Warnings are issued for optional but recommended settings.
+- Users can opt for manual review before saving generated content, providing an additional layer of safety.
+
+---
+
+These updates ensure the documentation accurately reflects the current and planned architecture, workflows, error handling, and testing strategy of the giv CLI tool.
 
 ## Data Domains
 
 1. **Git Data**: Commits, diffs, staged/unstaged changes, untracked files, commit dates, tags and ranges (handled by `build_diff`, `get_commit_date`, Git plumbing) ([history.sh][8]).
-2. **Project Metadata**: Version files (`package.json`, etc.), extracted versions (`get_version_info`), and project titles (`get_project_title`) ([metadata.sh][7]).
+2. **Project Metadata**: Version files (`package.json`, etc.), extracted versions (`get_version_info`), and project titles (`get_project_title`) ([project_metadata.sh][7]).
 3. **AI Prompt Templates**: Markdown templates stored under `templates/` (e.g. `summary_prompt.md`, `changelog_prompt.md`, `release_notes_prompt.md`, `announcement_prompt.md`) ([giv.sh][1]).
 4. **Generated Content**: Summary Markdown, commit messages, changelogs, release notes, announcements, managed under `.giv/cache` and output files in project root ([system.sh][3]) ([history.sh][8]).
 5. **Configuration & State**: Stored in `.giv/config`, `.giv/cache`, `.giv/.tmp`, and optionally `.giv/templates` (after `init`) ([system.sh][3]).
@@ -75,16 +106,16 @@ The `summarize_commit` function in **history.sh** orchestrates:
 
 ### Release-Notes & Announcements
 
-Both use the generic `cmd_document` driver:
+Both use the generic `document.sh` subcommand as their driver:
 
 1. Summarize history into temp file.
 2. Build prompt from `release_notes_prompt.md` or `announcement_prompt.md`.
-3. Call `generate_from_prompt` with tailored temperature and context window ([giv.sh][1]).
+3. Call `generate_from_prompt` with tailored temperature and context window.
 4. Output to `RELEASE_NOTES.md` or `ANNOUNCEMENT.md`.
 
 ### Generic Document Generation
 
-The `document` subcommand invokes `cmd_document` with a user-supplied `--prompt-file`, enabling arbitrary AI-driven reports over any revision/pathspec ([commands.sh][9]).
+The `document` subcommand invokes `document.sh` with a user-supplied `--prompt-file`, enabling arbitrary AI-driven reports over any revision/pathspec.
 
 ## Architecture Diagrams
 
@@ -110,7 +141,7 @@ sequenceDiagram
     History-->>giv.sh: summaries file
     giv.sh->>Markdown: manage_section(...)
     Markdown-->>giv.sh: updated Markdown
-    giv.sh->>Output: write CHANGELOG.md
+    giv.sh->>Output: write
 ```
 
 ### Class Diagram
@@ -142,18 +173,22 @@ classDiagram
         +generate_response()
         +build_prompt()
     }
-    class metadata.sh {
+    class project_metadata.sh {
         +get_project_title()
         +get_version_info()
+        +get_metadata_value()
     }
     class history.sh {
         +build_history()
         +summarize_commit()
     }
-    class commands.sh {
-        +cmd_changelog()
-        +cmd_document()
-        +cmd_message()
+    class "commands/*.sh" {
+        +changelog.sh
+        +document.sh
+        +message.sh
+        +announcement.sh
+        +release-notes.sh
+        +summary.sh
     }
 
     giv.sh --> config.sh
@@ -161,14 +196,14 @@ classDiagram
     giv.sh --> args.sh
     giv.sh --> markdown.sh
     giv.sh --> llm.sh
-    giv.sh --> metadata.sh
+    giv.sh --> project_metadata.sh
     giv.sh --> history.sh
-    giv.sh --> commands.sh
-    commands.sh --> history.sh
-    commands.sh --> llm.sh
-    commands.sh --> markdown.sh
-    history.sh --> metadata.sh
-    llm.sh --> metadata.sh
+    giv.sh --> "commands/*.sh"
+    "commands/*.sh" --> history.sh
+    "commands/*.sh" --> llm.sh
+    "commands/*.sh" --> markdown.sh
+    history.sh --> project_metadata.sh
+    llm.sh --> project_metadata.sh
     markdown.sh --> system.sh
 ```
 
@@ -180,9 +215,9 @@ This should give you a clear view of how the scripts interconnect, the data each
 [4]: /src/args.sh "args.sh"
 [5]: /src/markdown.sh "markdown.sh"
 [6]: /src/llm.sh
-[7]: /src/metadata.sh
+[7]: /src/project_metadata.sh
 [8]: /src/history.sh
-[9]: /src/commands.sh
+[9]: /src/commands/
 
 Across the giv-CLI tool, there are five primary **data domains**—each holding specific values—and the `document` subcommand orchestrates several modules in a well-defined call sequence. Below is a data-structure diagram showing the domains and their key contents, then a detailed sequence diagram illustrating exactly how `giv document` runs under the hood.
 
@@ -250,7 +285,7 @@ sequenceDiagram
     participant args.sh
     participant system.sh
     participant history.sh
-    participant project.sh
+    participant project_metadata.sh
     participant llm.sh
     participant markdown.sh
     participant OutputFile as "DOCUMENT.md"
@@ -265,10 +300,10 @@ sequenceDiagram
 
     giv.sh->>history.sh: summarize_target("v1.2.0..HEAD")
     history.sh->>history.sh: build_history("v1.2.0..HEAD")
-    history.sh->>project.sh: get_project_title()
-    project.sh-->>history.sh: "My Project"
-    history.sh->>project.sh: get_version_info("v1.2.0")
-    project.sh-->>history.sh: "1.2.0"
+    history.sh->>project_metadata.sh: get_project_title()
+    project_metadata.sh-->>history.sh: "My Project"
+    history.sh->>project_metadata.sh: get_version_info("v1.2.0")
+    project_metadata.sh-->>history.sh: "1.2.0"
 
     history.sh->>llm.sh: build_prompt(templates/document_prompt.md,history.md,title, version)
     llm.sh-->>history.sh: fullPrompt
@@ -282,9 +317,9 @@ sequenceDiagram
     giv.sh->>OutputFile: display("DOCUMENT.md")
 ```
 
-1. **Initialization** (once): creates `.giv/` directories.
+1. **Initialization** (once): creates `.giv/` directory.
 2. **Argument Parsing**: `args.sh` sets up global vars (prompt file, revision range).
-3. **History Extraction**: `history.sh` builds a unified history for the given range, invoking `metadata.sh` for title/version.
+3. **History Extraction**: `history.sh` builds a unified history for the given range, invoking `project_metadata.sh` for title/version.
 4. **Prompt Assembly**: `llm.sh` merges the template, history, and metadata into a single prompt.
 5. **AI Generation**: same module calls out to remote/local LLM, returns the document text.
 6. **Output**: `markdown.sh` writes the result to `DOCUMENT.md` and the CLI presents it.

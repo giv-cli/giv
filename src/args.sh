@@ -83,22 +83,20 @@ EOF
 # Returns:
 #   0 if parsing is successful, non-zero on error.
 parse_args() {
+
+    config_file=""
     # Parse global options and subcommand first
     parse_global_args "$@"
+
+    # Remove the subcommand from the argument list
+    shift
 
     # Restore remaining arguments for subcommand-specific parsing
     set -- "$@"
 
     # Early config file parsing
-    config_file="${GIV_HOME}/config"
-    if [ -f "${config_file}" ]; then
-        print_debug "Sourcing config file: ${config_file}"
-        # shellcheck disable=SC1090
-        . "${config_file}"
-    fi
-
+    # config_file may be set by global options, so use its current value
     print_debug "Setting initial variables"
-    
     api_model="${GIV_API_MODEL:-'devstral'}"
     api_url="${GIV_API_URL:-}"
     api_key="${GIV_API_KEY:-}"
@@ -106,23 +104,20 @@ parse_args() {
 
     # Load config file if it exists
     is_config_loaded=false
-    # Always attempt to source config file if it exists; empty config_file is a valid state.
-    if [ -f "${config_file}" ]; then
-        print_debug "Sourcing config file: ${config_file}"
-        # shellcheck disable=SC1090
-        . "${config_file}"
-        print_debug "Loaded config file: ${config_file}"
+    if [ -n "$config_file" ] && [ -f "$config_file" ]; then
+        print_debug "Sourcing config file: $config_file"
+        . "$config_file"
+        print_debug "Loaded config file: $config_file"
         is_config_loaded=true
-        elif [ ! -f "${config_file}" ] && [ "${config_file}" != "${PWD}/.env" ]; then
-        print_warn "config file ${config_file} not found."
+    elif [ -n "$config_file" ] && [ ! -f "$config_file" ] && [ "$config_file" != "${PWD}/.env" ]; then
+        echo "WARNING: config file $(basename "$config_file") not found."
     else
         print_debug "No config file specified or found, using defaults."
     fi
-    
+
     api_model=${GIV_API_MODEL:-${api_model}}
     api_url=${GIV_API_URL:-${api_url}}
     api_key=${GIV_API_KEY:-${api_key}}
-    
     debug="${GIV_DEBUG:-}"
     output_file="${GIV_OUTPUT_FILE:-}"
     todo_pattern="${GIV_TODO_PATTERN:-}"
@@ -132,75 +127,72 @@ parse_args() {
     version_file="${GIV_PROJECT_VERSION_FILE:-}"
     version_pattern="${GIV_PROJECT_VERSION_PATTERN:-}"
     prompt_file="${GIV_PROMPT_FILE:-}"
-    
-    print_debug "Parsing revision"
-    # 2. Next arg: revision (if present and not option)
-    if [ $# -gt 0 ]; then
-        case "$1" in
-            --current | --staged | --cached)
-                if [ "$1" = "--staged" ]; then
-                    GIV_REVISION="--cached"
-                else
-                    GIV_REVISION="$1"
-                fi
-                shift
-            ;;
-            -*)
-                : # skip, no target
-            ;;
-            *)
-                print_debug "Parsing revision: $1"
-                # Check if $1 is a valid commit range or commit id
-                if echo "$1" | grep -q '\.\.'; then
-                    if git rev-list "$1" >/dev/null 2>&1; then
-                        GIV_REVISION="$1"
-                        # If it's a valid commit ID, shift it
-                        print_debug "Valid commit range: $1"
-                        shift
-                    else
-                        print_error "Invalid commit range: $1"
-                        exit 1
-                    fi
-                    elif git rev-parse --verify "$1" >/dev/null 2>&1; then
-                    GIV_REVISION="$1"
-                    # If it's a valid commit ID, shift it
-                    print_debug "Valid commit ID: $1"
-                    shift
-                else
-                    print_error "Invalid target: $1"
-                    exit 1
-                fi
-                # else: do not shift, let it fall through to pattern parsing
-            ;;
-        esac
-    fi
-    
-    if [ -z "${GIV_REVISION}" ]; then
-        # If no target specified, default to current working tree
-        print_debug "Debug: No target specified, defaulting to current working tree."
-        GIV_REVISION="--current"
-    fi
 
-        print_debug "Parsing revision"
-        # 3. Collect all non-option args as pattern (until first option or end)
-        # Only collect pathspec if there are non-option args left AND they are not files like the script itself
-        while [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; do
-            # Avoid setting pathspec to the script name itself (e.g., install.sh)
-            if [ "$1" = "$(basename "$0")" ]; then
-                print_debug "Skipping script name argument: $1"
+    # Use the subcmd variable set by parse_global_args
+    case "$subcmd" in
+        message|msg|summary|changelog|release-notes|announcement|document|doc|available-releases|update|init|config)
+            # These subcommands may take a revision/target/pathspec
+            print_debug "Parsing revision for subcommand: $subcmd"
+            if [ $# -gt 0 ]; then
+                case "$1" in
+                    --current | --staged | --cached)
+                        if [ "$1" = "--staged" ]; then
+                            GIV_REVISION="--cached"
+                        else
+                            GIV_REVISION="$1"
+                        fi
+                        shift
+                    ;;
+                    -* )
+                        : # skip, no target
+                    ;;
+                    *)
+                        print_debug "Parsing revision: $1"
+                        if echo "$1" | grep -q '\.\.'; then
+                            if git rev-list "$1" >/dev/null 2>&1; then
+                                GIV_REVISION="$1"
+                                print_debug "Valid commit range: $1"
+                                shift
+                            else
+                                print_error "Invalid commit range: $1"
+                                exit 1
+                            fi
+                        elif git rev-parse --verify "$1" >/dev/null 2>&1; then
+                            GIV_REVISION="$1"
+                            print_debug "Valid commit ID: $1"
+                            shift
+                        else
+                            print_error "Invalid target: $1"
+                            exit 1
+                        fi
+                    ;;
+                esac
+            fi
+            if [ -z "${GIV_REVISION}" ]; then
+                print_debug "Debug: No target specified, defaulting to current working tree."
+                GIV_REVISION="--current"
+            fi
+            print_debug "Parsing pathspec for subcommand: $subcmd"
+            while [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; do
+                if [ "$1" = "$(basename "$0")" ]; then
+                    print_debug "Skipping script name argument: $1"
+                    shift
+                    continue
+                fi
+                print_debug "Collecting pattern: $1"
+                if [ -z "${GIV_PATHSPEC}" ]; then
+                    GIV_PATHSPEC="$1"
+                else
+                    GIV_PATHSPEC="${GIV_PATHSPEC} $1"
+                fi
                 shift
-                continue
-            fi
-            print_debug "Collecting pattern: $1"
-            if [ -z "${GIV_PATHSPEC}" ]; then
-                GIV_PATHSPEC="$1"
-            else
-                GIV_PATHSPEC="${GIV_PATHSPEC} $1"
-            fi
-            shift
-        done
-    
-    print_debug "Target and pattern parsed: ${GIV_REVISION}, ${GIV_PATHSPEC}"
+            done
+            print_debug "Target and pattern parsed: ${GIV_REVISION}, ${GIV_PATHSPEC}"
+            ;;
+        *)
+            # For subcommands that do not take revision/pathspec, skip this logic
+            ;;
+    esac
     
     # 4. Remaining args: global options
     while [ $# -gt 0 ]; do
@@ -334,9 +326,11 @@ parse_args() {
     print_debug "  Prompt File: ${GIV_PROMPT_FILE:-}"
 }
 
+
 # Parses global options and the subcommand
 parse_global_args() {
     subcmd=''
+    GIV_DRY_RUN=""
 
     # Check if no arguments are provided
     if [ $# -eq 0 ]; then
