@@ -72,7 +72,4 @@ if [ "$#" -lt 1 ]; then
     exit 1
 fi
 
-# Initialize missing variables to resolve lint errors
-GIV_LIB_DIR="/path/to/lib"
-
 cmd_document "$@"

@@ -47,9 +47,9 @@ Refactor the `giv` CLI to simplify the main entry script (`src/giv.sh`) and argu
      parse_args "$@"
      metadata_init
 
-     if [ -f "${GIV_LIB_DIR}/commands/${subcmd}.sh" ]; then
+     if [ -f "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" ]; then
          ensure_giv_dir_init
-         "${GIV_LIB_DIR}/commands/${subcmd}.sh" "$@"
+         "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" "$@"
          exit 0
      fi
      ```
@@ -60,7 +60,7 @@ Refactor the `giv` CLI to simplify the main entry script (`src/giv.sh`) and argu
 
 - **Steps:**
   1. Remove logic for parsing subcommand-specific arguments.
-  2. Ensure `src/args.sh` sets the `subcmd` variable to the identified subcommand.
+  2. Ensure `src/args.sh` sets the `GIV_SUBCMD` variable to the identified subcommand.
   3. Parse and handle global options like `--verbose`, `--update`, `--api-model`, `--api-url`, and `--api-key`.
 
 ### 3. Create Subcommand Scripts

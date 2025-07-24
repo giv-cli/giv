@@ -136,8 +136,9 @@ generate_remote() {
     print_debug "${response}"
 
     if [ -z "${response}" ]; then
-        print_error "Empty response from API"
-        exit 1
+        print_error "No response received from remote API: ${GIV_API_URL}"
+        print_plain "Please check your API key and URL configuration."
+        return 1
     fi
     # Try to extract content using jq if available
     if command -v jq >/dev/null 2>&1; then

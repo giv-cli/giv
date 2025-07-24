@@ -17,7 +17,7 @@ The main script, **giv.sh**, locates the library, template, and docs directories
 
 ### Configuration Module
 
-**config.sh** centralizes all configuration logic. It exports globals for version (`__VERSION`), directory paths (`GIV_HOME`, `GIV_TMP_DIR`, `GIV_CACHE_DIR`), debugging flags, default Git revision/pathspec, AI model and API settings, project tokens, and default output filenames (`CHANGELOG.md`, etc.). All configuration keys are normalized via a dedicated `normalize_key()` function to ensure consistent access and override precedence. The module also handles loading from `.giv/config`, environment variables, and CLI arguments, applying a strict order of precedence and robust error handling for missing or malformed config values. This guarantees predictable, portable configuration across all scripts and environments. ([config.sh][2])
+**system.sh** centralizes all configuration logic. It exports globals for version (`__VERSION`), directory paths (`GIV_HOME`, `GIV_TMP_DIR`, `GIV_CACHE_DIR`), debugging flags, default Git revision/pathspec, AI model and API settings, project tokens, and default output filenames (`CHANGELOG.md`, etc.). All configuration keys are normalized via a dedicated `normalize_key()` function to ensure consistent access and override precedence. The module also handles loading from `.giv/config`, environment variables, and CLI arguments, applying a strict order of precedence and robust error handling for missing or malformed config values. This guarantees predictable, portable configuration across all scripts and environments. ([system.sh][2])
 
 ### System Utilities
 
@@ -97,12 +97,12 @@ The `summarize_commit` function in **history.sh** orchestrates:
 
 ### Changelog Generation
 
-`cmd_changelog` in **commands.sh** follows:
+`changelog` in **commands/changelone.sh** follows:
 
 1. Summarize commits/ranges with `summarize_target`.
 2. Build the changelog prompt (`changelog_prompt.md`) via `build_prompt`.
 3. Generate content (`generate_from_prompt`).
-4. Update `CHANGELOG.md` using `manage_section` and append a “Managed by giv” link ([commands.sh][9]).
+4. Update `CHANGELOG.md` using `manage_section` and append a “Managed by giv” link ([commands/changelog.sh][9]).
 
 ### Release-Notes & Announcements
 
@@ -153,10 +153,8 @@ classDiagram
         +parse_args()
         +dispatch()
     }
-    class config.sh {
-        - export GIV_*
-    }
     class system.sh {
+        - export GIV_*
         +print_debug()
         +portable_mktemp_dir()
         +ensure_giv_dir_init()
@@ -191,7 +189,7 @@ classDiagram
         +summary.sh
     }
 
-    giv.sh --> config.sh
+    giv.sh --> init.sh
     giv.sh --> system.sh
     giv.sh --> args.sh
     giv.sh --> markdown.sh
@@ -210,7 +208,7 @@ classDiagram
 This should give you a clear view of how the scripts interconnect, the data each component handles, and the flow of execution through the tool.
 
 [1]: /src/giv.sh "giv.sh"
-[2]: /src/config.sh "config.sh"
+[2]: /src/system.sh "system.sh"
 [3]: /src/system.sh "system.sh"
 [4]: /src/args.sh "args.sh"
 [5]: /src/markdown.sh "markdown.sh"

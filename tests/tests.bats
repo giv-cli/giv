@@ -3,7 +3,6 @@
 # load 'test_helper/bats-support/load'
 # load 'test_helper/bats-assert/load'
 
-# load "$BATS_TEST_DIRNAME/../src/config.sh"
 # . "$BATS_TEST_DIRNAME/../src/system.sh"
 
 # export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/main.error.log"

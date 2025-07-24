@@ -84,7 +84,6 @@ EOF
 #   0 if parsing is successful, non-zero on error.
 parse_args() {
 
-    config_file=""
     # Parse global options and subcommand first
     parse_global_args "$@"
 
@@ -95,7 +94,7 @@ parse_args() {
     set -- "$@"
 
     # Early config file parsing
-    # config_file may be set by global options, so use its current value
+    # GIV_CONFIG_FILE may be set by global options, so use its current value
     print_debug "Setting initial variables"
     api_model="${GIV_API_MODEL:-'devstral'}"
     api_url="${GIV_API_URL:-}"
@@ -104,13 +103,13 @@ parse_args() {
 
     # Load config file if it exists
     is_config_loaded=false
-    if [ -n "$config_file" ] && [ -f "$config_file" ]; then
-        print_debug "Sourcing config file: $config_file"
-        . "$config_file"
-        print_debug "Loaded config file: $config_file"
+    if [ -n "$GIV_CONFIG_FILE" ] && [ -f "$GIV_CONFIG_FILE" ]; then
+        print_debug "Sourcing config file: $GIV_CONFIG_FILE"
+        . "$GIV_CONFIG_FILE"
+        print_debug "Loaded config file: $GIV_CONFIG_FILE"
         is_config_loaded=true
-    elif [ -n "$config_file" ] && [ ! -f "$config_file" ] && [ "$config_file" != "${PWD}/.env" ]; then
-        echo "WARNING: config file $(basename "$config_file") not found."
+    elif [ -n "$GIV_CONFIG_FILE" ] && [ ! -f "$GIV_CONFIG_FILE" ] && [ "$GIV_CONFIG_FILE" != "${PWD}/.env" ]; then
+        echo "WARNING: config file $(basename "$GIV_CONFIG_FILE") not found."
     else
         print_debug "No config file specified or found, using defaults."
     fi
@@ -128,11 +127,11 @@ parse_args() {
     version_pattern="${GIV_PROJECT_VERSION_PATTERN:-}"
     prompt_file="${GIV_PROMPT_FILE:-}"
 
-    # Use the subcmd variable set by parse_global_args
-    case "$subcmd" in
+    # Use the GIV_SUBCMD variable set by parse_global_args
+    case "$GIV_SUBCMD" in
         message|msg|summary|changelog|release-notes|announcement|document|doc|available-releases|update|init|config)
             # These subcommands may take a revision/target/pathspec
-            print_debug "Parsing revision for subcommand: $subcmd"
+            print_debug "Parsing revision for subcommand: $GIV_SUBCMD"
             if [ $# -gt 0 ]; then
                 case "$1" in
                     --current | --staged | --cached)
@@ -172,7 +171,7 @@ parse_args() {
                 print_debug "Debug: No target specified, defaulting to current working tree."
                 GIV_REVISION="--current"
             fi
-            print_debug "Parsing pathspec for subcommand: $subcmd"
+            print_debug "Parsing pathspec for subcommand: $GIV_SUBCMD"
             while [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; do
                 if [ "$1" = "$(basename "$0")" ]; then
                     print_debug "Skipping script name argument: $1"
@@ -206,7 +205,7 @@ parse_args() {
                 shift
             ;;
             --config-file)
-                config_file=$2
+                GIV_CONFIG_FILE=$2
                 shift 2
             ;;
             --todo-files)
@@ -278,7 +277,7 @@ parse_args() {
     print_debug "Parsed options"
     
     # If subcommand is document, ensure we have a prompt file
-    if [ "${subcmd}" = "document" ] && [ -z "${prompt_file}" ]; then
+    if [ "${GIV_SUBCMD}" = "document" ] && [ -z "${prompt_file}" ]; then
         printf 'Error: --prompt-file is required for the document subcommand.\n' >&2
         exit 1
     fi
@@ -308,7 +307,7 @@ parse_args() {
     print_debug "Parsed options:"
     print_debug "  Debug: ${GIV_DEBUG}"
     print_debug "  Dry Run: ${GIV_DRY_RUN}"
-    print_debug "  Subcommand: ${subcmd}"
+    print_debug "  Subcommand: ${GIV_SUBCMD}"
     print_debug "  Revision: ${GIV_REVISION}"
     print_debug "  Pathspec: ${GIV_PATHSPEC}"
     print_debug "  Template Directory: ${GIV_TEMPLATE_DIR:-}"
@@ -329,7 +328,7 @@ parse_args() {
 
 # Parses global options and the subcommand
 parse_global_args() {
-    subcmd=''
+    GIV_SUBCMD=''
     GIV_DRY_RUN=""
 
     # Check if no arguments are provided
@@ -338,28 +337,64 @@ parse_global_args() {
         exit 1
     fi
 
-    # Parse the first argument as a subcommand or help/version
-    case "$1" in
-        -h | --help | help)
-            show_help
-            exit 0
-        ;;
-        -v | --version)
-            show_version
-            exit 0
-        ;;
-        message | msg | summary | changelog \
-        | document | doc | release-notes | announcement \
-        | available-releases | update | init | config)
-            subcmd=$1
-            shift
-        ;;
-        *)
-            echo "First argument must be a subcommand or -h/--help/-v/--version"
-            show_help
-            exit 1
-        ;;
-    esac
+    # Parse global options and subcommand
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -h | --help | help)
+                GIV_SUBCMD='help'
+                shift
+                break
+            ;;
+            -v | --version)
+                GIV_SUBCMD='version'
+                shift
+                break
+            ;;
+            --config-file)
+                # Convert to absolute path if relative
+                if [ "${2#/}" = "$2" ]; then
+                    config_file="$(pwd)/$2"
+                else
+                    config_file="$2"
+                fi
+                shift 2
+            ;;
+            --verbose)
+                GIV_DEBUG="true"
+                export GIV_DEBUG
+                shift
+            ;;
+            --dry-run)
+                GIV_DRY_RUN="true"
+                export GIV_DRY_RUN
+                shift
+            ;;
+            message | msg | summary | changelog \
+            | document | doc | release-notes | announcement \
+            | available-releases | update | init | config)
+                GIV_SUBCMD=$1
+                shift
+                break
+            ;;
+            -*)
+                echo "Unknown option: $1" >&2
+                exit 1
+            ;;
+            *)
+                # Unknown subcommand - let the dispatcher handle it
+                GIV_SUBCMD=$1
+                shift
+                break
+            ;;
+        esac
+    done
+
+    # Load config file if specified
+    if [ -n "${config_file:-}" ] && [ -f "$config_file" ]; then
+        print_debug "Sourcing config file: $config_file"
+        . "$config_file"
+        print_debug "Loaded config file: $config_file"
+    fi
 
     # Preserve remaining arguments for later parsing
     set -- "$@"
@@ -376,11 +411,11 @@ parse_global_args() {
                 shift
             ;;
             --config-file)
-                config_file=$2
+                GIV_CONFIG_FILE=$2
                 shift 2
             ;;
             --config-file=*)
-                config_file="${1#--config-file=}"
+                GIV_CONFIG_FILE="${1#--config-file=}"
                 shift
             ;;
             *)
@@ -393,8 +428,8 @@ parse_global_args() {
     # Export parsed global variables
     export GIV_DEBUG
     export GIV_DRY_RUN
-    export config_file
-    export subcmd
+    export GIV_CONFIG_FILE
+    export GIV_SUBCMD
 }
 
 

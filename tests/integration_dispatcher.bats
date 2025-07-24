@@ -41,6 +41,10 @@ setup() {
     echo "GIV_API_URL=https://api.test.com" >> "$GIV_HOME/config"
     echo "GIV_API_MODEL=test-model" >> "$GIV_HOME/config"
     echo "GIV_PROJECT_TYPE=node" >> "$GIV_HOME/config"
+    echo "GIV_PROJECT_TITLE=test-project" >> "$GIV_HOME/config"
+    echo "GIV_PROJECT_DESCRIPTION=A test project" >> "$GIV_HOME/config"
+    echo "GIV_PROJECT_URL=https://github.com/test/test" >> "$GIV_HOME/config"
+    echo "GIV_INITIALIZED=\"true\"" >> "$GIV_HOME/config"
     
     # Mock generate_response function to avoid actual AI calls
     export -f mock_generate_response
@@ -95,7 +99,7 @@ mock_generate_response() {
         [ -f "$GIV_LIB_DIR/commands/${cmd}.sh" ] || skip "Subcommand $cmd not found"
         
         # Run with dry-run to avoid actual execution but test dispatcher logic
-        run timeout 10s "$GIV_SCRIPT" "$cmd" --dry-run 2>/dev/null || true
+        run timeout 2s "$GIV_SCRIPT" "$cmd" --dry-run 2>/dev/null || true
         # Should not fail with "Unknown subcommand" error
         refute_output --partial "Unknown subcommand: $cmd"
     done

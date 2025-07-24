@@ -17,7 +17,7 @@
         "pypi",
         "pyproject",
         "RLENGTH",
-        "subcmd",
+        "GIV_SUBCMD",
         "toplevel",
         "unmatch"
     ],

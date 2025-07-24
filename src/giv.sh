@@ -103,23 +103,26 @@ ensure_giv_dir_init
 # Parse global options and subcommand first (for help/version)
 parse_global_args "$@"
 
+# Remove the subcommand from arguments for delegation
+shift
+
 # Initialize metadata only for commands that need it (not help/version)
-case "${subcmd:-}" in
+case "${GIV_SUBCMD:-}" in
     help|-h|--help|version|-v|--version)
         # Skip metadata initialization for help/version
         ;;
     *)
-        initialize_metadata
+        initialize_metadata "false"
         ;;
 esac
 
-if [ -f "${GIV_LIB_DIR}/commands/${subcmd}.sh" ]; then
+if [ -f "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" ]; then
     # Delegate to the subcommand script
-    printf 'Executing subcommand: %s\n' "${subcmd}"
-    "${GIV_LIB_DIR}/commands/${subcmd}.sh" "$@"
+    [ "${GIV_DEBUG}" = "true" ] && printf 'Executing subcommand: %s\n' "${GIV_SUBCMD}" >&2
+    "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" "$@"
     exit 0
 else
-    echo "Unknown subcommand: ${subcmd}" >&2
+    echo "Unknown subcommand: ${GIV_SUBCMD}" >&2
     echo "Available subcommands: $(ls ${GIV_LIB_DIR}/commands | sed 's/\.sh$//')" >&2
     exit 1
 fi

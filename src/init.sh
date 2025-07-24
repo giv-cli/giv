@@ -132,13 +132,11 @@ export GIV_LIB_DIR GIV_TEMPLATE_DIR GIV_DOCS_DIR
 [ "${GIV_DEBUG}" = "true" ] && printf 'Using giv docs directory: %s\n' "${GIV_DOCS_DIR}"
 
 # Load shared modules
-. "${GIV_LIB_DIR}/config.sh"
 . "${GIV_LIB_DIR}/system.sh"
 . "${GIV_LIB_DIR}/args.sh"
 . "${GIV_LIB_DIR}/markdown.sh"
 . "${GIV_LIB_DIR}/llm.sh"
 . "${GIV_LIB_DIR}/project_metadata.sh"
 . "${GIV_LIB_DIR}/history.sh"
-. "${GIV_LIB_DIR}/commands.sh"
 
 load_env_file

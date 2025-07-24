@@ -10,7 +10,7 @@
 if [ -n "${BATS_TEST_DIRNAME:-}" ]; then
   . "$BATS_TEST_DIRNAME/../src/project_metadata.sh"
 else
-  . "$(dirname "$0")/project_metadata.sh"
+  . "${GIV_LIB_DIR}/project_metadata.sh"
 fi
 
 # Extract TODO changes for history extraction

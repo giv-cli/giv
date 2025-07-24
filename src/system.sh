@@ -1,3 +1,41 @@
+#!/bin/sh
+# system.sh: System-wide variables and utility functions for GIV CLI
+
+## Global GIV Configuration Variables
+export __VERSION="0.3.0-beta"
+
+## Default git revision and pathspec
+export GIV_REVISION="--current"
+export GIV_PATHSPEC=""
+
+## Model and API configuration
+export GIV_API_MODEL="${GIV_API_MODEL:-'devstral'}"
+export GIV_API_URL="${GIV_API_URL:-'http://localhost:11434/v1/chat/completions'}"
+export GIV_API_KEY="${GIV_API_KEY:-'giv'}"
+
+## Project details
+export GIV_METADATA_PROJECT_TYPE="${GIV_METADATA_PROJECT_TYPE:-auto}"
+export GIV_PROJECT_VERSION_FILE="${GIV_PROJECT_VERSION_FILE:-}"
+export GIV_PROJECT_VERSION_PATTERN="${GIV_PROJECT_VERSION_PATTERN:-}"
+export GIV_TODO_PATTERN="${GIV_TODO_PATTERN:-}"
+export GIV_TODO_FILES="${GIV_TODO_FILES:-*todo*}"
+
+## Prompt file and tokens
+export GIV_PROMPT_FILE="${GIV_PROMPT_FILE:-}"
+export GIV_TOKEN_PROJECT_TITLE="${GIV_TOKEN_PROJECT_TITLE:-}"
+export GIV_TOKEN_VERSION="${GIV_TOKEN_VERSION:-}"
+export GIV_TOKEN_EXAMPLE="${GIV_TOKEN_EXAMPLE:-}"
+export GIV_TOKEN_RULES="${GIV_TOKEN_RULES:-}"
+
+## Output configuration
+export GIV_OUTPUT_FILE="${GIV_OUTPUT_FILE:-}"
+export GIV_OUTPUT_MODE="${GIV_OUTPUT_MODE:-}"
+export GIV_OUTPUT_VERSION="${GIV_OUTPUT_VERSION:-}"
+
+### Changelog & release default output files
+export changelog_file='CHANGELOG.md'
+export release_notes_file='RELEASE_NOTES.md'
+export announce_file='ANNOUNCEMENT.md'
 
 
 # -------------------------------------------------------------------
@@ -214,6 +252,18 @@ initialize_metadata() {
 #   version.pattern
 detect_project_type() {
     # List of known project types and their identifying files
+    if [ -n "${GIV_PROJECT_TYPE}" ]; then
+        # If user specified project type, use it and allow custom file/pattern overrides
+        "${GIV_LIB_DIR}"/commands/config.sh project.type "${GIV_PROJECT_TYPE}"
+        if [ -n "${GIV_PROJECT_VERSION_FILE}" ]; then
+            "${GIV_LIB_DIR}"/commands/config.sh project.version.file "${GIV_PROJECT_VERSION_FILE}"
+        fi
+        if [ -n "${GIV_PROJECT_VERSION_PATTERN}" ]; then
+            "${GIV_LIB_DIR}"/commands/config.sh project.version.pattern "${GIV_PROJECT_VERSION_PATTERN}"
+        fi
+        print_debug "Project type set by user: ${GIV_PROJECT_TYPE}"
+        return
+    fi
     if [ -f "package.json" ]; then
         "${GIV_LIB_DIR}"/commands/config.sh project.type "node"
         "${GIV_LIB_DIR}"/commands/config.sh project.version_file "package.json"
@@ -223,45 +273,39 @@ detect_project_type() {
     elif [ -f "pyproject.toml" ]; then
         "${GIV_LIB_DIR}"/commands/config.sh project.type "python"
         "${GIV_LIB_DIR}"/commands/config.sh project.version_file "pyproject.toml"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern '^version[[:space:]]*=[[:space:]]*"([0-9]+\\.[0-9]+\\.[0-9]+)"'
+        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern '^version[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"'
         print_debug "Detected Python project (pyproject.toml)."
         return
     elif [ -f "setup.py" ]; then
         "${GIV_LIB_DIR}"/commands/config.sh project.type "python"
         "${GIV_LIB_DIR}"/commands/config.sh project.version_file "setup.py"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern 'version[[:space:]]*=[[:space:]]*"([0-9]+\\.[0-9]+\\.[0-9]+)"'
+        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern 'version[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"'
         print_debug "Detected Python project (setup.py)."
         return
     elif [ -f "Cargo.toml" ]; then
         "${GIV_LIB_DIR}"/commands/config.sh project.type "rust"
         "${GIV_LIB_DIR}"/commands/config.sh project.version_file "Cargo.toml"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern '^version[[:space:]]*=[[:space:]]*"([0-9]+\\.[0-9]+\\.[0-9]+)"'
+        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern '^version[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"'
         print_debug "Detected Rust project."
         return
     elif [ -f "composer.json" ]; then
         "${GIV_LIB_DIR}"/commands/config.sh project.type "php"
         "${GIV_LIB_DIR}"/commands/config.sh project.version_file "composer.json"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern '"version"[[:space:]]*:[[:space:]]*"([0-9]+\\.[0-9]+\\.[0-9]+)"'
+        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern '"version"[[:space:]]*:[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"'
         print_debug "Detected PHP project."
         return
     elif [ -f "build.gradle" ]; then
         "${GIV_LIB_DIR}"/commands/config.sh project.type "gradle"
         "${GIV_LIB_DIR}"/commands/config.sh project.version_file "build.gradle"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern 'version[[:space:]]*=[[:space:]]*"([0-9]+\\.[0-9]+\\.[0-9]+)"'
+        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern 'version[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"'
         print_debug "Detected Gradle project."
         return
     elif [ -f "pom.xml" ]; then
         "${GIV_LIB_DIR}"/commands/config.sh project.type "maven"
         "${GIV_LIB_DIR}"/commands/config.sh project.version_file "pom.xml"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern '<version>([0-9]+\\.[0-9]+\\.[0-9]+)</version>'
+        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern '<version>([0-9]+\.[0-9]+\.[0-9]+)</version>'
         print_debug "Detected Maven project."
         return
-    # elif [ -f "src/giv.sh" ]; then
-    #     "${GIV_LIB_DIR}"/commands/config.sh project.type "custom"
-    #     "${GIV_LIB_DIR}"/commands/config.sh project.version_file "src/config.sh"
-    #     "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern 'version[[:space:]]*=[[:space:]]*"([0-9]+\\.[0-9]+\\.[0-9]+)"'
-    #     print_debug "Detected Custom project."
-    #     return
     else
         "${GIV_LIB_DIR}"/commands/config.sh project.type "custom"
         print_debug "Project type could not be detected. Defaulting to 'custom'."

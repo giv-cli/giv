@@ -8,7 +8,7 @@
 if [ -f "${GIV_LIB_DIR}/commands/document.sh" ]; then
     # Delegate to the subcommand script
     "${GIV_LIB_DIR}/commands/document.sh" "$@" \
-        --template "${GIV_TEMPLATE_DIR}/final_summary_prompt.md" \
+        --template "${GIV_TEMPLATE_DIR}/final_summary_prompt.md"
     exit 0
 else
     echo "Available subcommands: $(find "${GIV_LIB_DIR}/commands" -maxdepth 1 -type f -name '*.sh' -exec basename {} .sh \; | tr '\n' ' ')" >&2

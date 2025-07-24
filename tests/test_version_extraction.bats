@@ -4,7 +4,6 @@ export TMPDIR="/tmp"
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
 export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
 export GIV_DEBUG="true"
-load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
 load "$BATS_TEST_DIRNAME/../src/project_metadata.sh"
 

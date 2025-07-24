@@ -99,6 +99,9 @@ GIV_API_URL=https://api.test.com/v1/chat/completions
 GIV_API_MODEL=gpt-4
 GIV_PROJECT_TYPE=node
 GIV_PROJECT_TITLE=Test Project
+GIV_PROJECT_DESCRIPTION=A test project for integration testing
+GIV_PROJECT_URL=https://github.com/test/test-project
+GIV_INITIALIZED="true"
 EOF
     
     # Set up templates directory

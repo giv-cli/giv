@@ -5,7 +5,7 @@
 . "$GIV_LIB_DIR/init.sh"
 
 # Source shared argument parsing for document-related subcommands
-. "$(dirname "$0")/document_args.sh"
+. "$GIV_LIB_DIR/document_args.sh"
 
 # Parse arguments specific to changelog
 parse_document_args "$@"

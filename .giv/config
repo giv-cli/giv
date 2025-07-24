@@ -1,5 +1,5 @@
 GIV_PROJECT_TYPE="custom"
-GIV_PROJECT_VERSION_FILE="src/config.sh"
+GIV_PROJECT_VERSION_FILE="src/system.sh"
 GIV_PROJECT_VERSION_PATTERN="version[[:space:]]*=[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+)"
 GIV_PROJECT_TITLE="giv"
 GIV_PROJECT_DESCRIPTION="cli tool"

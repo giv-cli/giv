@@ -16,9 +16,9 @@ The main entry point should look something like this:
     parse_args "$@"
     metadata_init
 
-if [ -f "${GIV_LIB_DIR}/commands/${subcmd}.sh" ]; then
+if [ -f "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" ]; then
     ensure_giv_dir_init
-    "${GIV_LIB_DIR}/commands/${subcmd}.sh" "$@"
+    "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" "$@"
     exit 0
 fi
 ```
@@ -63,8 +63,8 @@ Refactor the `giv` CLI to simplify the main entry script (`src/giv.sh`) and argu
        parse_args "$@"
        metadata_init
 
-       if [ -f "${GIV_LIB_DIR}/commands/${subcmd}.sh" ]; then
-           "${GIV_LIB_DIR}/commands/${subcmd}.sh" "$@"
+       if [ -f "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" ]; then
+           "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" "$@"
            exit 0
        fi
        ```
@@ -78,7 +78,7 @@ Refactor the `giv` CLI to simplify the main entry script (`src/giv.sh`) and argu
 3. **Simplify `src/args.sh`**
    - Remove subcommand-specific argument parsing from `src/args.sh`.
    - Retain only global option parsing (e.g., `--verbose`, `--update`, `--api-model`, `--api-url`, `--api-key`).
-   - Ensure `src/args.sh` sets the `subcmd` variable to the identified subcommand.
+   - Ensure `src/args.sh` sets the `GIV_SUBCMD` variable to the identified subcommand.
 
 4. **Implement `parse_document_args` Function**
    - Create a `parse_document_args` function to handle shared arguments for document-related subcommands (e.g., `document`, `changelog`, `summary`).

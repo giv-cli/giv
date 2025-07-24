@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # -------------------------------------------------------------------
 # document.sh: A script to generate documents using AI prompts
@@ -14,6 +14,10 @@
 parse_document_args "$@"
 
 cmd_message() {
+    # Parse positional arguments from parse_document_args
+    # Remove leading/trailing whitespace from POSITIONAL_ARGS
+    POSITIONAL_ARGS="$(echo $POSITIONAL_ARGS | xargs)"
+    set -- $POSITIONAL_ARGS
     commit_id="${1:-$GIV_REVISION}" # Default to GIV_REVISION
     pathspec="${2:-$GIV_PATHSPEC}" # New argument for PATHSPEC
     todo_pattern="${3:-$GIV_TODO_PATTERN}" # New argument for todo_pattern
@@ -75,3 +79,6 @@ cmd_message() {
     git --no-pager log -1 --pretty=%B "${commit_id}" | sed '${/^$/d;}'
     return
 }
+
+# Execute the command
+cmd_message "$@"

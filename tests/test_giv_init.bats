@@ -5,7 +5,6 @@ export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
-load "$BATS_TEST_DIRNAME/../src/config.sh"
 load "$BATS_TEST_DIRNAME/../src/system.sh"
 
 @test "ensure_giv_dir creates .giv directory and files" {
