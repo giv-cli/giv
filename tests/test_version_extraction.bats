@@ -101,7 +101,7 @@ teardown() {
 }
 
 @test "get_version_info detects version from JSON file" {
-    export GIV_METADATA_PROJECT_TYPE="node"
+    export GIV_PROJECT_TYPE="node"
     echo '{"version": "1.2.3"}' >"package.json"
     run get_metadata_value "version" "--current"
     assert_success
@@ -109,7 +109,7 @@ teardown() {
 }
 
 @test "get_version_info detects version from cached JSON file" {
-    export GIV_METADATA_PROJECT_TYPE="node"
+    export GIV_PROJECT_TYPE="node"
     echo '{"version": "1.2.3"}' >"package.json"
     git add "package.json"
     run get_metadata_value "version" "--cached"
@@ -118,7 +118,7 @@ teardown() {
 }
 
 @test "get_version_info detects version from specific commit JSON file" {
-    export GIV_METADATA_PROJECT_TYPE="node"
+    export GIV_PROJECT_TYPE="node"
     echo '{"version": "1.2.3"}' >"package.json"
     git add "package.json"
     git commit -m "Add JSON version file"

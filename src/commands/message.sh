@@ -7,20 +7,14 @@
 # Load initialization and shared functions
 . "$GIV_LIB_DIR/init.sh"
 
-# Source shared argument parsing for document-related subcommands
-. "$GIV_LIB_DIR/document_args.sh"
-
-# Parse arguments specific to changelog
-parse_document_args "$@"
+# All arguments are already parsed by the unified parser
+# Use environment variables set by the parser
 
 cmd_message() {
-    # Parse positional arguments from parse_document_args
-    # Remove leading/trailing whitespace from POSITIONAL_ARGS
-    POSITIONAL_ARGS="$(echo $POSITIONAL_ARGS | xargs)"
-    set -- $POSITIONAL_ARGS
-    commit_id="${1:-$GIV_REVISION}" # Default to GIV_REVISION
-    pathspec="${2:-$GIV_PATHSPEC}" # New argument for PATHSPEC
-    todo_pattern="${3:-$GIV_TODO_PATTERN}" # New argument for todo_pattern
+    # Use environment variables set by unified parser
+    commit_id="${GIV_REVISION:---current}"
+    pathspec="${GIV_PATHSPEC:-}"
+    todo_pattern="${GIV_TODO_PATTERN:-}"
 
     if [ -z "${commit_id}" ]; then
         commit_id="--current"
@@ -37,6 +31,13 @@ cmd_message() {
         build_prompt --template "${GIV_TEMPLATE_DIR}/message_prompt.md" \
             --summary "${hist}" >"${pr}"
         print_debug "Generated prompt file ${pr}"
+        
+        # Handle dry-run mode before API call
+        if [ "${GIV_DRY_RUN:-}" = "true" ]; then
+            printf '%s\n' "[DRY RUN] Would generate commit message from prompt: ${pr}"
+            return 0
+        fi
+        
         res=$(generate_response "${pr}" "0.9" "32768")        
         if [ $? -ne 0 ]; then
             printf 'Error: Failed to generate AI response.\n' >&2
@@ -81,4 +82,4 @@ cmd_message() {
 }
 
 # Execute the command
-cmd_message "$@"
+cmd_message

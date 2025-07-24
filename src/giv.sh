@@ -100,29 +100,53 @@ GIV_LIB_DIR="${LIB_DIR}"
 # Ensure basic directory initialization
 ensure_giv_dir_init
 
-# Parse global options and subcommand first (for help/version)
-parse_global_args "$@"
+# Parse all arguments using unified parser
+. "$GIV_LIB_DIR/lib/argument_parser.sh"
+parse_arguments "$@"
 
-# Remove the subcommand from arguments for delegation
-shift
-
-# Initialize metadata only for commands that need it (not help/version)
+# Show help/version immediately if requested
 case "${GIV_SUBCMD:-}" in
-    help|-h|--help|version|-v|--version)
-        # Skip metadata initialization for help/version
+    help)
+        . "$GIV_LIB_DIR/args.sh"
+        show_help
+        exit 0
+        ;;
+    version)
+        . "$GIV_LIB_DIR/commands/version.sh"
+        exit 0
+        ;;
+esac
+
+# Initialize metadata for commands that need it (skip for config/init)
+case "${GIV_SUBCMD:-}" in
+    config|init)
+        # Skip metadata initialization for config/init commands
         ;;
     *)
         initialize_metadata "false"
         ;;
 esac
 
+# Validate subcommand requirements
+validate_subcommand_requirements
+
 if [ -f "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" ]; then
-    # Delegate to the subcommand script
+    # Delegate to the subcommand script - pass remaining arguments for commands that need them
     [ "${GIV_DEBUG}" = "true" ] && printf 'Executing subcommand: %s\n' "${GIV_SUBCMD}" >&2
-    "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" "$@"
+    case "${GIV_SUBCMD}" in
+        config|init)
+            # These commands need access to raw positional arguments
+            shift # Remove subcommand name
+            "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" "$@"
+            ;;
+        *)
+            # Other commands use environment variables from unified parser
+            "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh"
+            ;;
+    esac
     exit 0
 else
     echo "Unknown subcommand: ${GIV_SUBCMD}" >&2
-    echo "Available subcommands: $(ls ${GIV_LIB_DIR}/commands | sed 's/\.sh$//')" >&2
+    echo "Available subcommands: $(find ${GIV_LIB_DIR}/commands -name '*.sh' -exec basename {} .sh \; | sort | tr '\n' ' ')" >&2
     exit 1
 fi

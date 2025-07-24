@@ -146,8 +146,7 @@ portable_mktemp() {
     fi
     printf '%s\n' "$tmpfile"
 
-    # Only clean up the temp file, not the whole temp dir
-    trap 'rm -f "$tmpfile"' EXIT
+    # Note: Caller is responsible for cleanup - avoid trap with local variable
 }
 
 load_env_file() {

@@ -7,21 +7,18 @@
 # Load initialization and shared functions
 . "$GIV_LIB_DIR/init.sh"
 
-# Source shared argument parsing for document-related subcommands
-. "$GIV_LIB_DIR/document_args.sh"
-
-# Parse arguments specific to changelog
-parse_document_args "$@"
+# All arguments are already parsed by the unified parser
+# Use environment variables set by the parser
 
 # Function to generate documents based on a prompt template
 cmd_document() {
-    prompt_tpl="${1:-$PROMPT_FILE}"
-    revision="${2:---current}"
-    pathspec="${3:-}" # New GIV_PATHSPEC argument
-    out="${4:-}"
-    temp="${5:-0.9}"
-    ctx="${6:-32768}"
-    shift 6
+    # Use environment variables set by unified parser
+    prompt_tpl="${GIV_PROMPT_FILE:-}"
+    revision="${GIV_REVISION:---current}"
+    pathspec="${GIV_PATHSPEC:-}"
+    out="${GIV_OUTPUT_FILE:-}"
+    temp="${GIV_TEMPERATURE:-0.9}"
+    ctx="${GIV_CONTEXT_WINDOW:-32768}"
 
     # Validate template exists
     if [ ! -f "${prompt_tpl}" ]; then
@@ -54,7 +51,7 @@ cmd_document() {
         --version "${current_version}" \
         --template "${prompt_tpl}" \
         --summary "${summaries}" \
-        "$@" >"${prompt_tmp}"
+        >"${prompt_tmp}"
 
     print_debug "Built prompt file: ${prompt_tmp}"
 
@@ -67,9 +64,4 @@ cmd_document() {
 }
 
 # Main entry point for the script
-if [ "$#" -lt 1 ]; then
-    echo "Usage: $0 <prompt_template> [revision] [pathspec] [output_file] [temperature] [context_window] [extra_flags...]"
-    exit 1
-fi
-
-cmd_document "$@"
+cmd_document

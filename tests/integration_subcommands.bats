@@ -345,6 +345,10 @@ EOF
     # Remove API key
     sed -i '/GIV_API_KEY/d' "$GIV_HOME/config"
     
+    # Mock the generate_response function
+    generate_response() { echo "API key is missing"; }
+    export -f generate_response
+    
     run "$GIV_SCRIPT" message HEAD --api-url "https://api.test.com"
     assert_failure
     assert_output --partial "API.*key"

@@ -424,8 +424,7 @@ create_temp_file() {
     tmpdir="${GIV_TMP_DIR:-/tmp}"
     mkdir -p "$tmpdir"
     tmpfile=$(mktemp "$tmpdir/${prefix}.XXXXXX")
-    # Only clean up the temp file, not the whole temp dir
-    trap 'rm -f "$tmpfile"' EXIT
+    # Note: Caller is responsible for cleanup - avoid trap with local variable
     echo "$tmpfile"
 }
 

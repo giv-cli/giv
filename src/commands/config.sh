@@ -181,9 +181,13 @@ if [ "${1:-}" = "config" ]; then
     shift
 fi
 
-# Default to --list if no arguments  
-if [ $# -eq 0 ]; then
-    set -- --list
+# Handle arguments from unified parser
+# The unified parser sets GIV_LIST=true when --list flag is used
+if [ "${GIV_LIST:-}" = "true" ]; then
+    giv_config "--list"
+elif [ $# -eq 0 ]; then
+    # Default to --list if no arguments  
+    giv_config "--list"
+else
+    giv_config "$@"
 fi
-
-giv_config "$@"

@@ -113,7 +113,9 @@ get_metadata_value() {
     node)
       file="package.json"
       if ! content=$(metadata_get_file_content "$file" "$commit"); then
-        return 1
+        # Handle missing file or invalid commit gracefully
+        printf ''
+        return 0
       fi
       if command -v jq >/dev/null 2>&1; then
         value=$(printf '%s' "$content" | jq -r ".${key}")
@@ -136,7 +138,9 @@ get_metadata_value() {
     python)
       file="pyproject.toml"
       if ! content=$(metadata_get_file_content "$file" "$commit"); then
-        return 1
+        # Handle missing file or invalid commit gracefully
+        printf ''
+        return 0
       fi
       if [ "$key" = "version" ]; then
         value=$(printf '%s' "$content" | awk '/^\[project\]/{flag=1;next}/^\[/{flag=0}flag' | grep -m1 -E '^version[[:space:]]*=' | sed -r 's/^version[[:space:]]*=[[:space:]]*"(.*)".*/\1/')
@@ -160,7 +164,9 @@ get_metadata_value() {
     custom)
       file="${GIV_PROJECT_VERSION_FILE:-version.txt}"
       if ! content=$(metadata_get_file_content "$file" "$commit"); then
-        return 1
+        # Handle missing file or invalid commit gracefully
+        printf ''
+        return 0
       fi
       value=$(printf '%s' "$content" | awk -v k="$key" '
       BEGIN { IGNORECASE = 1 }

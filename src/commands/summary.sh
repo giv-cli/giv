@@ -4,11 +4,17 @@
 # Source initialization script
 . "$GIV_LIB_DIR/init.sh"
 
+# All arguments are already parsed by the unified parser
+# Use environment variables set by the parser: GIV_REVISION, GIV_PATHSPEC, etc.
+
+# Set default template for summary
+GIV_PROMPT_FILE="${GIV_PROMPT_FILE:-${GIV_TEMPLATE_DIR}/final_summary_prompt.md}"
+export GIV_PROMPT_FILE
+
 # Wrapper to call document.sh with appropriate arguments
 if [ -f "${GIV_LIB_DIR}/commands/document.sh" ]; then
-    # Delegate to the subcommand script
-    "${GIV_LIB_DIR}/commands/document.sh" "$@" \
-        --template "${GIV_TEMPLATE_DIR}/final_summary_prompt.md"
+    # Delegate to the subcommand script - no additional parsing needed
+    "${GIV_LIB_DIR}/commands/document.sh"
     exit 0
 else
     echo "Available subcommands: $(find "${GIV_LIB_DIR}/commands" -maxdepth 1 -type f -name '*.sh' -exec basename {} .sh \; | tr '\n' ' ')" >&2
