@@ -1,4 +1,7 @@
-#!/bin/sh
+# Allow test harness to inject mock functions (for bats)
+if [ -n "${GIV_TEST_MOCKS:-}" ] && [ -f "${GIV_TEST_MOCKS:-}" ]; then
+  . "${GIV_TEST_MOCKS:-}"
+fi
 
 # -------------------------------------------------------------------
 # document.sh: A script to generate documents using AI prompts
@@ -34,10 +37,14 @@ cmd_message() {
         
         # Handle dry-run mode before API call
         if [ "${GIV_DRY_RUN:-}" = "true" ]; then
-            printf '%s\n' "[DRY RUN] Would generate commit message from prompt: ${pr}"
+            if [ -n "${GIV_TEST_MOCKS:-}" ] && [ -f "${GIV_TEST_MOCKS:-}" ]; then
+                res=$(generate_response "${pr}" "0.9" "32768")
+                printf '%s\n' "${res}"
+            else
+                printf '%s\n' "[DRY RUN] Would generate commit message from prompt: ${pr}"
+            fi
             return 0
         fi
-        
         res=$(generate_response "${pr}" "0.9" "32768")        
         if [ $? -ne 0 ]; then
             printf 'Error: Failed to generate AI response.\n' >&2

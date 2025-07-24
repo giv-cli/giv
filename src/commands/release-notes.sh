@@ -1,4 +1,7 @@
-#!/bin/sh
+# Allow test harness to inject mock functions (for bats)
+if [ -n "$GIV_TEST_MOCKS" ] && [ -f "$GIV_TEST_MOCKS" ]; then
+  . "$GIV_TEST_MOCKS"
+fi
 # release-notes.sh: Generate release notes for a tagged release
 
 # Source initialization script

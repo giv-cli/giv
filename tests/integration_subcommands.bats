@@ -1,3 +1,5 @@
+
+load 'helpers/setup.sh'
 #!/usr/bin/env bats
 
 # Integration tests for giv subcommands
@@ -110,7 +112,7 @@ EOF
     export GIV_SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
     
     # Mock AI response generation
-    export -f mock_generate_response
+    # export -f mock_generate_response
 }
 
 teardown() {
@@ -198,7 +200,7 @@ This release introduces server capabilities and improves the project foundation.
 @test "message: generates commit message for HEAD" {
     # Mock the generate_response function
     generate_response() { mock_generate_response "message"; }
-    export -f generate_response
+    # export -f generate_response
     
     run "$GIV_SCRIPT" message HEAD --dry-run
     assert_success
@@ -211,7 +213,7 @@ This release introduces server capabilities and improves the project foundation.
     git add feature.js
     
     generate_response() { mock_generate_response "message"; }
-    export -f generate_response
+    # export -f generate_response
     
     run "$GIV_SCRIPT" message --cached --dry-run
     assert_success
@@ -223,7 +225,7 @@ This release introduces server capabilities and improves the project foundation.
     echo "Work in progress" >> README.md
     
     generate_response() { mock_generate_response "message"; }
-    export -f generate_response
+    # export -f generate_response
     
     run "$GIV_SCRIPT" message --current --dry-run
     assert_success
@@ -233,7 +235,7 @@ This release introduces server capabilities and improves the project foundation.
 # SUMMARY SUBCOMMAND TESTS  
 @test "summary: generates summary for commit range" {
     generate_response() { mock_generate_response "summary"; }
-    export -f generate_response
+    # export -f generate_response
     
     run "$GIV_SCRIPT" summary HEAD~2..HEAD --dry-run
     assert_success
@@ -243,7 +245,7 @@ This release introduces server capabilities and improves the project foundation.
 
 @test "summary: generates summary for single commit" {
     generate_response() { mock_generate_response "summary"; }
-    export -f generate_response
+    # export -f generate_response
     
     run "$GIV_SCRIPT" summary HEAD --dry-run
     assert_success
@@ -253,7 +255,7 @@ This release introduces server capabilities and improves the project foundation.
 # CHANGELOG SUBCOMMAND TESTS
 @test "changelog: updates CHANGELOG.md with new entries" {
     generate_response() { mock_generate_response "changelog"; }
-    export -f generate_response
+    # export -f generate_response
     
     # Backup original changelog
     cp CHANGELOG.md CHANGELOG.md.bak
@@ -269,7 +271,7 @@ This release introduces server capabilities and improves the project foundation.
 
 @test "changelog: handles empty commit range gracefully" {
     generate_response() { mock_generate_response "changelog"; }
-    export -f generate_response
+    # export -f generate_response
     
     run "$GIV_SCRIPT" changelog HEAD..HEAD --dry-run
     assert_success
@@ -277,7 +279,7 @@ This release introduces server capabilities and improves the project foundation.
 
 @test "changelog: respects --output-version flag" {
     generate_response() { mock_generate_response "changelog"; }
-    export -f generate_response
+    # export -f generate_response
     
     run "$GIV_SCRIPT" changelog HEAD --output-version "2.0.0" --dry-run
     assert_success
@@ -287,7 +289,7 @@ This release introduces server capabilities and improves the project foundation.
 # RELEASE NOTES SUBCOMMAND TESTS
 @test "release-notes: generates release notes for version" {
     generate_response() { mock_generate_response "release"; }
-    export -f generate_response
+    # export -f generate_response
     
     run "$GIV_SCRIPT" release-notes HEAD~2..HEAD --dry-run
     assert_success
@@ -298,7 +300,7 @@ This release introduces server capabilities and improves the project foundation.
 
 @test "release-notes: creates RELEASE_NOTES.md file" {
     generate_response() { mock_generate_response "release"; }
-    export -f generate_response
+    # export -f generate_response
     
     run "$GIV_SCRIPT" release-notes HEAD --output-file test_release.md --dry-run
     assert_success

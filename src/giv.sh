@@ -1,4 +1,8 @@
-#!/bin/sh
+#!/usr/bin/env bash
+# Allow test harness to inject mock functions (for bats)
+if [ -n "$GIV_TEST_MOCKS" ] && [ -f "$GIV_TEST_MOCKS" ]; then
+  . "$GIV_TEST_MOCKS"
+fi
 # giv - A POSIX-compliant script to generate commit messages, summaries,
 # changelogs, release notes, and announcements from Git history using AI
 set -eu
