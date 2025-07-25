@@ -208,11 +208,14 @@ build_history() {
     diff_out=$(build_diff "$commit" "$diff_pattern") || { print_error "Failed to build diff for commit: $commit"; return 1; }
     print_debug "Diff output: $diff_out"
     
-    # Include stats if available
-    if [ -n "$diff_stats" ]; then
-        printf '```diff\n%s\n%s\n```\n' "$diff_out" "$diff_stats" >>"$hist" || { print_error "Failed to write diff to history file"; return 1; }
-    else
-        printf '```diff\n%s\n```\n' "$diff_out" >>"$hist" || { print_error "Failed to write diff to history file"; return 1; }
+    # Only include diff section if there's actual content
+    if [ -n "$diff_out" ]; then
+        # Include stats if available
+        if [ -n "$diff_stats" ]; then
+            printf '```diff\n%s\n%s\n```\n' "$diff_out" "$diff_stats" >>"$hist" || { print_error "Failed to write diff to history file"; return 1; }
+        else
+            printf '```diff\n%s\n```\n' "$diff_out" >>"$hist" || { print_error "Failed to write diff to history file"; return 1; }
+        fi
     fi
 
     td=$(extract_todo_changes "$commit" "$todo_pattern") || { print_error "Failed to extract TODO changes for commit: $commit"; return 1; }

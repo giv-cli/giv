@@ -20,6 +20,11 @@ print_debug "Changelog file: $output_file"
 output_version="$GIV_OUTPUT_VERSION"
 output_mode="$GIV_OUTPUT_MODE"
 
+# Use current version as default if not specified
+if [ -z "$output_version" ]; then
+    output_version=$(get_metadata_value "version" "HEAD" 2>/dev/null || echo "Unreleased")
+fi
+
 # Summarize Git history
 summaries_file=$(portable_mktemp "summaries.XXXXXXX") || {
     printf 'Error: cannot create temp file for summaries\n' >&2

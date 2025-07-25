@@ -31,7 +31,7 @@ export GIV_TOKEN_RULES="${GIV_TOKEN_RULES:-}"
 
 ## Output configuration
 export GIV_OUTPUT_FILE="${GIV_OUTPUT_FILE:-}"
-export GIV_OUTPUT_MODE="${GIV_OUTPUT_MODE:-}"
+export GIV_OUTPUT_MODE="${GIV_OUTPUT_MODE:-auto}"
 export GIV_OUTPUT_VERSION="${GIV_OUTPUT_VERSION:-}"
 
 ### Changelog & release default output files
@@ -117,7 +117,7 @@ remove_tmp_dir() {
 
 # Portable mktemp: fallback if mktemp not available
 portable_mktemp_dir() {
-    base_path="${GIV_TMP_DIR:-TMPDIR:-${GIV_HOME}/tmp}"
+    base_path="${GIV_TMP_DIR:-${TMPDIR:-${GIV_HOME}/tmp}}"
     mkdir -p "${base_path}"
     
     # Ensure only one subfolder under $TMPDIR/giv exists per execution of the script
@@ -142,9 +142,10 @@ portable_mktemp() {
     
     local tmpfile
     if command -v mktemp >/dev/null 2>&1; then
-       tmpfile=$(mktemp "${GIV_TMP_DIR}/$1")
+       tmpfile=$(mktemp "${GIV_TMP_DIR}/$1") || return 1
     else
         tmpfile="${GIV_TMP_DIR}/giv.$$.$(date +%s)"
+        touch "$tmpfile" || return 1
     fi
     printf '%s\n' "$tmpfile"
 
