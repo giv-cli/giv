@@ -200,7 +200,7 @@ ensure_giv_dir_init() {
 }
 
 initialize_metadata() {
-    if [ "${1:-}" = "true" ] || [ "$(${GIV_LIB_DIR}/commands/config.sh initialized)" != "true" ]; then
+    if [ "${1:-}" = "true" ] || [ "$(${GIV_SRC_DIR}/commands/config.sh initialized)" != "true" ]; then
         printf "Initializing Giv for this repository...\n"
         # Detect project type, version file, and version pattern
         detect_project_type
@@ -212,10 +212,10 @@ initialize_metadata() {
         printf "Project URL: "
         read -r project_url
 
-        existing_name="$("${GIV_LIB_DIR}"/commands/config.sh --get project.title || basename "$(pwd)")"
-        "${GIV_LIB_DIR}"/commands/config.sh project.title "${project_name:-$existing_name}"
-        "${GIV_LIB_DIR}"/commands/config.sh project.description "${project_description:-}"
-        "${GIV_LIB_DIR}"/commands/config.sh project.url "$project_url"
+        existing_name="$("${GIV_SRC_DIR}"/commands/config.sh --get project.title || basename "$(pwd)")"
+        "${GIV_SRC_DIR}"/commands/config.sh project.title "${project_name:-$existing_name}"
+        "${GIV_SRC_DIR}"/commands/config.sh project.description "${project_description:-}"
+        "${GIV_SRC_DIR}"/commands/config.sh project.url "$project_url"
 
 
         # TODO: setup API URL and Model by prompting user or using defaults
@@ -223,23 +223,23 @@ initialize_metadata() {
         printf 'Open AI: https://api.openai.com/v1/chat/completions\n'
         printf 'Ollama (default): http://localhost:11434/v1/chat/completions\n'
         read -r api_url
-        "${GIV_LIB_DIR}"/commands/config.sh api.url "${api_url:-http://localhost:11434/v1/chat/completions}"
+        "${GIV_SRC_DIR}"/commands/config.sh api.url "${api_url:-http://localhost:11434/v1/chat/completions}"
 
         printf "What model do you want to use?\n"
         printf 'Ollama (default): devstral\n'
         read -r model
-        "${GIV_LIB_DIR}"/commands/config.sh api.model "${model:-devstral}"
+        "${GIV_SRC_DIR}"/commands/config.sh api.model "${model:-devstral}"
 
-        "${GIV_LIB_DIR}"/commands/config.sh initialized true
+        "${GIV_SRC_DIR}"/commands/config.sh initialized true
         printf "Metadata has been set in the Git config.\n"
 
     else
         print_debug "Giv is already initialized. Fetching metadata from Git config..."
-        project_name="$("${GIV_LIB_DIR}"/commands/config.sh project.title)"
+        project_name="$("${GIV_SRC_DIR}"/commands/config.sh project.title)"
         print_debug "Project Name: ${project_name}"
-        project_description="$("${GIV_LIB_DIR}"/commands/config.sh project.description)"
+        project_description="$("${GIV_SRC_DIR}"/commands/config.sh project.description)"
         print_debug "Project Description: ${project_description}"
-        project_url="$("${GIV_LIB_DIR}"/commands/config.sh project.url)"
+        project_url="$("${GIV_SRC_DIR}"/commands/config.sh project.url)"
         print_debug "Project URL: ${project_url}"
     fi
 }
@@ -247,7 +247,7 @@ initialize_metadata() {
 ############################################################
 # Project type detection
 ############################################################
-# Sets "${GIV_LIB_DIR}"/commands/config.sh values:
+# Sets "${GIV_SRC_DIR}"/commands/config.sh values:
 #   project.type
 #   version.file
 #   version.pattern
@@ -255,68 +255,68 @@ detect_project_type() {
     # List of known project types and their identifying files
     if [ -n "${GIV_PROJECT_TYPE}" ]; then
         # If user specified project type, use it and allow custom file/pattern overrides
-        "${GIV_LIB_DIR}"/commands/config.sh project.type "${GIV_PROJECT_TYPE}"
+        "${GIV_SRC_DIR}"/commands/config.sh project.type "${GIV_PROJECT_TYPE}"
         if [ -n "${GIV_PROJECT_VERSION_FILE}" ]; then
-            "${GIV_LIB_DIR}"/commands/config.sh project.version.file "${GIV_PROJECT_VERSION_FILE}"
+            "${GIV_SRC_DIR}"/commands/config.sh project.version.file "${GIV_PROJECT_VERSION_FILE}"
         fi
         if [ -n "${GIV_PROJECT_VERSION_PATTERN}" ]; then
-            "${GIV_LIB_DIR}"/commands/config.sh project.version.pattern "${GIV_PROJECT_VERSION_PATTERN}"
+            "${GIV_SRC_DIR}"/commands/config.sh project.version.pattern "${GIV_PROJECT_VERSION_PATTERN}"
         fi
         print_debug "Project type set by user: ${GIV_PROJECT_TYPE}"
         return
     fi
     if [ -f "package.json" ]; then
-        "${GIV_LIB_DIR}"/commands/config.sh project.type "node"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_file "package.json"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern '"version"[[:space:]]*:[[:space:]]*"([0-9]+\\.[0-9]+\\.[0-9]+)"'
+        "${GIV_SRC_DIR}"/commands/config.sh project.type "node"
+        "${GIV_SRC_DIR}"/commands/config.sh project.version_file "package.json"
+        "${GIV_SRC_DIR}"/commands/config.sh project.version_pattern '"version"[[:space:]]*:[[:space:]]*"([0-9]+\\.[0-9]+\\.[0-9]+)"'
         print_debug "Detected Node.js project."
         return
     elif [ -f "pyproject.toml" ]; then
-        "${GIV_LIB_DIR}"/commands/config.sh project.type "python"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_file "pyproject.toml"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern '^version[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"'
+        "${GIV_SRC_DIR}"/commands/config.sh project.type "python"
+        "${GIV_SRC_DIR}"/commands/config.sh project.version_file "pyproject.toml"
+        "${GIV_SRC_DIR}"/commands/config.sh project.version_pattern '^version[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"'
         print_debug "Detected Python project (pyproject.toml)."
         return
     elif [ -f "setup.py" ]; then
-        "${GIV_LIB_DIR}"/commands/config.sh project.type "python"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_file "setup.py"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern 'version[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"'
+        "${GIV_SRC_DIR}"/commands/config.sh project.type "python"
+        "${GIV_SRC_DIR}"/commands/config.sh project.version_file "setup.py"
+        "${GIV_SRC_DIR}"/commands/config.sh project.version_pattern 'version[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"'
         print_debug "Detected Python project (setup.py)."
         return
     elif [ -f "Cargo.toml" ]; then
-        "${GIV_LIB_DIR}"/commands/config.sh project.type "rust"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_file "Cargo.toml"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern '^version[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"'
+        "${GIV_SRC_DIR}"/commands/config.sh project.type "rust"
+        "${GIV_SRC_DIR}"/commands/config.sh project.version_file "Cargo.toml"
+        "${GIV_SRC_DIR}"/commands/config.sh project.version_pattern '^version[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"'
         print_debug "Detected Rust project."
         return
     elif [ -f "composer.json" ]; then
-        "${GIV_LIB_DIR}"/commands/config.sh project.type "php"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_file "composer.json"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern '"version"[[:space:]]*:[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"'
+        "${GIV_SRC_DIR}"/commands/config.sh project.type "php"
+        "${GIV_SRC_DIR}"/commands/config.sh project.version_file "composer.json"
+        "${GIV_SRC_DIR}"/commands/config.sh project.version_pattern '"version"[[:space:]]*:[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"'
         print_debug "Detected PHP project."
         return
     elif [ -f "build.gradle" ]; then
-        "${GIV_LIB_DIR}"/commands/config.sh project.type "gradle"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_file "build.gradle"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern 'version[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"'
+        "${GIV_SRC_DIR}"/commands/config.sh project.type "gradle"
+        "${GIV_SRC_DIR}"/commands/config.sh project.version_file "build.gradle"
+        "${GIV_SRC_DIR}"/commands/config.sh project.version_pattern 'version[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"'
         print_debug "Detected Gradle project."
         return
     elif [ -f "pom.xml" ]; then
-        "${GIV_LIB_DIR}"/commands/config.sh project.type "maven"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_file "pom.xml"
-        "${GIV_LIB_DIR}"/commands/config.sh project.version_pattern '<version>([0-9]+\.[0-9]+\.[0-9]+)</version>'
+        "${GIV_SRC_DIR}"/commands/config.sh project.type "maven"
+        "${GIV_SRC_DIR}"/commands/config.sh project.version_file "pom.xml"
+        "${GIV_SRC_DIR}"/commands/config.sh project.version_pattern '<version>([0-9]+\.[0-9]+\.[0-9]+)</version>'
         print_debug "Detected Maven project."
         return
     else
-        "${GIV_LIB_DIR}"/commands/config.sh project.type "custom"
+        "${GIV_SRC_DIR}"/commands/config.sh project.type "custom"
         print_debug "Project type could not be detected. Defaulting to 'custom'."
         printf 'Project type could not be detected.\n'
         printf 'Please enter a path that contains the version of this project.\n'
         read -r version_file
-        "${GIV_LIB_DIR}"/commands/config.sh project.version.file "$version_file"
+        "${GIV_SRC_DIR}"/commands/config.sh project.version.file "$version_file"
         
         # shellcheck disable=SC2016
-        "${GIV_LIB_DIR}"/commands/config.sh project.version.pattern "version[[:space:]]*=[[:space:]]*\"([0-9]+\\.[0-9]+\\.[0-9]+)"
+        "${GIV_SRC_DIR}"/commands/config.sh project.version.pattern "version[[:space:]]*=[[:space:]]*\"([0-9]+\\.[0-9]+\\.[0-9]+)"
 
     fi
 }

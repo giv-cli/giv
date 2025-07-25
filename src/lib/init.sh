@@ -69,7 +69,7 @@ if [ -z "${GIV_SRC_DIR}" ]; then
     SCRIPT_DIR="$(get_script_dir "$0")"
     APP_DIR="$(compute_app_dir)"
 
-    local SRC_DIR=""
+    SRC_DIR=""
     if [ -n "${GIV_SRC_DIR:-}" ]; then
         SRC_DIR="${GIV_SRC_DIR}"
     elif [ -d "${APP_DIR}/src" ]; then
@@ -136,7 +136,7 @@ export GIV_SRC_DIR GIV_LIB_DIR GIV_TEMPLATE_DIR GIV_DOCS_DIR
 
 # Load shared modules
 . "${GIV_LIB_DIR}/system.sh"
-. "${GIV_LIB_DIR}/lib/argument_parser.sh"
+. "${GIV_LIB_DIR}/argument_parser.sh"
 . "${GIV_LIB_DIR}/markdown.sh"
 . "${GIV_LIB_DIR}/llm.sh"
 . "${GIV_LIB_DIR}/project_metadata.sh"

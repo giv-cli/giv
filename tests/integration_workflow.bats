@@ -3,15 +3,15 @@
 # End-to-end workflow integration tests for giv
 # Tests complete development workflows and real-world usage scenarios
 
+#!/usr/bin/env bats
+load './helpers/setup.sh'
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
-export TMPDIR="/tmp"
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src/lib"
-export GIV_DEBUG="false"
+export GIV_SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
 
 setup() {
+export GIV_DEBUG="true"
     # Create realistic project environment
     TMPDIR_REPO="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
     cd "$TMPDIR_REPO" || exit 1
@@ -99,7 +99,6 @@ GIV_OUTPUT_MODE=auto
 GIV_INITIALIZED="true"
 EOF
     
-    export GIV_SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
     
     # Mock AI responses for different contexts
     export -f mock_ai_response

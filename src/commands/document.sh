@@ -1,19 +1,15 @@
-# Allow test harness to inject mock functions (for bats)
-if [ -n "$GIV_TEST_MOCKS" ] && [ -f "$GIV_TEST_MOCKS" ]; then
-  . "$GIV_TEST_MOCKS"
-fi
 #!/bin/bash
-
 # -------------------------------------------------------------------
 # document.sh: A script to generate documents using AI prompts
 # -------------------------------------------------------------------
 
 # Load initialization and shared functions
-#. "$GIV_LIB_DIR/init.sh"
+. "$GIV_LIB_DIR/init.sh"
 
-# All arguments are already parsed by the unified parser
-# Use environment variables set by the parser
-
+# Allow test harness to inject mock functions (for bats)
+if [ -n "$GIV_TEST_MOCKS" ] && [ -f "$GIV_TEST_MOCKS" ]; then
+  . "$GIV_TEST_MOCKS"
+fi
 # Function to generate documents based on a prompt template
 cmd_document() {
     # Use environment variables set by unified parser

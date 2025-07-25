@@ -1,16 +1,15 @@
-
-load 'helpers/setup.sh'
-#!/usr/bin/env bats
+#! /usr/bin/env bats
 
 # Integration tests for giv subcommands
 # Tests end-to-end functionality of individual subcommands
 
+load 'helpers/setup.sh'
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
 export TMPDIR="/tmp"
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src/lib"
+export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../../src/lib"
 export GIV_DEBUG="false"
 
 setup() {
@@ -109,7 +108,7 @@ EOF
     # Set up templates directory
     mkdir -p "$GIV_HOME/templates"
     
-    export GIV_SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
+    export GIV_SCRIPT="$BATS_TEST_DIRNAME/../../src/giv.sh"
     
     # Mock AI response generation
     # export -f mock_generate_response

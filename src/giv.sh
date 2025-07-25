@@ -79,7 +79,6 @@ APP_DIR="$(compute_app_dir)"
 [ "${GIV_DEBUG}" = "true" ] && printf 'Using giv app directory: %s\n' "${APP_DIR}"
 
 SRC_DIR=""
-
 # Library location (.sh files)
 if [ -n "${GIV_SRC_DIR:-}" ]; then
     SRC_DIR="${GIV_SRC_DIR}"
@@ -113,7 +112,7 @@ parse_arguments "$@"
 # Show help/version immediately if requested
 case "${GIV_SUBCMD:-}" in
     help)
-        . "$GIV_SRC_DIR/commands/version.sh"
+        . "$GIV_SRC_DIR/commands/help.sh"
         exit 0
         ;;
     version)

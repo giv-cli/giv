@@ -8,7 +8,7 @@ load 'test_helper/bats-assert/load'
 
 export TMPDIR="/tmp"
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src/lib"
+export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../../src/lib"
 export GIV_DEBUG="false"  # Set to true for debugging
 
 setup() {
@@ -48,7 +48,7 @@ setup() {
     
     # Mock generate_response function to avoid actual AI calls
     export -f mock_generate_response
-    export GIV_SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
+    export GIV_SCRIPT="$BATS_TEST_DIRNAME/../../src/giv.sh"
 }
 
 teardown() {
