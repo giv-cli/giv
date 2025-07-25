@@ -115,32 +115,7 @@ build_diff() {
     get_diff "$commit" "$diff_pattern" "$diff_file"
     diff_output=$(cat "$diff_file")
     rm -f "$diff_file"
-    # handle untracked files (unchanged)
-    untracked=$(git ls-files --others --exclude-standard)
-    OLD_IFS=$IFS
-    IFS='
-'
-    for f in $untracked; do
-        [ ! -f "$f" ] && continue
-        if [ -n "$diff_pattern" ]; then
-            case "$f" in
-            $diff_pattern) ;;
-            *) continue ;;
-            esac
-        fi
-        extra=$(git --no-pager diff --no-prefix --unified=0 --no-color -b -w \
-            --minimal --compact-summary --color-moved=no \
-            --no-index /dev/null "$f" 2>/dev/null || true)
-        if [ -n "$diff_output" ] && [ -n "$extra" ]; then
-            diff_output="${diff_output}
-            ${extra}"
-        elif [ -n "$extra" ]; then
-            diff_output="$extra"
-        fi
-    done
-    IFS=$OLD_IFS
-
-    printf '%s\n' "$diff_output"
+    
     # handle untracked files
     untracked=$(git ls-files --others --exclude-standard)
     OLD_IFS=$IFS
@@ -149,18 +124,14 @@ build_diff() {
     for f in $untracked; do
         [ ! -f "$f" ] && continue
         if [ -n "$diff_pattern" ]; then
-            # Only match if the pattern matches the filename (basic glob)
-            # shellcheck disable=SC2254
             case "$f" in
             $diff_pattern) ;;
             *) continue ;;
             esac
         fi
-
         extra=$(git --no-pager diff --no-prefix --unified=0 --no-color -b -w \
             --minimal --compact-summary --color-moved=no \
             --no-index /dev/null "$f" 2>/dev/null || true)
-
         if [ -n "$diff_output" ] && [ -n "$extra" ]; then
             diff_output="${diff_output}
             ${extra}"
@@ -221,9 +192,28 @@ build_history() {
     print_debug "Message header: $msg"
     printf '**Message:** %s\n' "$msg" >>"$hist" || { print_error "Failed to write message to history file"; return 1; }
 
+    # Get diff stats first
+    case "$commit" in
+        --cached)
+            diff_stats=$(git --no-pager diff --cached --stat -- $diff_pattern 2>/dev/null || true)
+            ;;
+        --current | "")
+            diff_stats=$(git --no-pager diff --stat -- $diff_pattern 2>/dev/null || true)
+            ;;
+        *)
+            diff_stats=$(git --no-pager diff "${commit}^!" --stat -- $diff_pattern 2>/dev/null || true)
+            ;;
+    esac
+    
     diff_out=$(build_diff "$commit" "$diff_pattern") || { print_error "Failed to build diff for commit: $commit"; return 1; }
     print_debug "Diff output: $diff_out"
-    printf '```diff\n%s\n```\n' "$diff_out" >>"$hist" || { print_error "Failed to write diff to history file"; return 1; }
+    
+    # Include stats if available
+    if [ -n "$diff_stats" ]; then
+        printf '```diff\n%s\n%s\n```\n' "$diff_out" "$diff_stats" >>"$hist" || { print_error "Failed to write diff to history file"; return 1; }
+    else
+        printf '```diff\n%s\n```\n' "$diff_out" >>"$hist" || { print_error "Failed to write diff to history file"; return 1; }
+    fi
 
     td=$(extract_todo_changes "$commit" "$todo_pattern") || { print_error "Failed to extract TODO changes for commit: $commit"; return 1; }
     print_debug "TODO changes: $td"

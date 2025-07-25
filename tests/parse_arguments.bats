@@ -72,40 +72,30 @@ setup_git_range() {
 
 # 2. help flags - test disabled for unified parser
 @test "help flag triggers help subcommand and exits 0" {
-  run parse_arguments help
-  assert_success
-  run echo "$GIV_SUBCMD"
-  assert_output "help"
+  parse_arguments help
+  assert_equal "$GIV_SUBCMD" "help"
 }
 
 @test "help via -h triggers help subcommand and exits 0" {
-  run parse_arguments -h
-  assert_success
-  run echo "$GIV_SUBCMD"
-  assert_output "help"
+  parse_arguments -h
+  assert_equal "$GIV_SUBCMD" "help"
 }
 
 # 3. version flags
 @test "version flag triggers version subcommand and exits 0" {
-  run parse_arguments --version
-  assert_success
-  run echo "$GIV_SUBCMD"
-  assert_output "version"
+  parse_arguments --version  
+  assert_equal "$GIV_SUBCMD" "version"
 }
 
 @test "version via -v triggers version subcommand and exits 0" {
-  run parse_arguments -v
-  assert_success
-  run echo "$GIV_SUBCMD"
-  assert_output "version"
+  parse_arguments -v
+  assert_equal "$GIV_SUBCMD" "version"
 }
 
 # 4. invalid first argument  
 @test "invalid subcommand sets GIV_SUBCMD" {
-  run parse_arguments foobar
-  assert_success
-  run echo "$GIV_SUBCMD"
-  assert_output "foobar"
+  parse_arguments foobar
+  assert_equal "$GIV_SUBCMD" "foobar"
 }
 
 # 5. valid subcommands
@@ -124,11 +114,9 @@ setup_git_range() {
 }
 
 @test "subcommand 'summary' is accepted" {
-  run parse_arguments summary --verbose
-  assert_success
-  run echo "$GIV_SUBCMD"
-  assert_output "summary"
-  [ "$GIV_DEBUG" = "true" ]
+  parse_arguments summary --verbose
+  assert_equal "$GIV_SUBCMD" "summary"
+  assert_equal "$GIV_DEBUG" "true"
 }
 
 # @test "subcommand 'changelog' is accepted and printed" {
