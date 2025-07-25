@@ -1,10 +1,10 @@
 # How to Build, Validate, and Publish GIV CLI
 
-This guide explains how to use the build system to build, validate, and publish the `giv` CLI tool across multiple package managers and platforms.
+This guide explains how to use the **containerized build system** to build, validate, and publish the `giv` CLI tool across multiple package managers and platforms.
 
 ## Overview
 
-The build system supports the following package formats:
+The build system is now **fully containerized** and supports the following package formats:
 - **npm** - Node.js package manager
 - **PyPI** - Python package index  
 - **Debian** - .deb packages for Ubuntu/Debian
@@ -15,126 +15,171 @@ The build system supports the following package formats:
 - **Homebrew** - macOS package manager
 - **Scoop** - Windows package manager
 
+## Containerized Architecture
+
+All build, validation, and publishing operations now run inside a dedicated Docker container (`giv-packages:latest`) that includes all necessary tools and dependencies. This ensures:
+
+- **Consistent Environment**: Same build environment across all machines
+- **Isolated Dependencies**: No need to install build tools on host system
+- **Reproducible Builds**: Identical results regardless of host OS
+- **Easy Setup**: Only Docker is required on the host
+
 ## Prerequisites
 
 ### Required Tools
-- **Docker** - For building packages and running validation tests
+- **Docker** - The only requirement for building, validating, and publishing
 - **Git** - Version control (already available)
-- **jq** - JSON processing (for validation reports)
 
 ### Authentication Setup
-Before publishing, set up authentication for each target:
+Set environment variables for publishing credentials:
 
 ```bash
 # npm
-npm login
+export NPM_TOKEN="your-npm-token"
 
 # PyPI  
-pip install twine
-# Configure ~/.pypirc with credentials
+export PYPI_TOKEN="your-pypi-token"
 
 # Docker Hub
-docker login
+export DOCKER_HUB_PASSWORD="your-dockerhub-password"
 
 # GitHub (for releases)
-gh auth login
+export GITHUB_TOKEN="your-github-token"
 ```
+
+**Note**: The container automatically passes through these environment variables when publishing.
 
 ## Quick Start
 
-### 1. Build All Packages
+### 1. Build Container and Packages
 ```bash
-# Build all packages for current version
+# Build the container and all packages for current version
 ./build/build-packages.sh
 ```
 
 ### 2. Validate All Packages  
 ```bash
-# Validate all packages across default platforms (Ubuntu, Fedora)
-./build/test/validation/package-validator.sh -b -c
+# Validate packages using containerized testing
+./build/validate-installs.sh
 
 # Generate validation report
-./build/test/validation/package-validator.sh -b -c -r validation-report.json
+./build/validate-installs.sh -r validation-report.json
+
+# Test specific packages only
+./build/validate-installs.sh -p deb,pypi,npm
 ```
 
 ### 3. Publish All Packages
 ```bash
 # Publish to all configured package managers
 ./build/publish-packages.sh
+
+# Publish specific packages only
+./build/publish-packages.sh -p npm,pypi
+
+# Dry run to see what would be published
+./build/publish-packages.sh --dry-run
+```
+
+## Container Helper Scripts
+
+The containerized build system provides these helper scripts:
+
+### Container Management
+```bash
+# Build the giv-packages container
+./build/container-build.sh
+
+# Force rebuild container (no cache)
+./build/container-build.sh -f
+
+# Run interactive shell in container
+./build/container-run.sh
+
+# Run specific command in container
+./build/container-run.sh ./src/giv.sh --version
 ```
 
 ## Detailed Workflow
 
-### Step 1: Version Management
+### Step 1: Container Setup
 
-The version is automatically detected from `src/lib/system.sh`:
+The container is automatically built when needed, but you can build it manually:
 ```bash
-export __VERSION="0.3.0-beta"
+# Build container with all build tools
+./build/container-build.sh
 ```
 
-Check current version:
-```bash
-source build/config.sh && get_version
-```
+The container includes:
+- All package managers (npm, pip, gem, etc.)
+- Build tools (fpm, docker, etc.)
+- Testing frameworks (bats)
+- Publishing tools (twine, gh CLI)
 
 ### Step 2: Building Packages
 
 #### Build All Packages
 ```bash
+# Build container and all packages
 ./build/build-packages.sh
+
+# Build for specific version
+./build/build-packages.sh -v 1.2.3
+
+# Force rebuild container first
+./build/build-packages.sh -f
+
+# Clean dist directory before build
+./build/build-packages.sh -c
 ```
 
-#### Build Specific Package Types
+#### Manual Container Commands
 ```bash
-# Build only npm package
-./build/npm/build.sh
+# Run individual build steps in container
+./build/container-run.sh /workspace/build/build-packages-container.sh 1.2.3
 
-# Build only Debian package  
-./build/linux/build-deb.sh
-
-# Build only Docker image
-./build/docker/build.sh
+# Interactive debugging
+./build/container-run.sh -i
 ```
 
 Built packages are stored in `./dist/{version}/` organized by package type.
 
 ### Step 3: Package Validation
 
-The validation framework uses Docker containers to test package installation and functionality across different Linux distributions.
+The validation framework runs inside the same containerized environment to test package installation and functionality.
 
 #### Validate All Packages
 ```bash
-# Quick validation (default platforms and packages)
-./build/test/validation/package-validator.sh
+# Validate default packages (deb, pypi, npm, homebrew)
+./build/validate-installs.sh
 
-# Full validation with build and cleanup
-./build/test/validation/package-validator.sh -b -c
+# Validate with JSON report
+./build/validate-installs.sh -r validation-report.json
 
-# Validation with detailed reporting
-./build/test/validation/package-validator.sh -b -c -r validation-report.json
+# Force rebuild container first
+./build/validate-installs.sh -f
 ```
 
-#### Validate Specific Combinations
+#### Validate Specific Packages
 ```bash
-# Test npm and deb packages on Ubuntu only
-./build/test/validation/package-validator.sh -p ubuntu -k npm,deb
+# Test only specific package types
+./build/validate-installs.sh -p deb,pypi
 
-# Test all packages on Fedora and Alpine
-./build/test/validation/package-validator.sh -p fedora,alpine -k npm,pypi,deb,rpm,docker
+# Test for specific version
+./build/validate-installs.sh -v 1.2.3
 ```
 
 #### Validation Options
 ```bash
-./build/test/validation/package-validator.sh [OPTIONS]
+./build/validate-installs.sh [OPTIONS]
 
 Options:
-  -p, --platforms PLATFORMS    Comma-separated platforms (ubuntu,debian,fedora,alpine)
-  -k, --packages PACKAGES      Comma-separated packages (npm,pypi,deb,rpm,docker)  
-  -v, --version VERSION        Version to test (default: auto-detect)
-  -r, --report FILE           Generate JSON validation report
-  -c, --clean                 Clean up containers after testing
-  -b, --build                 Build packages before testing
-  -h, --help                  Show help message
+  -v, --version VERSION   Override version detection
+  -p, --packages LIST     Comma-separated list of packages to test
+                         (deb,rpm,pypi,npm,homebrew,snap)
+  -f, --force-build       Force rebuild of container
+  -r, --report FILE       Generate validation report
+  -h, --help              Show help message
 ```
 
 #### Understanding Validation Results
@@ -142,7 +187,7 @@ Options:
 ========================================
 VALIDATION SUMMARY  
 ========================================
-Total tests: 8
+Total tests: 4
 Failures: 0
 Success rate: 100%
 Report saved to: validation-report.json
@@ -150,29 +195,56 @@ Report saved to: validation-report.json
 All validations passed!
 ```
 
+**Note**: Some package types (RPM, Snap) may be skipped depending on container base image capabilities.
+
 ### Step 4: Publishing Packages
 
 #### Publish All Packages
 ```bash
+# Publish with patch version bump
 ./build/publish-packages.sh
+
+# Publish with minor version bump
+./build/publish-packages.sh minor
+
+# Publish with major version bump and beta suffix
+./build/publish-packages.sh major -beta
+
+# Publish specific version
+./build/publish-packages.sh -v 1.2.3
+
+# Dry run to see what would be published
+./build/publish-packages.sh --dry-run
 ```
 
 #### Publish to Specific Package Managers
 ```bash
-# Publish to npm only
-./build/npm/publish.sh
+# Publish only to npm and PyPI
+./build/publish-packages.sh -p npm,pypi
 
-# Publish to PyPI only  
-./build/pypi/publish.sh
+# Skip build step (use existing packages)
+./build/publish-packages.sh -n
 
-# Publish Docker image only
-./build/docker/publish.sh
+# Force rebuild container first
+./build/publish-packages.sh -f
 ```
 
-#### GitHub Release
+#### Publishing Options
 ```bash
-# Create GitHub release with all artifacts
-gh release create v0.3.0-beta ./dist/0.3.0-beta/*
+./build/publish-packages.sh [OPTIONS] [BUMP_TYPE] [VERSION_SUFFIX]
+
+Arguments:
+  BUMP_TYPE           Version bump type: major, minor, patch (default: patch)
+  VERSION_SUFFIX      Version suffix like -beta, -rc1 (optional)
+
+Options:
+  -v, --version VERSION   Use specific version instead of bumping
+  -p, --packages LIST     Comma-separated list of packages to publish
+                         (npm,pypi,docker,github)
+  -f, --force-build       Force rebuild of container
+  -n, --no-build          Skip build step (use existing packages)
+  --dry-run               Show what would be published without doing it
+  -h, --help              Show help message
 ```
 
 ### Step 5: Verification
@@ -228,111 +300,173 @@ docker run itlackey/giv:0.3.0-beta giv --version
 
 ### Build Failures
 ```bash
-# Check build logs
+# Check build logs (verbose)
 ./build/build-packages.sh 2>&1 | tee build.log
 
-# Test individual package builds
-./build/npm/build.sh
+# Debug inside container
+./build/container-run.sh -i
+
+# Test specific build steps
+./build/container-run.sh /workspace/build/build-packages-container.sh 1.2.3
 ```
 
 ### Validation Failures
 ```bash
 # Run validation with verbose output
-./build/test/validation/package-validator.sh -b -c 2>&1 | tee validation.log
+./build/validate-installs.sh 2>&1 | tee validation.log
 
-# Test specific validator manually
-./build/test/validation/npm-validator.sh ubuntu 0.3.0-beta
+# Debug validation in container
+./build/container-run.sh -i
+./workspace/build/validate-installs-container.sh 1.2.3
 ```
 
 ### Publish Failures
 ```bash
-# Check authentication
-npm whoami
-docker info | grep Username
+# Test publishing in dry-run mode
+./build/publish-packages.sh --dry-run
 
-# Test individual publishers
-./build/npm/publish.sh
+# Check authentication inside container
+./build/container-run.sh bash -c "npm whoami; docker info"
+
+# Debug individual publishers
+./build/container-run.sh -i
+```
+
+### Container Issues
+```bash
+# Rebuild container from scratch
+./build/container-build.sh -f
+
+# Check container exists
+docker images giv-packages
+
+# Remove corrupted container
+docker rmi giv-packages:latest
 ```
 
 ### Common Issues
 
 1. **Docker not running**: Start Docker daemon
-2. **Authentication failures**: Re-run login commands
-3. **Version conflicts**: Check if version already published
-4. **Missing dependencies**: Install required build tools
-5. **Permission errors**: Ensure Docker user permissions
+2. **Container build failures**: Check Dockerfile.packages and rebuild with `-f`
+3. **Authentication failures**: Ensure environment variables are set correctly
+4. **Version conflicts**: Check if version already published
+5. **Permission errors**: Ensure Docker user permissions and file ownership
+6. **Missing container**: Run `./build/container-build.sh` first
 
 ## CI/CD Integration
 
-For automated publishing in CI/CD pipelines:
+The containerized build system is ideal for CI/CD pipelines since it only requires Docker:
 
-```bash
+```yaml
 # GitHub Actions example
-- name: Build and validate packages
-  run: |
-    ./build/build-packages.sh
-    ./build/test/validation/package-validator.sh -c -r validation-report.json
+name: Build and Publish
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
-- name: Publish packages  
-  if: github.ref == 'refs/heads/main'
-  run: ./build/publish-packages.sh
-  env:
-    NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-    PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-    DOCKER_HUB_PASSWORD: ${{ secrets.DOCKER_HUB_PASSWORD }}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Build packages
+      run: ./build/build-packages.sh
+    
+    - name: Validate packages
+      run: ./build/validate-installs.sh -r validation-report.json
+    
+    - name: Upload validation report
+      uses: actions/upload-artifact@v3
+      with:
+        name: validation-report
+        path: validation-report.json
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Publish packages
+      run: ./build/publish-packages.sh
+      env:
+        NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        DOCKER_HUB_PASSWORD: ${{ secrets.DOCKER_HUB_PASSWORD }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+**Benefits for CI/CD:**
+- No complex dependency installation steps
+- Consistent environment across different CI providers
+- Isolated build process
+- Easy debugging with container access
 
 ## Directory Structure
 
 ```
 build/
-├── build-packages.sh           # Build all packages
-├── publish-packages.sh         # Publish all packages  
-├── config.sh                   # Centralized configuration
-├── lib/                        # Shared build utilities
-├── npm/                        # npm package build/publish
-├── pypi/                       # PyPI package build/publish
-├── docker/                     # Docker image build/publish
-├── linux/                      # Debian/RPM package builds
-└── test/
-    ├── validation/             # Validation framework
-    │   ├── package-validator.sh    # Main validator
-    │   ├── npm-validator.sh        # npm-specific tests
-    │   ├── pypi-validator.sh       # PyPI-specific tests
-    │   ├── deb-validator.sh        # Debian-specific tests
-    │   ├── rpm-validator.sh        # RPM-specific tests
-    │   ├── docker-validator.sh     # Docker-specific tests
-    │   └── common.sh              # Shared test functions
-    └── docker/                 # Test environments
-        ├── ubuntu/
-        ├── debian/  
-        ├── fedora/
-        ├── alpine/
-        └── arch/
+├── Dockerfile.packages                 # Container with all build tools
+├── container-build.sh                  # Build giv-packages container
+├── container-run.sh                    # Run commands in container
+├── build-packages.sh                   # Host: orchestrate containerized build
+├── build-packages-container.sh         # Container: actual build logic
+├── validate-installs.sh                # Host: orchestrate containerized validation
+├── validate-installs-container.sh      # Container: actual validation logic
+├── publish-packages.sh                 # Host: orchestrate containerized publishing
+├── publish-packages-container.sh       # Container: actual publishing logic
+├── config.sh                          # Shared configuration
+├── npm/                               # npm package build/publish scripts
+├── pypi/                              # PyPI package build/publish scripts
+├── docker/                            # Docker image build/publish scripts
+├── linux/                             # Debian/RPM package build scripts
+├── homebrew/                          # Homebrew formula scripts
+├── scoop/                             # Scoop manifest scripts
+├── snap/                              # Snap package scripts
+└── flatpak/                           # Flatpak package scripts
 
-dist/{version}/                 # Built packages
+dist/{version}/                        # Built packages
 ├── npm/
 ├── pypi/  
-├── giv_*.deb
-├── giv-*.rpm
-└── docker-image.tar
+├── deb/
+├── rpm/
+├── homebrew/
+├── scoop/
+├── snap/
+├── flatpak/
+└── docker/
 ```
+
+**Key Changes:**
+- **Container-first approach**: All build/validation/publishing logic runs in containers
+- **Host orchestration**: Host scripts manage containers and pass parameters
+- **Simplified dependencies**: Only Docker required on host system
+- **Consistent environment**: Same tools and versions across all platforms
 
 ## Best Practices
 
-1. **Always validate before publishing**: Run the validation framework to catch issues early
-2. **Use semantic versioning**: Follow semver for version numbers  
-3. **Test on multiple platforms**: Ensure compatibility across distributions
-4. **Keep authentication secure**: Use environment variables or secret management
-5. **Document changes**: Update changelogs and release notes
-6. **Monitor package repositories**: Verify successful publication
-7. **Automate in CI/CD**: Reduce manual errors with automation
+1. **Always validate before publishing**: Use `./build/validate-installs.sh` to catch issues early
+2. **Use dry-run mode**: Test publishing with `--dry-run` flag first
+3. **Use semantic versioning**: Follow semver for version numbers  
+4. **Keep authentication secure**: Use environment variables for tokens/passwords
+5. **Container management**: Regularly rebuild containers with `-f` to get latest tools
+6. **Document changes**: Update changelogs and release notes
+7. **Monitor package repositories**: Verify successful publication
+8. **Automate in CI/CD**: Leverage containerized approach for consistent CI/CD
+9. **Debug in containers**: Use interactive mode (`-i`) for troubleshooting
+10. **Version control**: Commit version changes after successful publishing
 
 ## Support
 
 For build system issues:
 - Review build logs and validation reports
-- Check individual package validator outputs  
-- Verify authentication and permissions
-- Test Docker environment locally
-- Consult package manager documentation
+- Use interactive container mode for debugging: `./build/container-run.sh -i`
+- Verify Docker is running and container builds successfully
+- Check authentication environment variables are set
+- Rebuild container if encountering tool issues: `./build/container-build.sh -f`
+- Test individual components in dry-run mode
+- Consult package manager documentation for publishing issues
