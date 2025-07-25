@@ -51,12 +51,15 @@ Subcommands
   release-notes          Generate release notes for a tagged release
   announcement           Create a marketing-style announcement
   document               Generate custom content using your own prompt template
-  init                   Initialize or update giv configuration
-  config                 Initialize or update giv configuration values
+  config                 Manage configuration values (list, get, set, unset)
+  init                   Initialize giv configuration (alias for config)
   available-releases     List script versions
   update                 Self-update giv
 
 Examples:
+  giv init                               # Interactive configuration setup
+  giv config list                          # List all configuration values
+  giv config set api.key "your-api-key"    # Set configuration value
   giv message HEAD~3..HEAD src/
   giv summary --output-file SUMMARY.md
   giv changelog v1.0.0..HEAD --todo-files '*.js' --todo-pattern 'TODO:'

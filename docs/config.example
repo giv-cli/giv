@@ -15,13 +15,18 @@ GIV_REVISION="--current"
 GIV_PATHSPEC=""
 
 ## Model and API configuration
-GIV_MODEL="devstral"
-GIV_API_MODEL=""
-GIV_API_URL=""
-### Uses the OPENAI_API_KEY environment variable if set, otherwise empty
-GIV_API_KEY="${OPENAI_API_KEY:-}"
+GIV_API_MODEL="devstral"
+GIV_API_URL="http://localhost:11434/v1/chat/completions"
+### Uses the OPENAI_API_KEY environment variable if set, otherwise "giv"
+GIV_API_KEY="${OPENAI_API_KEY:-giv}"
 
 ## Project details
+### Project title and metadata
+GIV_PROJECT_TITLE=""
+GIV_PROJECT_DESCRIPTION=""
+GIV_PROJECT_URL=""
+GIV_PROJECT_TYPE="auto"
+
 ### Path to the file containing the project version (e.g., "pyproject.toml" or "package.json")
 GIV_PROJECT_VERSION_FILE=""
 
@@ -32,4 +37,7 @@ GIV_PROJECT_VERSION_PATTERN=""
 GIV_TODO_PATTERN=""
 
 ### Comma-separated list of files or glob patterns to search for TODOs (e.g., "*.py,src/**/*.js")
-GIV_TODO_FILES=""
+GIV_TODO_FILES="*todo*"
+
+### Initialization status
+GIV_INITIALIZED=""
