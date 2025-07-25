@@ -206,6 +206,5 @@ mv "$(pwd)/../../dist/${VERSION}/homebrew/giv.rb.bak" "$(pwd)/../../dist/${VERSI
 echo "PASS: Homebrew install from local formula succeeded."
 
 cd ../../
-rm -rf
-cd .tmp/validate-installs
+rm -rf .tmp/validate-installs
 report "ALL INSTALL/UNINSTALL TESTS PASSED"

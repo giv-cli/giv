@@ -1,12 +1,41 @@
-#!/bin/sh
-set -eu
+#!/bin/bash
+set -euo pipefail
 
-# snap install core && snap install snapcraft --classic
+# Input validation functions
+validate_version_format() {
+    local version="$1"
+    if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+        echo "ERROR: Invalid version format: $version" >&2
+        echo "Expected format: X.Y.Z or X.Y.Z-suffix" >&2
+        exit 1
+    fi
+}
 
+validate_bump_type() {
+    local bump="$1"
+    case "$bump" in
+        major|minor|patch) ;;
+        *)
+            echo "ERROR: Invalid bump type: $bump" >&2
+            echo "Valid options: major, minor, patch" >&2
+            exit 1
+            ;;
+    esac
+}
+
+# Validate inputs
 BUMP_TYPE="${1:-patch}"              # patch, minor, or major
 VERSION_SUFFIX="${2:-}"              # e.g., -beta or -rc1 (empty for none)
 
+validate_bump_type "$BUMP_TYPE"
+
 VERSION_FILE="src/giv.sh"
+
+# Validate version file exists
+if [[ ! -f "$VERSION_FILE" ]]; then
+    echo "ERROR: Version file not found: $VERSION_FILE" >&2
+    exit 1
+fi
 
 # Function to bump version (assumes __VERSION="X.Y.Z" or __VERSION="X.Y.Z-suffix")
 bump_version() {
@@ -14,9 +43,24 @@ bump_version() {
     suffix="$2"
     # Extract base version (X.Y.Z) and ignore suffix for bumping
     old_version=$(sed -n 's/^__VERSION="\([^"]*\)"/\1/p' "$VERSION_FILE")
+    
+    if [[ -z "$old_version" ]]; then
+        echo "ERROR: Could not extract version from $VERSION_FILE" >&2
+        exit 1
+    fi
+    
+    validate_version_format "$old_version"
+    
     base_version=$(printf '%s' "$old_version" | cut -d'-' -f1)
     IFS=.
     set -- $base_version
+    
+    # Validate version components are numeric
+    if ! [[ "$1" =~ ^[0-9]+$ ]] || ! [[ "$2" =~ ^[0-9]+$ ]] || ! [[ "$3" =~ ^[0-9]+$ ]]; then
+        echo "ERROR: Invalid version components in $old_version" >&2
+        exit 1
+    fi
+    
     major=$1; minor=$2; patch=$3
     case "$bump" in
         major)
@@ -47,8 +91,23 @@ bump_version() {
         esac
         new_version="$new_version$clean_suffix"
     fi
-    # Update version in file
-    sed "s/^__VERSION=\"[^\"]*\"/__VERSION=\"$new_version\"/" "$VERSION_FILE" > "$VERSION_FILE.tmp" && mv "$VERSION_FILE.tmp" "$VERSION_FILE"
+    
+    # Validate the new version format
+    validate_version_format "$new_version"
+    
+    # Update version in file with better error handling
+    if ! sed "s/^__VERSION=\"[^\"]*\"/__VERSION=\"$new_version\"/" "$VERSION_FILE" > "$VERSION_FILE.tmp"; then
+        echo "ERROR: Failed to update version in $VERSION_FILE" >&2
+        rm -f "$VERSION_FILE.tmp"
+        exit 1
+    fi
+    
+    if ! mv "$VERSION_FILE.tmp" "$VERSION_FILE"; then
+        echo "ERROR: Failed to replace $VERSION_FILE" >&2
+        rm -f "$VERSION_FILE.tmp"
+        exit 1
+    fi
+    
     printf '%s %s\n' "$old_version" "$new_version"
 }
 
@@ -112,16 +171,42 @@ TAR_FILE=$(find "$DIST_DIR" -type f -name '*.tar.gz' | head -n1)
 
 # 5. Create GitHub release and upload artifacts
 RELEASE_TITLE="v${NEW_VERSION}"
-RELEASE_BODY="$(./src/giv.sh release-notes "v${OLD_VERSION}".."v${NEW_VERSION}" --output-version "${NEW_VERSION}")"
 
-# printf "Creating GitHub release...\n"
-# # shellcheck disable=SC2086
-# gh release create "$RELEASE_TITLE" \
-#     --title "$RELEASE_TITLE" \
-#     --notes "$RELEASE_BODY" \
-#     ${DEB_FILE:+--attach "$DEB_FILE"} \
-#     ${RPM_FILE:+--attach "$RPM_FILE"} \
-#     ${TAR_FILE:+--attach "$TAR_FILE"}
+# Generate release notes
+echo "Generating release notes..."
+if ! RELEASE_BODY="$(./src/giv.sh release-notes "v${OLD_VERSION}".."v${NEW_VERSION}" --output-version "${NEW_VERSION}" 2>/dev/null)"; then
+    echo "WARNING: Failed to generate release notes, using default"
+    RELEASE_BODY="Release ${NEW_VERSION}
+
+This release includes various improvements and bug fixes."
+fi
+
+# Validate release files exist
+printf "Checking release artifacts...\n"
+missing_files=()
+[[ -f "$DEB_FILE" ]] || missing_files+=("DEB")
+[[ -f "$RPM_FILE" ]] || missing_files+=("RPM") 
+[[ -f "$TAR_FILE" ]] || missing_files+=("TAR")
+
+if [[ ${#missing_files[@]} -gt 0 ]]; then
+    echo "WARNING: Missing release files: ${missing_files[*]}"
+fi
+
+# Create GitHub release
+printf "Creating GitHub release %s...\n" "$RELEASE_TITLE"
+release_args=("$RELEASE_TITLE" "--title" "$RELEASE_TITLE" "--notes" "$RELEASE_BODY")
+
+# Add attachments if they exist
+[[ -f "$DEB_FILE" ]] && release_args+=("--attach" "$DEB_FILE")
+[[ -f "$RPM_FILE" ]] && release_args+=("--attach" "$RPM_FILE")
+[[ -f "$TAR_FILE" ]] && release_args+=("--attach" "$TAR_FILE")
+
+if gh release create "${release_args[@]}"; then
+    echo "Successfully created GitHub release $RELEASE_TITLE"
+else
+    echo "ERROR: Failed to create GitHub release" >&2
+    exit 1
+fi
 
 # 6. Run each publish.sh under build/*/
 for subdir in build/*; do
