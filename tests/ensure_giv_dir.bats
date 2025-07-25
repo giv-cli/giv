@@ -1,16 +1,12 @@
 #!/usr/bin/env bats
-export TMPDIR="/tmp"
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
+load './helpers/setup.sh'
+load "${GIV_LIB_DIR}/system.sh"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
-load "$BATS_TEST_DIRNAME/../src/system.sh"
-
 @test "ensure_giv_dir creates .giv directory and files" {
   
-    export GIV_DOCS_DIR="$BATS_TEST_DIRNAME/../docs"
-    export GIV_DEBUG="true"
+
    {
     rm -rf "$GIV_HOME"  # Clean up any existing .giv directory
     run ensure_giv_dir_init

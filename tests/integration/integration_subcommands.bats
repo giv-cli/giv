@@ -10,7 +10,7 @@ load 'test_helper/bats-assert/load'
 
 export TMPDIR="/tmp"
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
+export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src/lib"
 export GIV_DEBUG="false"
 
 setup() {

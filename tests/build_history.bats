@@ -1,18 +1,11 @@
 #!/usr/bin/env bats
-export TMPDIR="/tmp"
-mkdir -p "$BATS_TEST_DIRNAME/.logs"
-export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/error.log"
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
+load './helpers/setup.sh'
+load "${GIV_LIB_DIR}/system.sh"
+load "${GIV_LIB_DIR}/history.sh"
+load "${GIV_LIB_DIR}/llm.sh"
+load "${GIV_LIB_DIR}/project_metadata.sh"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
-
-load "$BATS_TEST_DIRNAME/../src/system.sh"
-load "$BATS_TEST_DIRNAME/../src/project_metadata.sh"
-load "$BATS_TEST_DIRNAME/../src/system.sh"
-
-SCRIPT="$BATS_TEST_DIRNAME/../src/history.sh"
-load "$SCRIPT"
 
 setup() {
     export GIV_METADATA_PROJECT_TYPE="custom"

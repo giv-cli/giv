@@ -77,23 +77,25 @@ export SCRIPT_DIR
 PLATFORM="$(detect_platform)"
 APP_DIR="$(compute_app_dir)"
 [ "${GIV_DEBUG}" = "true" ] && printf 'Using giv app directory: %s\n' "${APP_DIR}"
-LIB_DIR=""
+
+SRC_DIR=""
 
 # Library location (.sh files)
-if [ -n "${GIV_LIB_DIR:-}" ]; then
-    LIB_DIR="${GIV_LIB_DIR}"
+if [ -n "${GIV_SRC_DIR:-}" ]; then
+    SRC_DIR="${GIV_SRC_DIR}"
 elif [ -d "${APP_DIR}/src" ]; then
-    LIB_DIR="${APP_DIR}/src"
+    SRC_DIR="${APP_DIR}/src"
 elif [ -d "${SCRIPT_DIR}" ]; then
     # Local or system install: helpers in same dir
-    LIB_DIR="${SCRIPT_DIR}"
+    SRC_DIR="${SCRIPT_DIR}"
 elif [ -n "${SNAP:-}" ] && [ -d "${SNAP}/lib/giv" ]; then
-    LIB_DIR="${SNAP}/lib/giv"
+    SRC_DIR="${SNAP}/lib/giv"
 else
     printf 'Error: Could not find giv lib directory. %s\n' "${SCRIPT_PATH}" >&2
     exit 1
 fi
-GIV_LIB_DIR="${LIB_DIR}"
+
+GIV_LIB_DIR="${SRC_DIR}/lib"
 
 [ "${GIV_DEBUG}" = "true" ] && printf 'Using giv lib directory: %s\n' "${GIV_LIB_DIR}"
 
@@ -105,18 +107,17 @@ GIV_LIB_DIR="${LIB_DIR}"
 ensure_giv_dir_init
 
 # Parse all arguments using unified parser
-. "$GIV_LIB_DIR/lib/argument_parser.sh"
+. "$GIV_LIB_DIR/argument_parser.sh"
 parse_arguments "$@"
 
 # Show help/version immediately if requested
 case "${GIV_SUBCMD:-}" in
     help)
-        . "$GIV_LIB_DIR/args.sh"
-        show_help
+        . "$GIV_SRC_DIR/commands/version.sh"
         exit 0
         ;;
     version)
-        . "$GIV_LIB_DIR/commands/version.sh"
+        . "$GIV_SRC_DIR/commands/version.sh"
         exit 0
         ;;
 esac
@@ -134,23 +135,23 @@ esac
 # Validate subcommand requirements
 validate_subcommand_requirements
 
-if [ -f "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" ]; then
+if [ -f "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh" ]; then
     # Delegate to the subcommand script - pass remaining arguments for commands that need them
     [ "${GIV_DEBUG}" = "true" ] && printf 'Executing subcommand: %s\n' "${GIV_SUBCMD}" >&2
     case "${GIV_SUBCMD}" in
         config|init)
             # These commands need access to raw positional arguments
             shift # Remove subcommand name
-            "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" "$@"
+            "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh" "$@"
             ;;
         *)
             # Other commands use environment variables from unified parser
-            "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh"
+            "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh"
             ;;
     esac
     exit 0
 else
     echo "Unknown subcommand: ${GIV_SUBCMD}" >&2
-    echo "Available subcommands: $(find ${GIV_LIB_DIR}/commands -name '*.sh' -exec basename {} .sh \; | sort | tr '\n' ' ')" >&2
+    echo "Available subcommands: $(find ${GIV_SRC_DIR}/commands -name '*.sh' -exec basename {} .sh \; | sort | tr '\n' ' ')" >&2
     exit 1
 fi

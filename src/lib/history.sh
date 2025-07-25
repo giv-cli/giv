@@ -1,17 +1,17 @@
 #!/bin/sh
 
-# Explicitly initialize GIV_HOME and GIV_TEMPLATE_DIR
-: "${GIV_HOME:=$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.giv}"
-: "${GIV_TEMPLATE_DIR:=${GIV_HOME}/templates}"
+# # Explicitly initialize GIV_HOME and GIV_TEMPLATE_DIR
+# : "${GIV_HOME:=$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.giv}"
+# : "${GIV_TEMPLATE_DIR:=${GIV_HOME}/templates}"
 
-# Ensure GIV_HOME and GIV_TEMPLATE_DIR are initialized
+# # Ensure GIV_HOME and GIV_TEMPLATE_DIR are initialized
 
-# Source project_metadata for tests and runtime
-if [ -n "${BATS_TEST_DIRNAME:-}" ]; then
-  . "$BATS_TEST_DIRNAME/../src/project_metadata.sh"
-else
-  . "${GIV_LIB_DIR}/project_metadata.sh"
-fi
+# # Source project_metadata for tests and runtime
+# if [ -n "${BATS_TEST_DIRNAME:-}" ]; then
+#   . "$BATS_TEST_DIRNAME/../src/project_metadata.sh"
+# else
+#   . "${GIV_LIB_DIR}/project_metadata.sh"
+# fi
 
 # Extract TODO changes for history extraction
 extract_todo_changes() {

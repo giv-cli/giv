@@ -1,19 +1,13 @@
 #!/usr/bin/env bats
-export TMPDIR="/tmp"
-export GIV_TEMPLATE_DIR="$BATS_TEST_DIRNAME/../templates"
-export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
+load './helpers/setup.sh'
+load "${GIV_LIB_DIR}/system.sh"
+load "${GIV_LIB_DIR}/history.sh"
+load "${GIV_LIB_DIR}/llm.sh"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
-load "$BATS_TEST_DIRNAME/../src/system.sh"
-load "$BATS_TEST_DIRNAME/../src/llm.sh"
-load "$BATS_TEST_DIRNAME/../src/history.sh"
 
 setup() {
 
-    export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
-    export GIV_DEBUG="true"
     TMP_REPO="$BATS_TEST_DIRNAME/.tmp/tmp_repo"
     rm -rf "$TMP_REPO"
     mkdir -p "$TMP_REPO"

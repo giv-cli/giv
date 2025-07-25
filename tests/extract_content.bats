@@ -1,18 +1,10 @@
 #!/usr/bin/env bats
-export TMPDIR="/tmp"
-mkdir -p "$BATS_TEST_DIRNAME/.logs"
-export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/error.log"
+load './helpers/setup.sh'
+load "${GIV_LIB_DIR}/system.sh"
+load "${GIV_LIB_DIR}/llm.sh"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
-SCRIPT="$BATS_TEST_DIRNAME/../src/llm.sh"
-
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
-setup() {
-    # adjust the path as needed
-    load "$SCRIPT"
-}
 
 @test "extracts simple single-line content" {
     json='{"message":{"content":"Hello World"}}'

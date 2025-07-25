@@ -1,14 +1,10 @@
 #!/usr/bin/env bats
-
-export TMPDIR="/tmp"
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
-export GIV_DEBUG="true"
-load "$BATS_TEST_DIRNAME/../src/system.sh"
-load "$BATS_TEST_DIRNAME/../src/project_metadata.sh"
-
+load './helpers/setup.sh'
+load "${GIV_LIB_DIR}/system.sh"
+load "${GIV_LIB_DIR}/project_metadata.sh"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
+
 
 
 

@@ -6,10 +6,8 @@ fi
 # changelog.sh: Generate or update a changelog
 
 # Source initialization script
-. "$GIV_LIB_DIR/init.sh"
+#. "$GIV_LIB_DIR/init.sh"
 
-# Source shared argument parsing for document-related subcommands
-. "$GIV_LIB_DIR/document_args.sh"
 
 # Parse arguments specific to changelog
 parse_document_args "$@"

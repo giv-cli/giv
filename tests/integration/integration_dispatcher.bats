@@ -8,7 +8,7 @@ load 'test_helper/bats-assert/load'
 
 export TMPDIR="/tmp"
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
+export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src/lib"
 export GIV_DEBUG="false"  # Set to true for debugging
 
 setup() {
@@ -96,7 +96,7 @@ mock_generate_response() {
     
     for cmd in $valid_commands; do
         # Check that subcommand file exists and dispatcher would attempt to execute it
-        [ -f "$GIV_LIB_DIR/commands/${cmd}.sh" ] || skip "Subcommand $cmd not found"
+        [ -f "$GIV_SRC_DIR/commands/${cmd}.sh" ] || skip "Subcommand $cmd not found"
         
         # Run with dry-run to avoid actual execution but test dispatcher logic
         run timeout 2s "$GIV_SCRIPT" "$cmd" --dry-run 2>/dev/null || true

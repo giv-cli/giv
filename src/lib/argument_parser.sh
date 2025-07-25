@@ -2,23 +2,23 @@
 # argument_parser.sh: Unified argument parsing for giv CLI
 # Consolidates all argument parsing logic into a single, maintainable module
 
-# Source system utilities for print_debug function
-if [ -n "${GIV_LIB_DIR:-}" ]; then
-    . "$GIV_LIB_DIR/system.sh"
-else
-    # Fallback for standalone testing
-    SCRIPT_DIR="$(dirname "$0")"
-    if [ -f "$SCRIPT_DIR/../system.sh" ]; then
-        . "$SCRIPT_DIR/../system.sh"
-    else
-        # Minimal print_debug fallback
-        print_debug() {
-            if [ "${GIV_DEBUG:-}" = "true" ]; then
-                printf 'DEBUG: %s\n' "$*" >&2
-            fi
-        }
-    fi
-fi
+# # Source system utilities for print_debug function
+# if [ -n "${GIV_LIB_DIR:-}" ]; then
+#     . "$GIV_LIB_DIR/system.sh"
+# else
+#     # Fallback for standalone testing
+#     SCRIPT_DIR="$(dirname "$0")"
+#     if [ -f "$SCRIPT_DIR/../system.sh" ]; then
+#         . "$SCRIPT_DIR/../system.sh"
+#     else
+#         # Minimal print_debug fallback
+#         print_debug() {
+#             if [ "${GIV_DEBUG:-}" = "true" ]; then
+#                 printf 'DEBUG: %s\n' "$*" >&2
+#             fi
+#         }
+#     fi
+# fi
 
 # Global option definitions - defines all supported options and their properties
 # Format: option_name:type:env_var:description

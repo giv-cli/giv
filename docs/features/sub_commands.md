@@ -16,9 +16,9 @@ The main entry point should look something like this:
     parse_args "$@"
     metadata_init
 
-if [ -f "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" ]; then
+if [ -f "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh" ]; then
     ensure_giv_dir_init
-    "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" "$@"
+    "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh" "$@"
     exit 0
 fi
 ```
@@ -63,8 +63,8 @@ Refactor the `giv` CLI to simplify the main entry script (`src/giv.sh`) and argu
        parse_args "$@"
        metadata_init
 
-       if [ -f "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" ]; then
-           "${GIV_LIB_DIR}/commands/${GIV_SUBCMD}.sh" "$@"
+       if [ -f "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh" ]; then
+           "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh" "$@"
            exit 0
        fi
        ```

@@ -4,6 +4,8 @@
 ## Global GIV Configuration Variables
 export __VERSION="0.3.0-beta"
 
+export GIV_SUBCMD="message"
+
 ## Default git revision and pathspec
 export GIV_REVISION="--current"
 export GIV_PATHSPEC=""

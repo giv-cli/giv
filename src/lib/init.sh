@@ -8,6 +8,7 @@ IFS="$(printf '\n\t')"
 # Defaults
 ## Directory locations
 export GIV_HOME="${GIV_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo "${HOME}")/.giv}"
+export GIV_SRC_DIR="${GIV_SRC_DIR:-}"
 export GIV_LIB_DIR="${GIV_LIB_DIR:-}"
 export GIV_DOCS_DIR="${GIV_DOCS_DIR:-}"
 export GIV_TEMPLATE_DIR="${GIV_TEMPLATE_DIR:-}"
@@ -63,26 +64,27 @@ compute_app_dir() {
 
 
 # Library location (.sh files)
-if [ -z "${GIV_LIB_DIR}" ]; then
+if [ -z "${GIV_SRC_DIR}" ]; then
     # Initialize paths
     SCRIPT_DIR="$(get_script_dir "$0")"
     APP_DIR="$(compute_app_dir)"
 
-    LIB_DIR=""
-    if [ -n "${GIV_LIB_DIR:-}" ]; then
-        LIB_DIR="${GIV_LIB_DIR}"
+    local SRC_DIR=""
+    if [ -n "${GIV_SRC_DIR:-}" ]; then
+        SRC_DIR="${GIV_SRC_DIR}"
     elif [ -d "${APP_DIR}/src" ]; then
-        LIB_DIR="${APP_DIR}/src"
+        SRC_DIR="${APP_DIR}/src"
     elif [ -d "${SCRIPT_DIR}" ]; then
         # Local or system install: helpers in same dir
-        LIB_DIR="${SCRIPT_DIR}"
+        SRC_DIR="${SCRIPT_DIR}"
     elif [ -n "${SNAP:-}" ] && [ -d "${SNAP}/lib/giv" ]; then
-        LIB_DIR="${SNAP}/lib/giv"
+        SRC_DIR="${SNAP}/lib/giv"
     else
-        printf 'Error: Could not find giv lib directory. %s\n' "${SCRIPT_PATH}" >&2
+        printf 'Error: Could not find giv src directory. %s\n' "${SCRIPT_PATH}" >&2
         exit 1
     fi
-    GIV_LIB_DIR="${LIB_DIR}"
+    GIV_SRC_DIR="${SRC_DIR}"
+    GIV_LIB_DIR="${GIV_SRC_DIR}/lib"
 fi
 
 
@@ -91,9 +93,9 @@ if [ -n "${GIV_TEMPLATE_DIR:-}" ]; then
     TEMPLATE_DIR="${GIV_TEMPLATE_DIR}"
 elif [ -d "${APP_DIR}/templates" ]; then
     TEMPLATE_DIR="${APP_DIR}/templates"
-elif [ -d "${GIV_LIB_DIR}/../templates" ]; then
+elif [ -d "${GIV_SRC_DIR}/templates" ]; then
     # Local or system install: helpers in same dir
-    TEMPLATE_DIR="${GIV_LIB_DIR}/../templates"
+    TEMPLATE_DIR="${GIV_SRC_DIR}/templates"
 else
     printf 'Error: Could not find giv template directory.\n' >&2
     exit 1
@@ -105,9 +107,9 @@ if [ -n "${GIV_DOCS_DIR:-}" ]; then
     DOCS_DIR="${GIV_DOCS_DIR}"
 elif [ -d "${APP_DIR}/docs" ]; then
     DOCS_DIR="${APP_DIR}/docs"
-elif [ -d "${GIV_LIB_DIR}/../docs" ]; then
+elif [ -d "${GIV_SRC_DIR}/docs" ]; then
     # Local or system install: helpers in same dir
-    DOCS_DIR="${GIV_LIB_DIR}/../docs"
+    DOCS_DIR="${GIV_SRC_DIR}/docs"
 else
     DOCS_DIR=""
 fi
@@ -125,15 +127,16 @@ fi
 
 
 # Export resolved globals
-export GIV_LIB_DIR GIV_TEMPLATE_DIR GIV_DOCS_DIR
+export GIV_SRC_DIR GIV_LIB_DIR GIV_TEMPLATE_DIR GIV_DOCS_DIR
 [ "${GIV_DEBUG}" = "true" ] && printf 'Using giv home directory: %s\n' "${GIV_HOME}"
+[ "${GIV_DEBUG}" = "true" ] && printf 'Using giv src directory: %s\n' "${GIV_SRC_DIR}"
 [ "${GIV_DEBUG}" = "true" ] && printf 'Using giv lib directory: %s\n' "${GIV_LIB_DIR}"
 [ "${GIV_DEBUG}" = "true" ] && printf 'Using giv template directory: %s\n' "${GIV_TEMPLATE_DIR}"
 [ "${GIV_DEBUG}" = "true" ] && printf 'Using giv docs directory: %s\n' "${GIV_DOCS_DIR}"
 
 # Load shared modules
 . "${GIV_LIB_DIR}/system.sh"
-. "${GIV_LIB_DIR}/args.sh"
+. "${GIV_LIB_DIR}/lib/argument_parser.sh"
 . "${GIV_LIB_DIR}/markdown.sh"
 . "${GIV_LIB_DIR}/llm.sh"
 . "${GIV_LIB_DIR}/project_metadata.sh"

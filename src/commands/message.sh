@@ -8,7 +8,7 @@ fi
 # -------------------------------------------------------------------
 
 # Load initialization and shared functions
-. "$GIV_LIB_DIR/init.sh"
+#. "$GIV_LIB_DIR/init.sh"
 
 # All arguments are already parsed by the unified parser
 # Use environment variables set by the parser
