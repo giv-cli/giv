@@ -64,23 +64,41 @@ giv_config() {
                     esac
                 done < "$GIV_CONFIG_FILE"
             fi
-            # Convert GIV_... keys to user keys for output
-            while IFS= read -r line; do
-                case "$line" in
+            # Convert GIV_... keys to user keys for output from config file
+            if [ -s "$GIV_CONFIG_FILE" ]; then
+                while IFS= read -r line; do
+                    case "$line" in
+                        GIV_*)
+                            k=${line#GIV_}
+                            k=${k%%=*}
+                            key=$(printf '%s' "$k" | tr 'A-Z_' 'a-z.')
+                            value="${line#*=}"
+                            printf '%s\n' "$key=$value"
+                            ;;
+                        *=*)
+                            printf '%s\n' "$line"
+                            ;;
+                        *)
+                        ;;
+                    esac
+                done < "$GIV_CONFIG_FILE"
+            fi
+            
+            # Also show environment variables with GIV_ prefix that may have been loaded from --config-file
+            for var in $(env | grep '^GIV_'); do
+                case "$var" in
                     GIV_*)
-                        k=${line#GIV_}
+                        k=${var#GIV_}
                         k=${k%%=*}
                         key=$(printf '%s' "$k" | tr 'A-Z_' 'a-z.')
-                        value="${line#*=}"
-                        printf '%s\n' "$key=$value"
+                        value="${var#*=}"
+                        # Only show if not already shown from config file
+                        if [ -z "$(grep "^GIV_$k=" "$GIV_CONFIG_FILE" 2>/dev/null)" ]; then
+                            printf '%s\n' "$key=$value"
+                        fi
                         ;;
-                    *=*)
-                        printf '%s\n' "$line"
-                        ;;
-                    *)
-                    ;;
                 esac
-            done < "$GIV_CONFIG_FILE"
+            done
             ;;
         --get|get)
             key="$2"

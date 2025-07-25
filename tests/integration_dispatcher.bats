@@ -5,9 +5,8 @@
 
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
+load 'helpers/setup.sh'
 
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export TMPDIR="$GIV_HOME/.tmp"
 
 setup() {
     # Create isolated test environment

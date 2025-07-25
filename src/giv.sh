@@ -139,9 +139,25 @@ if [ -f "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh" ]; then
     [ "${GIV_DEBUG}" = "true" ] && printf 'Executing subcommand: %s\n' "${GIV_SUBCMD}" >&2
     case "${GIV_SUBCMD}" in
         config|init)
-            # These commands need access to raw positional arguments
-            shift # Remove subcommand name
-            "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh" "$@"
+            # These commands need access to subcommand arguments only
+            # Extract arguments after the subcommand name, skipping global options
+            subcommand_args=""
+            found_subcommand=false
+            for arg in "$@"; do
+                if [ "$found_subcommand" = "true" ]; then
+                    subcommand_args="$subcommand_args $arg"
+                elif [ "$arg" = "$GIV_SUBCMD" ]; then
+                    found_subcommand=true
+                fi
+            done
+            [ "${GIV_DEBUG}" = "true" ] && printf 'Config subcommand args: %s\n' "$subcommand_args" >&2
+            if [ -n "$subcommand_args" ]; then
+                # Use eval to properly handle quoted arguments
+                eval set -- "$subcommand_args"
+                "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh" "$@"
+            else
+                "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh"
+            fi
             ;;
         *)
             # Other commands use environment variables from unified parser

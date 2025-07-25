@@ -7,9 +7,11 @@
 
 # Wrapper to call document.sh with appropriate arguments
 if [ -f "${GIV_SRC_DIR}/commands/document.sh" ]; then
+    # Set the template file directly via environment variable
+    template_path="${GIV_TEMPLATE_DIR}/release_notes_prompt.md"
+    export GIV_PROMPT_FILE="${template_path}"
     # Delegate to the subcommand script
-    "${GIV_SRC_DIR}/commands/document.sh" "$@" \
-        --template "${GIV_TEMPLATE_DIR}/release_notes_prompt.md"
+    "${GIV_SRC_DIR}/commands/document.sh" "$@"
     exit 0
 else
     echo "Available subcommands: $(find "${GIV_SRC_DIR}/commands" -maxdepth 1 -type f -name '*.sh' -exec basename {} .sh \; | tr '\n' ' ')" >&2

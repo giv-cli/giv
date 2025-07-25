@@ -10,6 +10,7 @@
 if [ -n "${GIV_TEST_MOCKS:-}" ] && [ -f "${GIV_TEST_MOCKS:-}" ]; then
   . "$GIV_TEST_MOCKS"
 fi
+
 # Function to generate documents based on a prompt template
 cmd_document() {
     # Use environment variables set by unified parser
