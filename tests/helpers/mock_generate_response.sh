@@ -41,6 +41,8 @@ This release introduces server capabilities and improves the project foundation.
             echo "Generated content for integration testing"
             ;;
     esac
+    printf "%s\n" "$@"
+    cat $1
 }
 
 generate_response() { mock_generate_response "$@"; }

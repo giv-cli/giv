@@ -29,6 +29,18 @@ normalize_key() {
     esac
 }
 
+# Quote value if it contains spaces, special characters, or is empty
+quote_value() {
+    case "$1" in
+        *[[:space:]]*|*[\"\'\`\$\\]*|'')
+            printf '"%s"' "$1"
+            ;;
+        *)
+            printf '%s' "$1"
+            ;;
+    esac
+}
+
 giv_config() {
     cmd="$1"
     case "$cmd" in
@@ -72,8 +84,13 @@ giv_config() {
             ;;
         --get|get)
             key="$2"
-            # ENV override
+            # Validate key format
             env_key="$(normalize_key "$key")"
+            if [ -z "$env_key" ]; then
+                printf '%s\n' "Invalid key format: $key" >&2
+                return 1
+            fi
+            # ENV override
             if [ -n "$env_key" ]; then
                 eval "env_val=\"\${$env_key-}\""
                 if [ -n "$env_val" ]; then
@@ -92,8 +109,8 @@ giv_config() {
                 givkey="$(normalize_key "$key")"
                 val=$(grep -E "^$givkey=" "$GIV_CONFIG_FILE" | cut -d'=' -f2-)
             fi
-            # Remove surrounding quotes if present
-            val=$(printf '%s' "$val" | sed 's/^"\(.*\)"$/\1/')
+            # Remove surrounding quotes if present (both single and double)
+            val=$(printf '%s' "$val" | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/")
             printf '%s\n' "$val"
             ;;
         --unset|unset)
@@ -119,7 +136,7 @@ giv_config() {
             grep -v -E "^($key|$givkey)=" "$GIV_CONFIG_FILE" | grep -v '^$' > "$tmpfile"
             # Always write in GIV_... format
             writekey="$(normalize_key "$key")"
-            printf '%s\n' "$writekey=$value" >> "$tmpfile"
+            printf '%s=%s\n' "$writekey" "$(quote_value "$value")" >> "$tmpfile"
             mv "$tmpfile" "$GIV_CONFIG_FILE"
             ;;
         -*|help)
@@ -130,9 +147,14 @@ giv_config() {
         *)
             key="$1"
             value="${2:-}"
+            # Validate key format
+            env_key="$(normalize_key "$key")"
+            if [ -z "$env_key" ]; then
+                printf '%s\n' "Invalid key format: $key" >&2
+                return 1
+            fi
             if [ -z "$value" ]; then
                 # ENV override
-                env_key="$(normalize_key "$key")"
                 if [ -n "$env_key" ]; then
                     eval "env_val=\"\${$env_key-}\""
                     if [ -n "$env_val" ]; then
@@ -156,8 +178,8 @@ giv_config() {
                     givkey="$(normalize_key "$key")"
                     val=$(grep -E "^$givkey=" "$GIV_CONFIG_FILE" | cut -d'=' -f2-)
                 fi
-                # Remove surrounding quotes if present
-                val=$(printf '%s' "$val" | sed 's/^"\(.*\)"$/\1/')
+                # Remove surrounding quotes if present (both single and double)
+                val=$(printf '%s' "$val" | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/")
                 printf '%s\n' "$val"
             else
                 mkdir -p "$GIV_HOME"
@@ -169,7 +191,7 @@ giv_config() {
                 grep -v -E "^($key|$givkey)=" "$GIV_CONFIG_FILE" | grep -v '^$' > "$tmpfile"
                 # Always write in GIV_... format
                 writekey="$(normalize_key "$key")"
-                printf '%s\n' "$writekey=$value" >> "$tmpfile"
+                printf '%s=%s\n' "$writekey" "$(quote_value "$value")" >> "$tmpfile"
                 mv "$tmpfile" "$GIV_CONFIG_FILE"
             fi
             ;;

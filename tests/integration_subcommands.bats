@@ -14,7 +14,7 @@ export GIV_DEBUG="false"
 
 setup() {
     # Create isolated test environment
-    TMPDIR_REPO="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
+    TMPDIR_REPO="$(mktemp -d -p "$GIV_HOME/.tmp")"
     cd "$TMPDIR_REPO" || exit 1
     
     # Initialize git repo with realistic project structure
@@ -108,7 +108,7 @@ EOF
     # Set up templates directory
     mkdir -p "$GIV_HOME/templates"
     
-    export GIV_SCRIPT="$BATS_TEST_DIRNAME/../../src/giv.sh"
+    export GIV_SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
     
     # Mock AI response generation
     # export -f mock_generate_response
@@ -120,50 +120,6 @@ teardown() {
     fi
 }
 
-# Mock function for AI responses
-mock_generate_response() {
-    case "${1:-}" in
-        *message*|*commit*)
-            echo "feat: enhance project with new dependencies and documentation"
-            ;;
-        *changelog*)
-            echo "## [1.2.1] - $(date +%Y-%m-%d)
-### Added
-- Express.js dependency for better server functionality
-- Basic hello world implementation
-
-### Fixed
-- Project initialization and basic functionality"
-            ;;
-        *summary*)
-            echo "## Summary of Changes
-
-The recent commits include:
-- Addition of Express.js dependency for server functionality  
-- Updated project documentation with new features
-- Implemented basic hello world functionality
-- Fixed initial project setup issues"
-            ;;
-        *release*)
-            echo "# Release Notes v1.2.1
-
-This release introduces server capabilities and improves the project foundation.
-
-## What's New
-- **Server Framework**: Added Express.js for robust server functionality
-- **Documentation**: Enhanced README with feature descriptions
-- **Core Functionality**: Implemented hello world baseline
-
-## Technical Details
-- Dependencies updated to include Express ^4.18.0
-- Basic server entry point established
-- Project structure improved for scalability"
-            ;;
-        *)
-            echo "Generated content for integration testing"
-            ;;
-    esac
-}
 
 # CONFIG SUBCOMMAND TESTS
 @test "config: lists all configuration values" {
@@ -197,13 +153,9 @@ This release introduces server capabilities and improves the project foundation.
 
 # MESSAGE SUBCOMMAND TESTS
 @test "message: generates commit message for HEAD" {
-    # Mock the generate_response function
-    generate_response() { mock_generate_response "message"; }
-    # export -f generate_response
-    
     run "$GIV_SCRIPT" message HEAD --dry-run
     assert_success
-    assert_output --partial "feat:"
+    assert_output --partial "feat: enhance project with new dependencies and documentation"
 }
 
 @test "message: generates commit message for staged changes" {
@@ -211,31 +163,22 @@ This release introduces server capabilities and improves the project foundation.
     echo "New feature code" > feature.js
     git add feature.js
     
-    generate_response() { mock_generate_response "message"; }
-    # export -f generate_response
-    
     run "$GIV_SCRIPT" message --cached --dry-run
     assert_success
-    assert_output --partial "feat:"
+    assert_output --partial "feat: enhance project with new dependencies and documentation"
 }
 
 @test "message: generates commit message for current changes" {
     # Make unstaged changes
     echo "Work in progress" >> README.md
     
-    generate_response() { mock_generate_response "message"; }
-    # export -f generate_response
-    
     run "$GIV_SCRIPT" message --current --dry-run
     assert_success
-    assert_output --partial "feat:"
+    assert_output --partial "feat: enhance project with new dependencies and documentation"
 }
 
 # SUMMARY SUBCOMMAND TESTS  
 @test "summary: generates summary for commit range" {
-    generate_response() { mock_generate_response "summary"; }
-    # export -f generate_response
-    
     run "$GIV_SCRIPT" summary HEAD~2..HEAD --dry-run
     assert_success
     assert_output --partial "Summary of Changes"
@@ -243,9 +186,6 @@ This release introduces server capabilities and improves the project foundation.
 }
 
 @test "summary: generates summary for single commit" {
-    generate_response() { mock_generate_response "summary"; }
-    # export -f generate_response
-    
     run "$GIV_SCRIPT" summary HEAD --dry-run
     assert_success
     assert_output --partial "Summary of Changes"
@@ -253,9 +193,6 @@ This release introduces server capabilities and improves the project foundation.
 
 # CHANGELOG SUBCOMMAND TESTS
 @test "changelog: updates CHANGELOG.md with new entries" {
-    generate_response() { mock_generate_response "changelog"; }
-    # export -f generate_response
-    
     # Backup original changelog
     cp CHANGELOG.md CHANGELOG.md.bak
     
@@ -269,17 +206,11 @@ This release introduces server capabilities and improves the project foundation.
 }
 
 @test "changelog: handles empty commit range gracefully" {
-    generate_response() { mock_generate_response "changelog"; }
-    # export -f generate_response
-    
     run "$GIV_SCRIPT" changelog HEAD..HEAD --dry-run
     assert_success
 }
 
 @test "changelog: respects --output-version flag" {
-    generate_response() { mock_generate_response "changelog"; }
-    # export -f generate_response
-    
     run "$GIV_SCRIPT" changelog HEAD --output-version "2.0.0" --dry-run
     assert_success
     assert_output --partial "2.0.0"
@@ -287,9 +218,6 @@ This release introduces server capabilities and improves the project foundation.
 
 # RELEASE NOTES SUBCOMMAND TESTS
 @test "release-notes: generates release notes for version" {
-    generate_response() { mock_generate_response "release"; }
-    # export -f generate_response
-    
     run "$GIV_SCRIPT" release-notes HEAD~2..HEAD --dry-run
     assert_success
     assert_output --partial "Release Notes"
@@ -298,9 +226,6 @@ This release introduces server capabilities and improves the project foundation.
 }
 
 @test "release-notes: creates RELEASE_NOTES.md file" {
-    generate_response() { mock_generate_response "release"; }
-    # export -f generate_response
-    
     run "$GIV_SCRIPT" release-notes HEAD --output-file test_release.md --dry-run
     assert_success
     
@@ -327,12 +252,9 @@ Please analyze the following changes:
 Focus on technical implementation details.
 EOF
     
-    generate_response() { echo "Technical analysis of recent changes..."; }
-    export -f generate_response
-    
     run "$GIV_SCRIPT" document HEAD --prompt-file custom_prompt.md --dry-run
     assert_success
-    assert_output --partial "Technical analysis"
+    assert_output --partial "Generated content for integration testing"
 }
 
 # ERROR HANDLING TESTS
@@ -345,10 +267,6 @@ EOF
 @test "subcommands: handle missing API configuration" {
     # Remove API key
     sed -i '/GIV_API_KEY/d' "$GIV_HOME/config"
-    
-    # Mock the generate_response function
-    generate_response() { echo "API key is missing"; }
-    export -f generate_response
     
     run "$GIV_SCRIPT" message HEAD --api-url "https://api.test.com"
     assert_failure
@@ -365,12 +283,9 @@ version = "1.0.0"
 description = "A test Python project"
 EOF
     
-    generate_response() { echo "Python project changes analyzed"; }
-    export -f generate_response
-    
     run "$GIV_SCRIPT" summary HEAD --dry-run
     assert_success
-    assert_output --partial "Python"
+    assert_output --partial "Summary of Changes"
 }
 
 # PATHSPEC TESTS  
@@ -381,12 +296,9 @@ EOF
     git add .
     git commit -q -m "Mixed changes"
     
-    generate_response() { echo "Only JavaScript file changes"; }
-    export -f generate_response
-    
     run "$GIV_SCRIPT" message HEAD "*.js" --dry-run
     assert_success
-    assert_output --partial "JavaScript"
+    assert_output --partial "feat: enhance project with new dependencies and documentation"
 }
 
 # INTEGRATION WITH EXTERNAL TOOLS
@@ -401,9 +313,6 @@ EOF
     # Record initial state
     initial_commit=$(git rev-parse HEAD)
     initial_status=$(git status --porcelain)
-    
-    generate_response() { echo "Test response"; }
-    export -f generate_response
     
     # Run various commands
     "$GIV_SCRIPT" message HEAD --dry-run >/dev/null 2>&1 || true

@@ -8,6 +8,7 @@ set -eu
 TARGET="$1"
 mkdir -p "$TARGET"
 cd "$TARGET"
+printf "GIV_TEST_MOCKS=%s\n" "$GIV_TEST_MOCKS" > .env
 git init >/dev/null 2>&1
 echo "First line" > file.txt
 git add file.txt

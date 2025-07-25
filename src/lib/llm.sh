@@ -114,10 +114,21 @@ extract_content_from_response() {
 generate_remote() {
     content=$(cat "$1")
 
-    print_debug "Generating remote response with content: $GIV_API_MODEL"
+    # Strip surrounding quotes from URL, API key, and model if present  
+    API_URL=$(printf '%s' "$GIV_API_URL" | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/")
+    API_KEY=$(printf '%s' "$GIV_API_KEY" | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/")
+    API_MODEL=$(printf '%s' "$GIV_API_MODEL" | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/")
+    
+    print_debug "Generating remote response using: $API_URL"
+    print_debug "Original API URL: '$GIV_API_URL'"
+    print_debug "Cleaned API URL: '$API_URL'"
+    print_debug "Original API KEY: '$GIV_API_KEY'"  
+    print_debug "Cleaned API KEY: '$API_KEY'"
+    print_debug "Generating remote response with model: $GIV_API_MODEL"
     # Check required environment variables
     if [ -z "${GIV_API_MODEL}" ] || [ -z "${GIV_API_URL}" ] || [ -z "${GIV_API_KEY}" ]; then
         printf 'Error: Missing required environment variables for remote generation.\n' >&2
+        print_plain "Please check your API key and URL configuration."        
         return 1
     fi
 
@@ -127,17 +138,26 @@ generate_remote() {
 
     # shellcheck disable=SC2154
     body=$(printf '{"model":"%s","messages":[{"role":"user","content":%s}],"max_completion_tokens":8192}' \
-        "${GIV_API_MODEL}" "${escaped_content}")
+        "${API_MODEL}" "${escaped_content}")
+    
+    print_debug "Request body: $body"
 
     # shellcheck disable=SC2154
-    response=$(curl -sS --fail -H "Authorization: Bearer ${GIV_API_KEY}" -H "Content-Type: application/json" -d "${body}" "${GIV_API_URL}")
+    # Use cleaned values and make Authorization header optional for local services like Ollama
+    if [ -n "${API_KEY}" ] && [ "${API_KEY}" != "ollama" ] && [ "${API_KEY}" != "giv" ] && [ "${API_URL}" != *"localhost"* ]; then
+        print_debug "Using Authorization header with API key"
+        response=$(curl -sS --fail -H "Authorization: Bearer ${API_KEY}" -H "Content-Type: application/json" -d "${body}" "${API_URL}")
+    else
+        print_debug "Skipping Authorization header (local service detected)"
+        response=$(curl -sS --fail -H "Content-Type: application/json" -d "${body}" "${API_URL}")
+    fi
+
 
     print_debug "Response from remote API:"
     print_debug "${response}"
 
     if [ -z "${response}" ]; then
-        print_error "No response received from remote API: ${GIV_API_URL}"
-        print_plain "Please check your API key and URL configuration."
+        print_error "No response received from remote API: ${API_URL}"
         return 1
     fi
     # Try to extract content using jq if available

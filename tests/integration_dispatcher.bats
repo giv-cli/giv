@@ -6,14 +6,12 @@
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
-export TMPDIR="/tmp"
 export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../../src/lib"
-export GIV_DEBUG="false"  # Set to true for debugging
+export TMPDIR="$GIV_HOME/.tmp"
 
 setup() {
     # Create isolated test environment
-    TMPDIR_REPO="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
+    TMPDIR_REPO="$(mktemp -d -p "$GIV_HOME/.tmp")"
     cd "$TMPDIR_REPO" || {
         echo "Failed to change directory to TMPDIR_REPO" >&2
         exit 1
@@ -46,20 +44,13 @@ setup() {
     echo "GIV_PROJECT_URL=https://github.com/test/test" >> "$GIV_HOME/config"
     echo "GIV_INITIALIZED=\"true\"" >> "$GIV_HOME/config"
     
-    # Mock generate_response function to avoid actual AI calls
-    export -f mock_generate_response
-    export GIV_SCRIPT="$BATS_TEST_DIRNAME/../../src/giv.sh"
+    export GIV_SCRIPT="$BATS_TEST_DIRNAME/../src/giv.sh"
 }
 
 teardown() {
     if [ -n "$TMPDIR_REPO" ] && [ -d "$TMPDIR_REPO" ]; then
         rm -rf "$TMPDIR_REPO"
     fi
-}
-
-# Mock function for AI response generation
-mock_generate_response() {
-    echo "Mocked AI response for testing"
 }
 
 # Test basic dispatcher functionality
@@ -119,8 +110,8 @@ mock_generate_response() {
     
     run "$GIV_SCRIPT" --config-file custom_config.env config --list
     assert_success
-    # Should have loaded the custom config
-    assert_output --partial "custom.var"
+    # Should have loaded the custom config (converted to custom.var format)
+    assert_output --partial "custom.var=test_value"
 }
 
 @test "dispatcher: validates git repository requirement" {

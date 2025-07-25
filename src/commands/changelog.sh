@@ -1,19 +1,19 @@
-# Allow test harness to inject mock functions (for bats)
-if [ -n "$GIV_TEST_MOCKS" ] && [ -f "$GIV_TEST_MOCKS" ]; then
-  . "$GIV_TEST_MOCKS"
-fi
 #!/bin/sh
 # changelog.sh: Generate or update a changelog
 
-# Source initialization script
-#. "$GIV_LIB_DIR/init.sh"
+# Load initialization and shared functions
+. "$GIV_LIB_DIR/init.sh"
 
+# Allow test harness to inject mock functions (for bats)
+if [ -n "${GIV_TEST_MOCKS:-}" ] && [ -f "${GIV_TEST_MOCKS:-}" ]; then
+  . "$GIV_TEST_MOCKS"
+fi
 
-# Parse arguments specific to changelog
-parse_document_args "$@"
+# Arguments are already parsed by the unified parser
+# All environment variables are set by parse_arguments in giv.sh
 
-revision="$1"
-pathspec="$2"
+revision="$GIV_REVISION"
+pathspec="$GIV_PATHSPEC"
 output_file="${output_file:-$changelog_file}"
 print_debug "Changelog file: $output_file"
 

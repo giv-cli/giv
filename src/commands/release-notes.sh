@@ -1,11 +1,9 @@
-# Allow test harness to inject mock functions (for bats)
-if [ -n "$GIV_TEST_MOCKS" ] && [ -f "$GIV_TEST_MOCKS" ]; then
-  . "$GIV_TEST_MOCKS"
-fi
+#!/bin/sh
+# -------------------------------------------------------------------
 # release-notes.sh: Generate release notes for a tagged release
 
 # Source initialization script
-#. "$GIV_LIB_DIR/init.sh"
+. "$GIV_LIB_DIR/init.sh"
 
 # Wrapper to call document.sh with appropriate arguments
 if [ -f "${GIV_SRC_DIR}/commands/document.sh" ]; then

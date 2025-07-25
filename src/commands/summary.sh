@@ -1,12 +1,12 @@
-# Allow test harness to inject mock functions (for bats)
-if [ -n "$GIV_TEST_MOCKS" ] && [ -f "$GIV_TEST_MOCKS" ]; then
-  . "$GIV_TEST_MOCKS"
-fi
 #!/bin/sh
 # summary.sh: Generate a summary of changes
 
 # Source initialization script
-# . "$GIV_LIB_DIR/init.sh"
+. "$GIV_LIB_DIR/init.sh"
+# Allow test harness to inject mock functions (for bats)
+if [ -n "${GIV_TEST_MOCKS:-}" ] && [ -f "${GIV_TEST_MOCKS:-}" ]; then
+  . "$GIV_TEST_MOCKS"
+fi
 
 # All arguments are already parsed by the unified parser
 # Use environment variables set by the parser: GIV_REVISION, GIV_PATHSPEC, etc.
