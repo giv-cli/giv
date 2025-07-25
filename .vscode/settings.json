@@ -7,7 +7,9 @@
         "giv",
         "inplace",
         "insec",
+        "LOCALAPPDATA",
         "mktemp",
+        "MSYS",
         "newc",
         "newf",
         "ollama",
@@ -15,9 +17,17 @@
         "pypi",
         "pyproject",
         "RLENGTH",
-        "subcmd",
+        "GIV_SUBCMD",
+        "toplevel",
         "unmatch"
     ],
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true
+    },
     "todo-tree.general.tags": [
         "BUG",
         "HACK",

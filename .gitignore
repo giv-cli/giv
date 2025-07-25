@@ -16,3 +16,6 @@ dist
 tests/.giv
 .notes
 .giv/config.bak
+CLAUDE.md
+.giv/config.bak2
+tests/fixtures/giv-home/

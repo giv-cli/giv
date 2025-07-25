@@ -7,6 +7,7 @@ external-sources=true
 
 # Exclude files under the tests folder
 exclude-path=tests/*
+disable=SC3043
 
 # # Disable notices about things that are intentionally non-POSIX or acceptable
 # disable = \

@@ -1,21 +1,14 @@
 #!/usr/bin/env bats
-export TMPDIR="/tmp"
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
-export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src/project"
+load './helpers/setup.sh'
+load "${GIV_LIB_DIR}/system.sh"
+load "${GIV_LIB_DIR}/history.sh"
+load "${GIV_LIB_DIR}/llm.sh"
+load "${GIV_LIB_DIR}/project_metadata.sh"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
-load "$BATS_TEST_DIRNAME/../src/config.sh"
-load "$BATS_TEST_DIRNAME/../src/system.sh"
-load "$BATS_TEST_DIRNAME/../src/project/metadata.sh"
-load "$BATS_TEST_DIRNAME/../src/llm.sh"
-# Source the script under test
-load "$BATS_TEST_DIRNAME/../src/history.sh"
 
 setup() {
-    export GIV_METADATA_PROJECT_TYPE="custom"
-    export GIV_TEMPLATE_DIR="$BATS_TEST_DIRNAME/../templates"
-    export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
+    export GIV_PROJECT_TYPE="custom"
 
     # Move into a brand-new repo
     TMP_REPO="$BATS_TEST_DIRNAME/.tmp/tmp_repo"
@@ -36,7 +29,6 @@ setup() {
     git add b.txt
     git commit -q -m "second"
     SECOND_SHA=$(git rev-parse HEAD)
-    metadata_init
 
     # Mock generate_response function
     generate_response() {
@@ -44,6 +36,12 @@ setup() {
     }
 
     printf "TMPDIR: %s\n" "$TMPDIR" >&2
+
+    # Ensure $GIV_HOME/config exists for all tests
+    mkdir -p "$GIV_HOME"
+    echo "GIV_API_KEY=XYZ" >"$GIV_HOME/config"
+    echo "GIV_API_URL=TEST_URL" >>"$GIV_HOME/config"
+    echo "GIV_API_MODEL=TEST_MODEL" >>"$GIV_HOME/config"
 }
 
 teardown() {

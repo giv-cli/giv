@@ -1,16 +1,10 @@
 #!/usr/bin/env bats
-export TMPDIR="/tmp"
-# Path to the script under test; adjust as needed
-SCRIPT="${BATS_TEST_DIRNAME}/../src/markdown.sh"
 
+load './helpers/setup.sh'
+load "${GIV_LIB_DIR}/system.sh"
+load "${GIV_LIB_DIR}/markdown.sh"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
-
-load "$BATS_TEST_DIRNAME/../src/config.sh"
-load "$BATS_TEST_DIRNAME/../src/system.sh"
-load "$SCRIPT"
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 
 
 

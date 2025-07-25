@@ -1,12 +1,10 @@
 #!/usr/bin/env bats
-export TMPDIR="/tmp"
-load '../src/project/metadata.sh'
-load '../src/llm.sh'
+load './helpers/setup.sh'
+load "${GIV_LIB_DIR}/project_metadata.sh"
+load "${GIV_LIB_DIR}/llm.sh"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 setup() {
     TESTDIR="$(mktemp -d)"
     export TESTDIR

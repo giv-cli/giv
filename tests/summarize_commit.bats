@@ -1,26 +1,40 @@
 #!/usr/bin/env bats
-export TMPDIR="/tmp"
+load './helpers/setup.sh'
+load "${GIV_LIB_DIR}/system.sh"
+load "${GIV_LIB_DIR}/history.sh"
+load "${GIV_LIB_DIR}/llm.sh"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
-load "$BATS_TEST_DIRNAME/../src/config.sh"
-load "$BATS_TEST_DIRNAME/../src/system.sh"
-load "$BATS_TEST_DIRNAME/../src/llm.sh"
 
-export GIV_TEMPLATE_DIR="$BATS_TEST_DIRNAME/../templates"
-export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 setup() {
 
-    export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
-    export GIV_DEBUG="true"
     TMP_REPO="$BATS_TEST_DIRNAME/.tmp/tmp_repo"
     rm -rf "$TMP_REPO"
     mkdir -p "$TMP_REPO"
+    mkdir -p "$TMP_REPO/.giv/.tmp"
+    mkdir -p "$TMP_REPO/.giv/cache"
+    mkdir -p "$TMP_REPO/.giv/templates"
     cd "$TMP_REPO" || exit 1
+    git init
+    git config user.name "Test"
+    git config user.email "test@example.com"
+    echo ".giv/" > .gitignore
+    git add .gitignore
+    git commit -q -m "add .gitignore"
+    export GIV_HOME="$TMP_REPO/.giv"
+    export GIV_TMP_DIR="$TMP_REPO/.giv/.tmp"
+    export TMPDIR="$GIV_TMP_DIR"
+    mkdir -p "$GIV_TMP_DIR"
+    echo "api.key=XYZ
+api.url=TEST_URL
+api.model=TEST_MODEL" > "$GIV_HOME/config"
     git init -q
     git config user.name "Test"
     git config user.email "test@example.com"
+
+    # Create minimal package.json for version extraction before any commit
+    echo '{"version": "0.0.0"}' > package.json
+    git add package.json
 
     echo "first" >a.txt
     git add a.txt
@@ -31,12 +45,16 @@ setup() {
     git add b.txt
     git commit -q -m "second"
 
+    # Create minimal package.json for version extraction
+    echo '{"version": "1.2.3"}' > package.json
+    git add package.json
+    git commit -q -m "add package.json"
+
     # Mock generate_response function
     generate_response() {
         echo "Mocked response for generate_response"
     }
 
-    . "$BATS_TEST_DIRNAME/../src/history.sh"
 }
 
 teardown() {

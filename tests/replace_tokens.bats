@@ -1,25 +1,18 @@
 #!/usr/bin/env bats
-export TMPDIR="/tmp"
-mkdir -p "$BATS_TEST_DIRNAME/.logs"
-export ERROR_LOG="$BATS_TEST_DIRNAME/.logs/error.log"
+
+load './helpers/setup.sh'
+load "${GIV_LIB_DIR}/system.sh"
+load "${GIV_LIB_DIR}/project_metadata.sh"
+load "${GIV_LIB_DIR}/llm.sh"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
-load "$BATS_TEST_DIRNAME/../src/config.sh"
-load "$BATS_TEST_DIRNAME/../src/system.sh"
-load "$BATS_TEST_DIRNAME/../src/project/metadata.sh"
-SCRIPT="$BATS_TEST_DIRNAME/../src/llm.sh"
-
-load "$SCRIPT"
-
-export GIV_LIB_DIR="$BATS_TEST_DIRNAME/../src"
-export GIV_HOME="$BATS_TEST_DIRNAME/.giv"
-export GIV_TMP_DIR="$BATS_TEST_DIRNAME/.giv/.tmp"
 
 setup() {
+    export GIV_DEBUG="true"
     mkdir -p "$GIV_TMP_DIR"
     TMPDIR_REPO="$(mktemp -d -p "$GIV_TMP_DIR")"
-    cd "$TMPDIR_REPO"
+    cd "$TMPDIR_REPO" || exit 1
     rm -f input.md
 
     rm -f template.md diff.txt
@@ -119,6 +112,7 @@ EOF
 }
 
 @test "build_prompt fails if template missing" {
+    export GIV_DEBUG="false"
     run build_prompt --template missing.md --summary diff.txt
     [ "$status" -ne 0 ]
     assert_output "template file not found: missing.md"
@@ -126,6 +120,7 @@ EOF
 
 @test "build_prompt fails if diff missing" {
     write_file template.md "Hello"
+    export GIV_DEBUG="false"
     run build_prompt --template template.md --summary missing.txt
     [ "$status" -ne 0 ]
     assert_output "diff file not found: missing.txt"
@@ -140,6 +135,7 @@ EOF
         "Line A" \
         "Line B"
 
+    export GIV_DEBUG="false"
     run build_prompt --template template.md --summary diff.txt
     assert_success
     assert_output <<EOF
@@ -170,7 +166,7 @@ EOF
 
     example="echo Hello"
     rules=$'1. First rule\n2. Second rule'
-
+    export GIV_DEBUG="false"
     run build_prompt \
         --project-title "MyApp" \
         --version "2.3.4" \

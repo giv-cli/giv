@@ -23,6 +23,9 @@
 ## Examples
 
 ```bash
+# Initialize giv for a new project (interactive setup)
+giv init
+
 # Commit message for working tree
 giv message
 
@@ -36,6 +39,26 @@ giv changelog --todo-files '*.ts' --todo-pattern 'TODO\\(\\w+\\):'
 giv release-notes v1.2.0..HEAD \
     --api-model some-new-model \
     --api-url https://api.example.com/v1/chat/completions
+
+# Configure API settings using dot notation
+giv config api.url "https://api.openai.com/v1/chat/completions"
+giv config api.model "gpt-4o"
+giv config api.key "your-api-key"
+
+# Configure project metadata
+giv config project.title "My Project"
+giv config project.description "A CLI tool for managing projects"
+giv config project.url "https://github.com/user/project"
+
+# List all configuration values
+giv config list
+
+# Get specific configuration values
+giv config get api.url
+giv config api.url  # shorthand syntax
+
+# Remove configuration values
+giv config unset api.key
 ```
 
 
@@ -70,6 +93,8 @@ giv <subcommand> [revision] [pathspec] [OPTIONS]
 | `changelog`           | Create or update `CHANGELOG.md`      |
 | `release-notes`       | Longer notes for a tagged release    |
 | `announcement`        | Marketing-style release announcement |
+| `document`            | Generate custom content using your own prompt template |
+| `config`              | Manage configuration values          |
 | `available-releases`  | List script versions                 |
 | `update`              | Self-update giv                      |
 
@@ -123,10 +148,45 @@ giv <subcommand> [revision] [pathspec] [OPTIONS]
 
 ## Environment Variables
 
-| Variable         | Purpose                                            |
-| ---------------- | -------------------------------------------------- |
-| `GIV_API_KEY`    | API key for remote model                           |
-| `GIV_API_URL`    | Endpoint default if `--api-url` is omitted         |
+| Variable              | Purpose                                            |
+| --------------------- | -------------------------------------------------- |
+| `GIV_API_KEY`         | API key for remote model                           |
+| `GIV_API_URL`         | Remote API endpoint URL                            |
+| `GIV_API_MODEL`       | Remote model name                                  |
+| `GIV_PROJECT_TITLE`   | Project name                                       |
+| `GIV_PROJECT_DESCRIPTION` | Project description                            |
+| `GIV_PROJECT_URL`     | Project URL                                        |
+| `GIV_CONFIG_FILE`     | Path to configuration file                         |
+
+**Configuration Management:**
+
+giv uses a Git-style configuration system. You can manage settings with:
+
+```bash
+# Interactive setup (creates .giv/config and prompts for values)
+giv init
+
+# List all configuration values
+giv config list
+
+# Get a specific value
+giv config get api.url
+giv config api.url  # shorthand syntax
+
+# Set a configuration value
+giv config set api.url "https://api.openai.com/v1/chat/completions"
+giv config api.url "https://api.openai.com/v1/chat/completions"  # shorthand
+
+# Remove a configuration value
+giv config unset api.url
+```
+
+Configuration is stored in `.giv/config` in your project root and can be overridden with environment variables or command-line flags. The hierarchy is:
+
+1. Command-line arguments (highest priority)
+2. Environment variables  
+3. `.giv/config` file
+4. Default values (lowest priority)
 
 ## License
 

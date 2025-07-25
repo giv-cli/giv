@@ -7,47 +7,71 @@ This guide provides a comprehensive overview of integrating `giv` into your deve
 Before using `giv`, ensure the following:
 
 1. **Install Dependencies**:  
-   `giv` requires `git` (version 2.25 or newer) and optionally `bats` for testing. Ensure these are installed.
-
-2. **Set Up .env File**:  
-   Create a .env file in your project root to store API keys and URLs for remote LLM operations. Example:
-
+   `giv` requires `git` (version 2.25 or newer). Install using:
    ```bash
-   # .env
-   GIV_API_URL="https://api.example.com/v1/chat/completions"
-   GIV_API_KEY="your_api_key_here"
-   GIV_API_MODEL="gpt-4"
+   curl -fsSL https://raw.githubusercontent.com/giv-cli/giv/main/install.sh | sh
    ```
 
-3. **Reference Existing Documentation**:  
-   Review the `CHANGELOG.md` for examples of how `giv` integrates with CI/CD pipelines and versioning.
+2. **Initialize Configuration**:  
+   Run interactive setup to configure your project:
+   ```bash
+   giv config
+   ```
+
+3. **Set Up API Configuration**:  
+   Configure API settings for AI services:
+   ```bash
+   # For local Ollama
+   giv config api.url "http://localhost:11434/v1/chat/completions"
+   giv config api.model "devstral"
+   giv config api.key "ollama"
+   
+   # For OpenAI
+   giv config api.url "https://api.openai.com/v1/chat/completions"
+   giv config api.model "gpt-4o-mini"
+   giv config api.key "your_api_key_here"
+   ```
 
 ## 🔄 Workflow Scenarios
 
 ### 1. **Working with Staged Changes**
 
-Use `giv` to generate changelogs, summaries, or commit messages based on **staged changes** (after running `git add`).
+Use `giv` to generate commit messages, changelogs, or summaries based on **staged changes** (after running `git add`).
 
-#### ✅ Example: Generate Changelog for Staged Changes
+#### ✅ Example: Generate Commit Message for Staged Changes
 
 ```bash
 # Stage your changes
 git add .
 
-# Generate changelog based on staged files
-giv --staged
+# Generate commit message based on staged files
+giv message --cached
+
+# Or commit directly with generated message
+git commit -m "$(giv message --cached)"
 ```
 
-#### ✅ Example: Output a Commit Message for Staged Changes
+#### ✅ Example: Generate Changelog for Current Changes
 
 ```bash
-giv --staged --message
+# Generate changelog for working tree changes
+giv changelog
+
+# Generate changelog for staged changes
+giv changelog --cached
+
+# Generate changelog for a specific revision range
+giv changelog v1.0.0..HEAD
 ```
 
-#### ✅ Example: Output a Summary and Commit Message for Staged Changes
+#### ✅ Example: Generate Summary for Changes
 
 ```bash
-giv --staged --summary --message
+# Generate summary for current changes
+giv summary
+
+# Generate summary for staged changes
+giv summary --cached
 ```
 
 #### 📌 Notes
