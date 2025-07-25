@@ -1,9 +1,9 @@
 #!/usr/bin/env bats
 # tests/commands/config.bats
 
-load '../test_helper/bats-support/load'
-load '../test_helper/bats-assert/load'
-load '../helpers/setup.sh'
+load 'test_helper/bats-support/load'
+load 'test_helper/bats-assert/load'
+load 'helpers/setup.sh'
 
 setup(){
     reset_config    
@@ -19,20 +19,20 @@ setup(){
 
 # Edge case: missing config file
 @test "config command with missing config file fails gracefully" {
-  mv "$GIV_HOME/.giv/config" "$GIV_HOME/.giv/config.bak"
+  mv "$GIV_HOME/config" "$GIV_HOME/config.bak"
   run "$GIV_SRC_DIR/commands/config.sh" list
   assert_failure
   assert_output --partial "config file not found"
-  mv "$GIV_HOME/.giv/config.bak" "$GIV_HOME/.giv/config"
+  mv "$GIV_HOME/config.bak" "$GIV_HOME/config"
 }
 
 # Edge case: malformed config file
 @test "config command with malformed config file" {
-  echo "not_a_key_value" > "$GIV_HOME/.giv/config"
+  echo "not_a_key_value" > "$GIV_HOME/config"
   run "$GIV_SRC_DIR/commands/config.sh" list
   assert_failure
   assert_output --partial "Malformed config"
-  echo "api_url=https://api.example.test" > "$GIV_HOME/.giv/config"
+  echo "api_url=https://api.example.test" > "$GIV_HOME/config"
 }
 
 # Print specific config key

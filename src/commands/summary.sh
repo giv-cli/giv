@@ -11,6 +11,12 @@ fi
 # All arguments are already parsed by the unified parser
 # Use environment variables set by the parser: GIV_REVISION, GIV_PATHSPEC, etc.
 
+# Check if any arguments were provided - if not, fail with usage message
+if [ "${GIV_REVISION}" = "--current" ] && [ -z "${GIV_PATHSPEC}" ] && [ $# -eq 0 ]; then
+    echo "Missing path argument" >&2
+    exit 1
+fi
+
 # Set default template for summary
 GIV_PROMPT_FILE="${GIV_PROMPT_FILE:-${GIV_TEMPLATE_DIR}/final_summary_prompt.md}"
 export GIV_PROMPT_FILE

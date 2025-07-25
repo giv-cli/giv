@@ -1,9 +1,9 @@
 #!/usr/bin/env bats
 # tests/commands/summary.bats
 
-load '../test_helper/bats-support/load'
-load '../test_helper/bats-assert/load'
-load '../helpers/setup.sh'
+load 'test_helper/bats-support/load'
+load 'test_helper/bats-assert/load'
+load 'helpers/setup.sh'
 
 @test "summary without args fails with usage" {
   run "$GIV_SRC_DIR/commands/summary.sh"
@@ -12,7 +12,10 @@ load '../helpers/setup.sh'
 
 @test "summary runs against real Git repo" {
   run "$GIV_SRC_DIR/commands/summary.sh" --output="$BATS_TMPDIR/out.txt" "$PROJECT_DIR"
-  grep -q "feat: add second line" "$BATS_TMPDIR/out.txt"
+  run cat "$BATS_TMPDIR/out.txt"
+  assert_success
+  assert_output --partial "Initial commit"
+  assert_output --partial "feat: add second line"
 }
 
 @test "summary supports custom template" {

@@ -140,20 +140,23 @@ if [ -f "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh" ]; then
     case "${GIV_SUBCMD}" in
         config|init)
             # These commands need access to subcommand arguments only
-            # Extract arguments after the subcommand name, skipping global options
-            subcommand_args=""
+            # Extract arguments after the subcommand name, preserving quotes
             found_subcommand=false
+            subcommand_start=0
+            i=0
             for arg in "$@"; do
+                i=$((i + 1))
                 if [ "$found_subcommand" = "true" ]; then
-                    subcommand_args="$subcommand_args $arg"
+                    break
                 elif [ "$arg" = "$GIV_SUBCMD" ]; then
                     found_subcommand=true
+                    subcommand_start=$i
                 fi
             done
-            [ "${GIV_DEBUG}" = "true" ] && printf 'Config subcommand args: %s\n' "$subcommand_args" >&2
-            if [ -n "$subcommand_args" ]; then
-                # Use eval to properly handle quoted arguments
-                eval set -- "$subcommand_args"
+            [ "${GIV_DEBUG}" = "true" ] && printf 'Config subcommand args: %s\n' "$*" >&2
+            if [ "$subcommand_start" -gt 0 ] && [ $# -gt "$subcommand_start" ]; then
+                # Shift to remove arguments before and including the subcommand
+                shift "$subcommand_start"
                 "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh" "$@"
             else
                 "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh"

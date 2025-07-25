@@ -20,6 +20,7 @@ cmd_document() {
     out="${GIV_OUTPUT_FILE:-}"
     temp="${GIV_TEMPERATURE:-0.9}"
     ctx="${GIV_CONTEXT_WINDOW:-32768}"
+    
 
     # Validate template exists
     if [ ! -f "${prompt_tpl}" ]; then
