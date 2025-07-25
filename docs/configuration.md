@@ -8,7 +8,7 @@ When you first run `giv`, it will prompt you to initialize configuration for you
 
 ```bash
 # Interactive configuration setup
-giv config
+giv init
 ```
 
 This will create a `.giv/config` file in your project root and prompt you for:
@@ -43,7 +43,6 @@ The following configuration keys are available:
 
 | Key                  | Purpose                                             | Example Value                                 |
 |----------------------|-----------------------------------------------------|-----------------------------------------------|
-| `api.key`            | API key for remote AI services                     | `your_openai_api_key_here`                   |
 | `api.url`            | API endpoint URL                                    | `https://api.openai.com/v1/chat/completions` |
 | `api.model`          | AI model name                                       | `gpt-4o-mini`, `devstral`, `compound-beta`    |
 | `project.title`      | Project name                                        | `My Awesome Project`                          |
@@ -52,7 +51,6 @@ The following configuration keys are available:
 | `project.type`       | Project type (auto-detected)                       | `node`, `python`, `rust`, `custom`           |
 | `project.version_file`| File containing version information                | `package.json`, `pyproject.toml`             |
 | `project.version_pattern`| Regex pattern to extract version              | `"version":\s*"([^"]+)"`                     |
-| `initialized`        | Marks project as initialized                        | `true`, `false`                              |
 
 
 ## Environment Variables
@@ -71,7 +69,6 @@ Configuration values are stored as `GIV_*` environment variables and can be over
 | `GIV_PROJECT_VERSION_FILE` | Version file path                              | `project.version_file`|
 | `GIV_PROJECT_VERSION_PATTERN` | Version extraction pattern               | `project.version_pattern`|
 | `GIV_CONFIG_FILE`     | Path to configuration file                          | N/A                  |
-| `GIV_INITIALIZED`     | Project initialization status                       | `initialized`        |
 
 You can also use a `.env` file in your project root to set these variables. The configuration hierarchy is:
 1. Command-line arguments (highest priority)
