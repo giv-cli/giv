@@ -14,6 +14,8 @@ export GIV_PATHSPEC=""
 export GIV_API_MODEL="${GIV_API_MODEL:-'devstral'}"
 export GIV_API_URL="${GIV_API_URL:-'http://localhost:11434/v1/chat/completions'}"
 export GIV_API_KEY="${GIV_API_KEY:-'giv'}"
+export GIV_TEMPERATURE="${GIV_TEMPERATURE:-0.9}"  # Default temperature for AI responses
+export GIV_CONTEXT_WINDOW="${GIV_CONTEXT_WINDOW:-32768}"  # Default context window size
 
 ## Project details
 export GIV_METADATA_PROJECT_TYPE="${GIV_METADATA_PROJECT_TYPE:-auto}"

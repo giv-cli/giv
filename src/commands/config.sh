@@ -44,92 +44,67 @@ quote_value() {
 giv_config() {
     cmd="$1"
     case "$cmd" in
-        --list|list)
-            if [ ! -f "$GIV_CONFIG_FILE" ]; then
-                printf '%s\n' "config file not found" >&2
-                return 1
-            fi
-            # Check for malformed lines
-            if [ -s "$GIV_CONFIG_FILE" ]; then
-                # Updated malformed config check to ignore empty lines and lines with only whitespace
-                # Simple validation: check for lines that don't contain = and aren't comments or empty
-                while IFS= read -r line; do
-                    case "$line" in
-                        '#'*|'') continue ;;  # Skip comments and empty lines
-                        *=*) continue ;;      # Valid config line
-                        *)
-                            printf '%s\n' "Malformed config line: $line" >&2
-                            return 1
-                            ;;
-                    esac
-                done < "$GIV_CONFIG_FILE"
-            fi
-            # Convert GIV_... keys to user keys for output from config file
-            if [ -s "$GIV_CONFIG_FILE" ]; then
-                while IFS= read -r line; do
-                    case "$line" in
-                        GIV_*)
-                            k=${line#GIV_}
-                            k=${k%%=*}
-                            key=$(printf '%s' "$k" | tr 'A-Z_' 'a-z.')
-                            value="${line#*=}"
-                            printf '%s\n' "$key=$value"
-                            ;;
-                        *=*)
-                            printf '%s\n' "$line"
-                            ;;
-                        *)
-                        ;;
-                    esac
-                done < "$GIV_CONFIG_FILE"
-            fi
-            
-            # Also show environment variables with GIV_ prefix that may have been loaded from --config-file
-            for var in $(env | grep '^GIV_'); do
-                case "$var" in
-                    GIV_*)
-                        k=${var#GIV_}
-                        k=${k%%=*}
-                        key=$(printf '%s' "$k" | tr 'A-Z_' 'a-z.')
-                        value="${var#*=}"
-                        # Only show if not already shown from config file
-                        if [ -z "$(grep "^GIV_$k=" "$GIV_CONFIG_FILE" 2>/dev/null)" ]; then
-                            printf '%s\n' "$key=$value"
-                        fi
-                        ;;
-                esac
-            done
-            ;;
-        --get|get)
-            key="$2"
-            # Validate key format
-            env_key="$(normalize_key "$key")"
-            if [ -z "$env_key" ]; then
-                printf '%s\n' "Invalid key format: $key" >&2
-                return 1
-            fi
-            # ENV override
-            if [ -n "$env_key" ]; then
-                eval "env_val=\"\${$env_key-}\""
-                if [ -n "$env_val" ]; then
-                    printf '%s\n' "$env_val"
-                    return 0
-                fi
-            fi
+        --list|list|show)
             if [ ! -f "$GIV_CONFIG_FILE" ]; then
                 printf '%s\n' "config file not found" >&2
                 return 1
             fi
 
-            # Try user key first, then GIV_ key
-            val=$(grep -E "^$key=" "$GIV_CONFIG_FILE" | cut -d'=' -f2-)
-            if [ -z "$val" ]; then
-                givkey="$(normalize_key "$key")"
-                val=$(grep -E "^$givkey=" "$GIV_CONFIG_FILE" | cut -d'=' -f2-)
+            if [ ! -s "$GIV_CONFIG_FILE" ]; then
+                printf '%s\n' "No configuration found." >&2
+                return 0
             fi
-            # Remove surrounding quotes if present (both single and double)
+
+            # Check for malformed lines
+            while IFS= read -r line; do
+                case "$line" in
+                    '#'*|'') continue ;;  # Skip comments and empty lines
+                    *=*) continue ;;      # Valid config line
+                    *)
+                        printf '%s\n' "Malformed config line: $line" >&2
+                        return 1
+                        ;;
+                esac
+            done < "$GIV_CONFIG_FILE"
+
+            # Convert GIV_... keys to user keys for output from config file
+            while IFS= read -r line; do
+                case "$line" in
+                    GIV_*)
+                        k=${line#GIV_}
+                        k=${k%%=*}
+                        key=$(printf '%s' "$k" | tr 'A-Z_' 'a-z.')
+                        value="${line#*=}"
+                        printf '%s\n' "$key=$value"
+                        ;;
+                    *=*)
+                        printf '%s\n' "$line"
+                        ;;
+                esac
+            done < "$GIV_CONFIG_FILE"
+            ;;
+        --get|get)
+            key="$2"
+            # Only support dot-separated keys in the config file
+            if [ ! -f "$GIV_CONFIG_FILE" ]; then
+                printf '%s\n' "config file not found" >&2
+                return 1
+            fi
+            val=$(grep -E "^$key=" "$GIV_CONFIG_FILE" | cut -d'=' -f2-)
             val=$(printf '%s' "$val" | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/")
-            printf '%s\n' "$val"
+            if [ -n "$val" ]; then
+                printf '%s\n' "$val"
+                return 0
+            fi
+            # Fallback to GIV_... env var
+            env_key="$(normalize_key "$key")"
+            env_val="$(printenv "$env_key" 2>/dev/null)"
+            if [ -n "$env_val" ]; then
+                printf '%s\n' "$env_val"
+                return 0
+            fi
+            # Not found
+            return 1
             ;;
         --unset|unset)
             key="$2"
@@ -150,11 +125,8 @@ giv_config() {
                 touch "$GIV_CONFIG_FILE"
             fi
             tmpfile=$(mktemp)
-            givkey="$(normalize_key "$key")"
-            grep -v -E "^($key|$givkey)=" "$GIV_CONFIG_FILE" | grep -v '^$' > "$tmpfile"
-            # Always write in GIV_... format
-            writekey="$(normalize_key "$key")"
-            printf '%s=%s\n' "$writekey" "$(quote_value "$value")" >> "$tmpfile"
+            grep -v -E "^$key=" "$GIV_CONFIG_FILE" | grep -v '^$' > "$tmpfile"
+            printf '%s=%s\n' "$key" "$(quote_value "$value")" >> "$tmpfile"
             mv "$tmpfile" "$GIV_CONFIG_FILE"
             ;;
         -*|help)
@@ -165,51 +137,39 @@ giv_config() {
         *)
             key="$1"
             value="${2:-}"
-            # Validate key format
-            env_key="$(normalize_key "$key")"
-            if [ -z "$env_key" ]; then
-                printf '%s\n' "Invalid key format: $key" >&2
-                return 1
-            fi
             if [ -z "$value" ]; then
-                # ENV override
-                if [ -n "$env_key" ]; then
-                    eval "env_val=\"\${$env_key-}\""
-                    if [ -n "$env_val" ]; then
-                        printf '%s\n' "$env_val"
-                        return 0
-                    fi
-                fi
+                # ENV override fallback for dot-separated keys
                 if [ ! -f "$GIV_CONFIG_FILE" ]; then
                     printf '%s\n' "config file not found" >&2
                     return 1
                 fi
                 if [ -s "$GIV_CONFIG_FILE" ]; then
-                    # Updated malformed config check to ignore empty lines and lines with only whitespace
                     if grep -qvE '^(#|[^=]+=.*|[[:space:]]*)$' "$GIV_CONFIG_FILE"; then
                         printf '%s\n' "Malformed config" >&2
                         return 1
                     fi
                 fi
                 val=$(grep -E "^$key=" "$GIV_CONFIG_FILE" | cut -d'=' -f2-)
-                if [ -z "$val" ]; then
-                    givkey="$(normalize_key "$key")"
-                    val=$(grep -E "^$givkey=" "$GIV_CONFIG_FILE" | cut -d'=' -f2-)
-                fi
-                # Remove surrounding quotes if present (both single and double)
                 val=$(printf '%s' "$val" | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/")
-                printf '%s\n' "$val"
+                if [ -n "$val" ]; then
+                    printf '%s\n' "$val"
+                    return 0
+                fi
+                env_key="$(normalize_key "$key")"
+                env_val="$(printenv "$env_key" 2>/dev/null)"
+                if [ -n "$env_val" ]; then
+                    printf '%s\n' "$env_val"
+                    return 0
+                fi
+                return 1
             else
                 mkdir -p "$GIV_HOME"
                 if [ ! -f "$GIV_CONFIG_FILE" ]; then
                     touch "$GIV_CONFIG_FILE"
                 fi
                 tmpfile=$(mktemp)
-                givkey="$(normalize_key "$key")"
-                grep -v -E "^($key|$givkey)=" "$GIV_CONFIG_FILE" | grep -v '^$' > "$tmpfile"
-                # Always write in GIV_... format
-                writekey="$(normalize_key "$key")"
-                printf '%s=%s\n' "$writekey" "$(quote_value "$value")" >> "$tmpfile"
+                grep -v -E "^$key=" "$GIV_CONFIG_FILE" | grep -v '^$' > "$tmpfile"
+                printf '%s=%s\n' "$key" "$(quote_value "$value")" >> "$tmpfile"
                 mv "$tmpfile" "$GIV_CONFIG_FILE"
             fi
             ;;

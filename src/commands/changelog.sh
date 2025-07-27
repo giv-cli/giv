@@ -25,6 +25,53 @@ if [ -z "$output_version" ]; then
     output_version=$(get_metadata_value "version" "HEAD" 2>/dev/null || echo "Unreleased")
 fi
 
+# Set defaults for revision and pathspec if not provided
+GIV_REVISION="${GIV_REVISION:---current}"
+GIV_PATHSPEC="${GIV_PATHSPEC:-}"
+export GIV_REVISION
+export GIV_PATHSPEC
+
+# Parse arguments for the changelog subcommand
+parse_changelog_arguments() {
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --revision)
+                shift
+                export GIV_REVISION="$1"
+                ;;
+            --pathspec)
+                shift
+                export GIV_PATHSPEC="$1"
+                ;;
+            --output-file)
+                shift
+                export GIV_OUTPUT_FILE="$1"
+                ;;
+            --output-version)
+                shift
+                export GIV_OUTPUT_VERSION="$1"
+                ;;
+            --*)
+                echo "Error: Unknown option '$1' for changelog subcommand." >&2
+                return 1
+                ;;
+            *)
+                # First non-option argument is the revision
+                if [ -z "${GIV_REVISION_SET:-}" ]; then
+                    export GIV_REVISION="$1"
+                    export GIV_REVISION_SET="true"
+                else
+                    echo "Error: Unknown positional argument '$1' for changelog subcommand." >&2
+                    return 1
+                fi
+                ;;
+        esac
+        shift
+    done
+
+    return 0
+}
+
 # Summarize Git history
 summaries_file=$(portable_mktemp "summaries.XXXXXXX") || {
     printf 'Error: cannot create temp file for summaries\n' >&2

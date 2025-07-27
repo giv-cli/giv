@@ -8,6 +8,55 @@ if [ -n "${GIV_TEST_MOCKS:-}" ] && [ -f "${GIV_TEST_MOCKS:-}" ]; then
   . "$GIV_TEST_MOCKS"
 fi
 
+# Set defaults for revision and pathspec if not provided
+GIV_REVISION="${GIV_REVISION:---current}"
+GIV_PATHSPEC="${GIV_PATHSPEC:-}"
+export GIV_REVISION
+export GIV_PATHSPEC
+
+# Parse arguments for the message subcommand
+parse_message_arguments() {
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --revision)
+                shift
+                export GIV_REVISION="$1"
+                ;;
+            --pathspec)
+                shift
+                export GIV_PATHSPEC="$1"
+                ;;
+            --todo-pattern)
+                shift
+                export GIV_TODO_PATTERN="$1"
+                ;;
+            *)
+                # First non-option argument is the revision
+                if [ -z "${GIV_REVISION_SET:-}" ]; then
+                    export GIV_REVISION="$1"
+                    export GIV_REVISION_SET="true"
+                else
+                    echo "Error: Unknown option '$1' for message subcommand." >&2
+                    return 1
+                fi
+                ;;
+        esac
+        shift
+    done
+
+    # Set defaults if not provided
+    export GIV_REVISION="${GIV_REVISION:---current}"
+    export GIV_PATHSPEC="${GIV_PATHSPEC:-}"  # Default to empty pathspec
+
+    return 0
+}
+
+# Parse arguments from the global parser
+if [ -n "${GIV_REMAINING_ARGS:-}" ]; then
+    eval "parse_message_arguments $GIV_REMAINING_ARGS"
+else
+    parse_message_arguments
+fi
 
 # All arguments are already parsed by the unified parser
 # Use environment variables set by the parser
@@ -29,6 +78,19 @@ cmd_message() {
         hist=$(portable_mktemp "commit_history_XXXXXX")
         build_history "${hist}" "${commit_id}" "${todo_pattern}" "${pathspec}"
         print_debug "Generated history file ${hist}"
+        
+        # Check if there are actual changes to process
+        if [ ! -s "${hist}" ]; then
+            printf 'Error: No changes to generate commit message for.\n' >&2
+            exit 1
+        fi
+        
+        # Check if history contains actual diff content (not just headers)
+        if ! grep -q '```diff' "${hist}"; then
+            printf 'Error: No changes found in working directory.\n' >&2
+            exit 1
+        fi
+        
         pr=$(portable_mktemp "commit_message_prompt_XXXXXX")
         build_prompt --template "${GIV_TEMPLATE_DIR}/message_prompt.md" \
             --summary "${hist}" >"${pr}"

@@ -53,10 +53,11 @@ teardown() {
 }
 
 # Test basic dispatcher functionality
-@test "dispatcher: shows help when no arguments provided" {
+@test "dispatcher: shows runs message with no arguments" {
     run "$GIV_SCRIPT"
     assert_failure
-    assert_output --partial "No arguments provided"
+    assert_output --partial "Executing subcommand: message"
+    assert_output --partial "With arguments:"
 }
 
 @test "dispatcher: shows help with --help flag" {
@@ -76,8 +77,8 @@ teardown() {
 @test "dispatcher: handles unknown subcommand gracefully" {
     run "$GIV_SCRIPT" nonexistent-command
     assert_failure
-    assert_output --partial "Unknown subcommand: nonexistent-command"
-    assert_output --partial "Available subcommands:"
+    assert_output --partial "Error: Unknown subcommand 'nonexistent-command'"
+    assert_output --partial "Use -h or --help for usage information."
 }
 
 @test "dispatcher: accepts valid subcommands" {

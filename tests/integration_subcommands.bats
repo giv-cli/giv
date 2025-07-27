@@ -273,6 +273,18 @@ EOF
     assert_output --partial "API.*key"
 }
 
+@test "subcommands: message uses dry-run mode if api is not configured" {
+    # Remove API key
+    sed -i '/GIV_API_KEY/d' "$GIV_HOME/config"
+    
+    run "$GIV_SCRIPT" message HEAD
+    assert_success
+    assert_output --partial "# Commit Message Request"
+    assert_output --partial "### Commit ID --current"
+    assert_output --partial "Current Changes"
+    assert_output --partial "No API key configured, using dry-run mode"
+}
+
 @test "subcommands: work with different project types" {
     # Test with Python project
     echo 'GIV_PROJECT_TYPE=python' >> "$GIV_HOME/config"

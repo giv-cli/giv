@@ -8,6 +8,12 @@ if [ -n "${GIV_TEST_MOCKS:-}" ] && [ -f "${GIV_TEST_MOCKS:-}" ]; then
   . "$GIV_TEST_MOCKS"
 fi
 
+# Set defaults for revision and pathspec if not provided
+GIV_REVISION="${GIV_REVISION:---current}"
+GIV_PATHSPEC="${GIV_PATHSPEC:-}"
+export GIV_REVISION
+export GIV_PATHSPEC
+
 # All arguments are already parsed by the unified parser
 # Use environment variables set by the parser: GIV_REVISION, GIV_PATHSPEC, etc.
 

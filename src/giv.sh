@@ -54,11 +54,11 @@ compute_app_dir() {
   fi
   case "${PLATFORM}" in
     windows)
-      printf '%s/giv' "${LOCALAPPDATA:-${HOME}/AppData/Local}";;
+      printf '%s/giv' "${LOCALAPPDATA:-${HOME:-/tmp}/AppData/Local}";;
     macos)
-      printf '%s/Library/Application Scripts/com.github.%s' "${HOME}" "giv-cli/giv";;
+      printf '%s/Library/Application Scripts/com.github.%s' "${HOME:-/tmp}" "giv-cli/giv";;
     *)
-      printf '%s/giv' "${XDG_DATA_HOME:-${HOME}/.local/share}";;
+      printf '%s/giv' "${XDG_DATA_HOME:-${HOME:-/tmp}/.local/share}";;
   esac
 }
 
@@ -105,71 +105,13 @@ GIV_LIB_DIR="${SRC_DIR}/lib"
 # Ensure basic directory initialization
 ensure_giv_dir_init
 
-# Parse all arguments using unified parser
-. "$GIV_LIB_DIR/argument_parser.sh"
-parse_arguments "$@"
+# shellcheck source=./global_parser.sh
+. "$GIV_LIB_DIR/global_parser.sh"
 
-# Show help/version immediately if requested
-case "${GIV_SUBCMD:-}" in
-    help)
-        . "$GIV_SRC_DIR/commands/help.sh"
-        exit 0
-        ;;
-    version)
-        . "$GIV_SRC_DIR/commands/version.sh"
-        exit 0
-        ;;
-esac
+# Parse all arguments using the global parser
+parse_global_arguments "$@"
 
-# Initialize metadata for commands that need it (skip for config/init)
-case "${GIV_SUBCMD:-}" in
-    config|init)
-        # Skip metadata initialization for config/init commands
-        ;;
-    *)
-        initialize_metadata "false"
-        ;;
-esac
+# Dispatch to the appropriate subcommand with remaining arguments
+execute_subcommand "$@"
 
-# Validate subcommand requirements
-validate_subcommand_requirements
-
-if [ -f "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh" ]; then
-    # Delegate to the subcommand script - pass remaining arguments for commands that need them
-    [ "${GIV_DEBUG}" = "true" ] && printf 'Executing subcommand: %s\n' "${GIV_SUBCMD}" >&2
-    case "${GIV_SUBCMD}" in
-        config|init)
-            # These commands need access to subcommand arguments only
-            # Extract arguments after the subcommand name, preserving quotes
-            found_subcommand=false
-            subcommand_start=0
-            i=0
-            for arg in "$@"; do
-                i=$((i + 1))
-                if [ "$found_subcommand" = "true" ]; then
-                    break
-                elif [ "$arg" = "$GIV_SUBCMD" ]; then
-                    found_subcommand=true
-                    subcommand_start=$i
-                fi
-            done
-            [ "${GIV_DEBUG}" = "true" ] && printf 'Config subcommand args: %s\n' "$*" >&2
-            if [ "$subcommand_start" -gt 0 ] && [ $# -gt "$subcommand_start" ]; then
-                # Shift to remove arguments before and including the subcommand
-                shift "$subcommand_start"
-                "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh" "$@"
-            else
-                "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh"
-            fi
-            ;;
-        *)
-            # Other commands use environment variables from unified parser
-            "${GIV_SRC_DIR}/commands/${GIV_SUBCMD}.sh"
-            ;;
-    esac
-    exit 0
-else
-    echo "Unknown subcommand: ${GIV_SUBCMD}" >&2
-    echo "Available subcommands: $(find ${GIV_SRC_DIR}/commands -name '*.sh' -exec basename {} .sh \; | sort | tr '\n' ' ')" >&2
-    exit 1
-fi
+exit 0

@@ -5,7 +5,7 @@ load "${GIV_LIB_DIR}/argument_parser.sh"
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 
-
+GIV_SCRIPT="${GIV_SRC_DIR}/giv.sh"
 OG_DIR="$(pwd)"
 export __VERSION="1.0.0"
 
@@ -283,5 +283,36 @@ setup_git_range() {
 #   assert_output --partial "Subcommand: document"
 #   assert_output --partial "Prompt File: PROMPT"
 # }
+@test "global parser handles global options" {
+    run "${GIV_SCRIPT}" --verbose --dry-run --config-file test-config --help
+    assert_success
+    assert_output --partial "Usage: giv <subcommand> [revision] [pathspec] [OPTIONS]"
+}
+
+@test "document subcommand parser handles arguments correctly" {
+    run "${GIV_SCRIPT}" document --prompt-file test-prompt.md --revision HEAD --pathspec src/ --output-file output.md
+    assert_success
+    assert_output --partial "test-prompt.md"
+    assert_output --partial "HEAD"
+    assert_output --partial "src/"
+    assert_output --partial "output.md"
+}
+
+@test "changelog subcommand parser handles arguments correctly" {
+    run "${GIV_SCRIPT}" changelog --revision HEAD --pathspec src/ --output-file changelog.md --output-version 1.0.0
+    assert_success
+    assert_output --partial "HEAD"
+    assert_output --partial "src/"
+    assert_output --partial "changelog.md"
+    assert_output --partial "1.0.0"
+}
+
+@test "message subcommand parser handles arguments correctly" {
+    run "${GIV_SCRIPT}" message --revision HEAD --pathspec src/ --todo-pattern TODO
+    assert_success
+    assert_output --partial "HEAD"
+    assert_output --partial "src/"
+    assert_output --partial "TODO"
+}
 
 

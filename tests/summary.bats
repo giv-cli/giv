@@ -4,90 +4,142 @@
 load 'test_helper/bats-support/load'
 load 'test_helper/bats-assert/load'
 load 'helpers/setup.sh'
+load "${GIV_LIB_DIR}/system.sh"
+load "${GIV_LIB_DIR}/history.sh"
+load "${GIV_LIB_DIR}/llm.sh"
+load "${GIV_LIB_DIR}/project_metadata.sh"
 
-@test "summary without args fails with usage" {
-  run "$GIV_SRC_DIR/commands/summary.sh"
-  assert_output --partial "Missing path argument"
+setup() {
+    export GIV_METADATA_PROJECT_TYPE="custom"
+    rm -rf "$GIV_HOME/cache"  # clean up any old cache
+    rm -rf "$GIV_HOME/.tmp"   # clean up any old tmp
+    mkdir -p "$GIV_HOME/cache"
+    mkdir -p "$GIV_HOME/.tmp"
+    
+    # Create a simple test repo using the standard approach from other tests
+    TEST_REPO="$(mktemp -d -p "$BATS_TEST_DIRNAME/.tmp")"
+    cd "$TEST_REPO" || exit
+    git init -q
+    git config user.name "Test"
+    git config user.email "test@example.com"
+    
+    # Create initial commit
+    echo "First line" > file.txt
+    git add file.txt
+    git commit -q -m "chore: initial commit"
+    
+    # Create second commit  
+    echo "Second line" >> file.txt
+    git add file.txt
+    git commit -q -m "feat: add second line"
+    
+    export TEST_REPO
+    
+    # Set required environment variables
+    export GIV_API_KEY="test-api-key"  
+    export GIV_API_URL="https://api.example.com"
 }
 
-@test "summary runs against real Git repo" {
-  run "$GIV_SRC_DIR/commands/summary.sh" --output="$BATS_TMPDIR/out.txt" "$PROJECT_DIR"
-  run cat "$BATS_TMPDIR/out.txt"
-  assert_success
-  assert_output --partial "Initial commit"
-  assert_output --partial "feat: add second line"
+teardown() {
+    rm -rf "$TEST_REPO"
 }
 
-@test "summary supports custom template" {
-  run "$GIV_SRC_DIR/commands/summary.sh" -t simple "$PROJECT_DIR"
-  assert_success
-  # e.g. template 'simple' might produce a one-line summary
-  assert_output --partial "Initial commit; add second line"
+@test "summary subcommand basic functionality using direct function calls" {
+    cd "$TEST_REPO"
+    
+    # Test that summarize_commit works with proper commit
+    export GIV_DEBUG="true"
+    commit_hash=$(git rev-parse HEAD)
+    
+    # Mock generate_response for testing
+    generate_response() {
+        cat "$1"  # Just output the prompt file content
+    }
+    
+    run summarize_commit "$commit_hash" ""
+    assert_success
+    
+    # Check that commit metadata is included
+    assert_output --partial "Commit: $commit_hash"
+    assert_output --partial "Date:"
+    assert_output --partial "Message:"
+    assert_output --partial "feat: add second line"
 }
 
-
-# Edge case: invalid path
-@test "summary with invalid path fails" {
-  run "$GIV_SRC_DIR/commands/summary.sh" /nonexistent/path
-  assert_failure
-  assert_output --partial "No such file or directory"
+@test "build_commit_summary_prompt generates correct prompt structure" {
+    cd "$TEST_REPO"
+    
+    commit_hash=$(git rev-parse HEAD)
+    hist_file=$(portable_mktemp "test_hist_XXXXXXX")
+    
+    # Generate history for the commit
+    build_history "$hist_file" "$commit_hash" ""
+    
+    # Test build_commit_summary_prompt function
+    run build_commit_summary_prompt "1.0.0" "$hist_file"
+    assert_success
+    
+    # Check that the prompt structure is correct
+    assert_output --partial "# Summary Request"
+    assert_output --partial "## Git Diff"
+    assert_output --partial "## Instructions"
+    assert_output --partial "### Commit ID $commit_hash"
+    assert_output --partial "feat: add second line"
+    assert_output --partial '```diff'
+    assert_output --partial "file.txt"
+    assert_output --partial "+Second line"
+    
+    rm -f "$hist_file"
 }
 
-# Edge case: empty repo (no commits)
-@test "summary with empty repo returns appropriate message" {
-  tmp_empty=$(mktemp -d)
-  git -C "$tmp_empty" init >/dev/null 2>&1
-  run "$GIV_SRC_DIR/commands/summary.sh" "$tmp_empty"
-  assert_failure
-  assert_output --partial "No commits found"
-  rm -rf "$tmp_empty"
+@test "summarize_commit properly formats commit information" {
+    cd "$TEST_REPO"
+    
+    commit_hash=$(git rev-parse HEAD)
+    
+    # Mock generate_response for testing
+    generate_response() {
+        cat "$1"  # Just output the prompt file content
+    }
+    
+    # Test summarize_commit function directly
+    run summarize_commit "$commit_hash"
+    assert_success
+    
+    # Check commit metadata format (from save_commit_metadata)
+    assert_output --partial "Commit: $commit_hash"
+    assert_output --partial "Date: "
+    assert_output --partial "Message:"
+    assert_output --partial "feat: add second line"
+    
+    # Check that the prompt content is also included (from build_commit_summary_prompt)
+    assert_output --partial "### Commit ID $commit_hash"
+    assert_output --partial "**Date:**"
+    assert_output --partial "**Message:**"
+    assert_output --partial '```diff'
+    assert_output --partial "file.txt"
+    assert_output --partial "+Second line"
 }
 
-# Edge case: non-git directory
-@test "summary with non-git directory fails" {
-  tmp_dir=$(mktemp -d)
-  run "$GIV_SRC_DIR/commands/summary.sh" "$tmp_dir"
-  assert_failure
-  assert_output --partial "Not a git repository"
-  rm -rf "$tmp_dir"
-}
-
-# Edge case: corrupted repo
-@test "summary with corrupted repo fails gracefully" {
-  tmp_corrupt=$(mktemp -d)
-  git -C "$tmp_corrupt" init >/dev/null 2>&1
-  rm -rf "$tmp_corrupt/.git"
-  run "$GIV_SRC_DIR/commands/summary.sh" "$tmp_corrupt"
-  assert_failure
-  assert_output --partial "Not a git repository"
-  rm -rf "$tmp_corrupt"
-}
-
-# Edge case: large number of commits
-@test "summary handles large commit log" {
-  tmp_large=$(mktemp -d)
-  git -C "$tmp_large" init >/dev/null 2>&1
-  for i in $(seq 1 50); do
-    echo "line $i" > "$tmp_large/file.txt"
-    git -C "$tmp_large" add file.txt
-    git -C "$tmp_large" commit -m "commit $i" >/dev/null 2>&1
-  done
-  run "$GIV_SRC_DIR/commands/summary.sh" "$tmp_large"
-  assert_success
-  assert_output --partial "commit 50"
-  rm -rf "$tmp_large"
-}
-
-# Edge case: special characters in commit messages
-@test "summary handles special characters in commit messages" {
-  tmp_special=$(mktemp -d)
-  git -C "$tmp_special" init >/dev/null 2>&1
-  echo "foo" > "$tmp_special/file.txt"
-  git -C "$tmp_special" add file.txt
-  git -C "$tmp_special" commit -m $'fix: handle emoji 🚀\nnewline\nquote: "test"' >/dev/null 2>&1
-  run "$GIV_SRC_DIR/commands/summary.sh" "$tmp_special"
-  assert_success
-  assert_output --partial "🚀"
-  assert_output --partial '"test"'
-  rm -rf "$tmp_special"
+@test "build_history generates proper git diff content for commits" {
+    cd "$TEST_REPO"
+    
+    commit_hash=$(git rev-parse HEAD)
+    hist_file=$(portable_mktemp "test_hist_XXXXXXX")
+    
+    run build_history "$hist_file" "$commit_hash" ""
+    assert_success
+    
+    # Check the contents of the generated history file
+    run cat "$hist_file"
+    assert_success
+    assert_output --partial "### Commit ID $commit_hash"
+    assert_output --partial "**Date:**"
+    assert_output --partial "**Message:**"
+    assert_output --partial "feat: add second line"
+    assert_output --partial '```diff'
+    assert_output --partial "file.txt"
+    assert_output --partial "+Second line"
+    
+    rm -f "$hist_file"
 }

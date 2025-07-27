@@ -32,22 +32,27 @@ setup(){
   run "$GIV_SRC_DIR/commands/config.sh" list
   assert_failure
   assert_output --partial "Malformed config"
-  echo "api_url=https://api.example.test" > "$GIV_HOME/config"
-}
-
-# Print specific config key
-@test "config command prints specific key" {
-  run "$GIV_SRC_DIR/commands/config.sh" get api.url
-  assert_success
-  assert_output --partial "https://api.example.test"
+  echo "api.url=https://api.example.test" > "$GIV_HOME/config"
 }
 
 # Set and print config value
 @test "config command sets and prints value" {
   run "$GIV_SRC_DIR/commands/config.sh" set token test-token
   assert_success
+  echo "DEBUG: config file after set:" >&2
+  cat "$GIV_HOME/config" >&2
   run "$GIV_SRC_DIR/commands/config.sh" get token
   assert_output --partial "test-token"
+}
+
+# Print specific config key
+@test "config command prints specific key" {
+  echo "api.url=https://api.example.test" > "$GIV_HOME/config"
+  echo "DEBUG: config file before get:" >&2
+  cat "$GIV_HOME/config" >&2
+  run "$GIV_SRC_DIR/commands/config.sh" get api.url
+  assert_success
+  assert_output --partial "https://api.example.test"
 }
 
 # Environment variable override
