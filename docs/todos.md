@@ -9,11 +9,8 @@
 - ENHANCEMENT: add README to summaries/prompt(?)
 - ENHANCEMENT: add date token to summary
 - FEATURE: ollama, glow, and gh cli included in docker image
-- FEATURE: add option to install glow during install
 - FEATURE: use glow for output if available
 - FEATURE: GIV_USE_GLOW config setting
-- FEATURE: .giv folder to hold config and prompts
-- FEATURE: init commnand to create folder and basic setup
 - FEATURE: enhanced help command
   - milvous cli indexes docs folder, project tree, and usage text
   - allow `giv help "some question here"`
@@ -58,10 +55,12 @@
 - ENHANCEMENT: add project name to summaries(?)
 - Publish script that will bump version, build packages, push built packages and create Github release
   - create repos for homebrew and flatpk?
-- FEATURE: document command to use prompt file 
 
 ## Completed
 
+- ADDED: document command to use prompt file 
+- ADDED: .giv folder to hold config and prompts
+- ADDED: init commnand to create folder and basic setup
 - ADDED: --summary option to provide summary of changes
 - ADDED: --type "annoucement" option to generate a release announcement
 - ADDED: --type "commit" option to generate commit message `git commit -m "$(giv -t commit)"

@@ -1,10 +1,15 @@
-#!/bin/sh
+#!/usr/bin/env bash
+# Allow test harness to inject mock functions (for bats)
+if [ -n "$GIV_TEST_MOCKS" ] && [ -f "$GIV_TEST_MOCKS" ]; then
+  . "$GIV_TEST_MOCKS"
+fi
 # giv - A POSIX-compliant script to generate commit messages, summaries,
 # changelogs, release notes, and announcements from Git history using AI
 set -eu
 
 # Ensure our temp-dir cleanup always runs:
 # trap 'remove_tmp_dir' EXIT INT TERM
+
 
 IFS='
 '
@@ -42,35 +47,19 @@ detect_platform() {
 }
 
 compute_app_dir() {
-  case "$PLATFORM" in
-    linux)
-      printf '%s/giv' "${XDG_DATA_HOME:-$HOME/.local/share}";;
+  # If running from local repo (e.g., ./src/giv.sh), use $PWD/src as lib dir
+  if [ -f "$PWD/src/giv.sh" ]; then
+    printf '%s' "$PWD"
+    return
+  fi
+  case "${PLATFORM}" in
     windows)
-      printf '%s/giv' "${LOCALAPPDATA:-$HOME/AppData/Local}";;
+      printf '%s/giv' "${LOCALAPPDATA:-${HOME:-/tmp}/AppData/Local}";;
     macos)
-      printf '%s/Library/Application Scripts/com.github.%s' "$HOME" "giv-cli/giv";;
+      printf '%s/Library/Application Scripts/com.github.%s' "${HOME:-/tmp}" "giv-cli/giv";;
+    *)
+      printf '%s/giv' "${XDG_DATA_HOME:-${HOME:-/tmp}/.local/share}";;
   esac
-}
-
-get_is_sourced(){
-    # Detect if sourced (works in bash, zsh, dash, sh)
-    _is_sourced=0
-    # shellcheck disable=SC2296
-    # if [ "${BATS_TEST_FILENAME:-}" ]; then
-    #     _is_sourced=1
-    # el
-    if [ "$(basename -- "$0")" = "sh" ] || [ "$(basename -- "$0")" = "-sh" ]; then
-        _is_sourced=1
-    elif [ "${0##*/}" = "dash" ] || [ "${0##*/}" = "-dash" ]; then
-        _is_sourced=1
-    elif [ -n "${ZSH_EVAL_CONTEXT:-}" ] && case $ZSH_EVAL_CONTEXT in *:file) true;; *) false;; esac; then
-        _is_sourced=1
-    elif [ -n "${KSH_VERSION:-}" ] && [ -n "${.sh.file:-}" ] && [ "${.sh.file}" != "" ] && [ "${.sh.file}" != "$0" ]; then
-        _is_sourced=1
-    elif [ -n "${BASH_VERSION:-}" ] && [ -n "${BASH_SOURCE:-}" ] && [ "${BASH_SOURCE}" != "$0" ]; then
-        _is_sourced=1
-    fi
-    echo "${_is_sourced}"
 }
 
 # Try to detect the actual script path
@@ -82,157 +71,47 @@ elif [ -n "${ZSH_VERSION:-}" ] && [ -n "${(%):-%x}" ]; then
     SCRIPT_PATH="${(%):-%x}"
 fi
 SCRIPT_DIR="$(get_script_dir "${SCRIPT_PATH}")"
+export SCRIPT_DIR
 
 # Allow overrides for advanced/testing/dev
-
 PLATFORM="$(detect_platform)"
 APP_DIR="$(compute_app_dir)"
-[ "$GIV_DEBUG" = "true" ] && printf 'Using giv app directory: %s\n' "${APP_DIR}"
-LIB_DIR=""
-TEMPLATE_DIR=""
-DOCS_DIR=""
+[ "${GIV_DEBUG}" = "true" ] && printf 'Using giv app directory: %s\n' "${APP_DIR}"
 
+SRC_DIR=""
 # Library location (.sh files)
-if [ -n "${GIV_LIB_DIR:-}" ]; then
-    LIB_DIR="${GIV_LIB_DIR}"
+if [ -n "${GIV_SRC_DIR:-}" ]; then
+    SRC_DIR="${GIV_SRC_DIR}"
 elif [ -d "${APP_DIR}/src" ]; then
-    LIB_DIR="${APP_DIR}/src"
+    SRC_DIR="${APP_DIR}/src"
 elif [ -d "${SCRIPT_DIR}" ]; then
     # Local or system install: helpers in same dir
-    LIB_DIR="${SCRIPT_DIR}"
+    SRC_DIR="${SCRIPT_DIR}"
 elif [ -n "${SNAP:-}" ] && [ -d "${SNAP}/lib/giv" ]; then
-    LIB_DIR="${SNAP}/lib/giv"
+    SRC_DIR="${SNAP}/lib/giv"
 else
-    printf 'Error: Could not find giv lib directory. %s\n' "$SCRIPT_PATH" >&2
+    printf 'Error: Could not find giv lib directory. %s\n' "${SCRIPT_PATH}" >&2
     exit 1
 fi
-GIV_LIB_DIR="${LIB_DIR}"
 
-[ "$GIV_DEBUG" = "true" ] && printf 'Using giv lib directory: %s\n' "${GIV_LIB_DIR}"
+GIV_LIB_DIR="${SRC_DIR}/lib"
 
-# Template location
-if [ -n "${GIV_TEMPLATE_DIR:-}" ]; then
-    TEMPLATE_DIR="${GIV_TEMPLATE_DIR}"
-elif [ -d "${APP_DIR}/templates" ]; then
-    TEMPLATE_DIR="${APP_DIR}/templates"
-elif [ -d "/usr/local/share/giv/templates" ]; then
-    TEMPLATE_DIR="/usr/local/share/giv/templates"
-elif [ -n "${SNAP:-}" ] && [ -d "${SNAP}/share/giv/templates" ]; then
-    TEMPLATE_DIR="${SNAP}/share/giv/templates"
-elif [ -d "./templates" ]; then
-    TEMPLATE_DIR="./templates"
-else
-    printf 'Error: Could not find giv template directory.\n' >&2
-    exit 1
-fi
-GIV_TEMPLATE_DIR="${TEMPLATE_DIR}"
+[ "${GIV_DEBUG}" = "true" ] && printf 'Using giv lib directory: %s\n' "${GIV_LIB_DIR}"
 
-# Docs location (optional)
-if [ -n "${GIV_DOCS_DIR:-}" ]; then
-    DOCS_DIR="${GIV_DOCS_DIR}"
-elif [ -d "${APP_DIR}/docs" ]; then
-    DOCS_DIR="${APP_DIR}/docs"
-elif [ -d "/usr/local/share/giv/docs" ]; then
-    DOCS_DIR="/usr/local/share/giv/docs"
-elif [ -n "${SNAP:-}" ] && [ -d "${SNAP}/share/giv/docs" ]; then
-    DOCS_DIR="${SNAP}/share/giv/docs"
-else
-    DOCS_DIR=""  # It's optional; do not fail if not found
-fi
-GIV_DOCS_DIR="${DOCS_DIR}"
-
-# shellcheck source=./config.sh
-. "${LIB_DIR}/config.sh"
-# shellcheck source=./system.sh
-. "${LIB_DIR}/system.sh"
-# shellcheck source=./args.sh
-. "${LIB_DIR}/args.sh"
-# shellcheck source=markdown.sh
-. "${LIB_DIR}/markdown.sh"
-# shellcheck source=llm.sh
-. "${LIB_DIR}/llm.sh"
-# shellcheck source=project/metadata.sh
-. "${LIB_DIR}/project/metadata.sh"
-# shellcheck source=history.sh
-. "${LIB_DIR}/history.sh"
-# shellcheck source=commands.sh
-. "${LIB_DIR}/commands.sh"
+# shellcheck source=./init.sh
+. "$GIV_LIB_DIR/init.sh"
 
 
-is_sourced="$(get_is_sourced)"
-if [ "${is_sourced}" -eq 0 ]; then
-    # Ensure .giv directory is initialized
-    ensure_giv_dir_init
-    portable_mktemp_dir
-    parse_args "$@"
-    metadata_init
+# Ensure basic directory initialization
+ensure_giv_dir_init
 
-    # # Verify the PWD is a valid git repository
-    # if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    #     printf 'Error: Current directory is not a valid git repository.\n'
-    #     exit 1
-    # fi
-    # # Enable debug mode if requested
-    # if [ "${debug}" = "true" ]; then
-    #     set -x
-    # fi
+# shellcheck source=./global_parser.sh
+. "$GIV_LIB_DIR/global_parser.sh"
 
+# Parse all arguments using the global parser
+parse_global_arguments "$@"
 
-    # Dispatch logic
-    case "${subcmd}" in
-    message | msg) cmd_message "${GIV_REVISION}" \
-        "${GIV_PATHSPEC}" \
-        "${GIV_TODO_PATTERN}" ;;
-    document | doc) cmd_document \
-      "${prompt_file}" \
-      "${GIV_REVISION}" \
-      "${GIV_PATHSPEC}" \
-      "${output_file:-}" \
-      "0.7" "" ;;
-    summary) cmd_document \
-      "${GIV_TEMPLATE_DIR}/final_summary_prompt.md" \
-      "${GIV_REVISION}" \
-      "${GIV_PATHSPEC}" \
-      "${output_file:-}" \
-      "0.7" "" ;;
-    release-notes) cmd_document \
-      "${GIV_TEMPLATE_DIR}/release_notes_prompt.md" \
-      "${GIV_REVISION}" \
-      "${GIV_PATHSPEC}" \
-      "${output_file:-$release_notes_file}" \
-      "0.6" \
-      "65536" ;;
-    announcement)  cmd_document \
-      "${GIV_TEMPLATE_DIR}/announcement_prompt.md" \
-      "${GIV_REVISION}" \
-      "${GIV_PATHSPEC}" \
-      "${output_file:-$announce_file}" \
-      "0.5" \
-      "65536" ;;
-    changelog) cmd_changelog "${GIV_REVISION}" "${GIV_PATHSPEC}" ;;
-    help)
-        show_help
-        exit 0
-        ;;
-    available-releases)
-        get_available_releases
-        ;;
-    update)
-        run_update "latest"
-        ;;
-    init)
-        ensure_giv_dir_init
-        if [ -d "${GIV_TEMPLATE_DIR}" ]; then
-            cp -r "${GIV_TEMPLATE_DIR}"/* "$GIV_HOME/templates/"
-            print_info "Templates copied to $GIV_HOME/templates."
-        else
-            print_error "Template directory not found: ${GIV_TEMPLATE_DIR}"
-            exit 1
-        fi
-        ;;
-    *) cmd_message "${GIV_REVISION}" ;;
-    esac
+# Dispatch to the appropriate subcommand with remaining arguments
+execute_subcommand "$@"
 
-    # Clean up temporary directory if it was created
-    remove_tmp_dir
-fi
+exit 0

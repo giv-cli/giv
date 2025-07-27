@@ -26,7 +26,8 @@ COPY docs/ /usr/local/share/giv/docs/
 RUN chmod +x /usr/local/bin/giv
 
 # Set up environment
-ENV GIV_LIB_DIR="/usr/local/lib/giv"
+ENV GIV_SRC_DIR="/usr/local/lib/giv/"
+ENV GIV_LIB_DIR="/usr/local/lib/giv/lib"
 ENV GIV_TEMPLATE_DIR="/usr/local/share/giv/templates"
 ENV GIV_DOCS_DIR="/usr/local/share/giv/docs"
 ENV PATH="/usr/local/bin:$PATH"

@@ -1,52 +1,116 @@
-# Giv Documentation
+# AI Model Providers
 
-Giv is a powerful tool for generating change logs from your Git history. It can be used with various Large Language Models (LLMs) to provide accurate and informative change logs.
+Giv supports various AI model providers for generating commit messages, changelogs, summaries, and other content. You can configure providers using the `giv config` command or environment variables.
 
-## Supported LLMs
+## Configuration
+
+Use the `giv config` command to set up your AI provider:
+
+```bash
+# Configure API settings
+giv config api.url "https://api.openai.com/v1/chat/completions"
+giv config api.model "gpt-4o-mini"
+giv config api.key "your_api_key_here"
+```
+
+## Supported Providers
 
 ### OpenAI
 
-To use OpenAI, set the `GIV_API_KEY` environment variable to your OpenAI API key. Then, run Giv with the desired model:
+To use OpenAI models, configure the following:
 
 ```bash
-export GIV_API_KEY="your_openai_api_key"
-giv --model-provider remote --api-model gpt-4
+giv config api.url "https://api.openai.com/v1/chat/completions"
+giv config api.model "gpt-4o-mini"  # or gpt-4o, gpt-3.5-turbo
+giv config api.key "your_openai_api_key"
 ```
 
 ### Azure OpenAI
 
-To use Azure OpenAI, set the `GIV_API_KEY` environment variable to your Azure OpenAI API key and specify the endpoint:
+For Azure OpenAI, use your Azure endpoint URL:
 
 ```bash
-export GIV_API_KEY="your_azure_openai_api_key"
-giv --model-provider remote --api-model gpt-4 \
-          --api-url "https://my-azure-openai.openai.azure.com/openai/deployments/gpt-4/chat/completions?api-version=2023-05-15"
+giv config api.url "https://your-resource.openai.azure.com/openai/deployments/gpt-4/chat/completions?api-version=2024-02-15-preview"
+giv config api.model "gpt-4"
+giv config api.key "your_azure_openai_api_key"
 ```
 
-### Hugging Face Inference
+### Groq
 
-To use Hugging Face Inference, set the `GIV_API_KEY` environment variable to your Hugging Face API key and specify the model:
-
-```bash
-export GIV_API_KEY="your_huggingface_api_key"
-giv --model-provider remote --api-model gpt2
-```
-
-### OpenRouter (Unified API)
-
-To use OpenRouter, set the `GIV_API_KEY` environment variable to your OpenRouter API key:
+To use Groq's fast inference service:
 
 ```bash
-export GIV_API_KEY="your_openrouter_api_key"
-giv --model-provider remote --api-model openai/gpt-4o
+giv config api.url "https://api.groq.com/openai/v1/chat/completions"
+giv config api.model "llama-3.1-70b-versatile"  # or mixtral-8x7b-32768
+giv config api.key "your_groq_api_key"
 ```
 
 ### Local Ollama Models
 
-If you do not force remote mode, Giv will default to a local Ollama model (default `qwen2.5-coder`). You can select any local model by name with `--model`. For example, to use a Llama model:
+For local inference with Ollama (default configuration):
 
 ```bash
-giv --model llama3
+giv config api.url "http://localhost:11434/v1/chat/completions"
+giv config api.model "devstral"  # or qwen2.5-coder, llama3.1, etc.
+giv config api.key "ollama"  # any value works for local
+```
+
+### OpenRouter (Unified API)
+
+To use OpenRouter for access to multiple models:
+
+```bash
+giv config api.url "https://openrouter.ai/api/v1/chat/completions"
+giv config api.model "openai/gpt-4o-mini"  # or anthropic/claude-3-sonnet
+giv config api.key "your_openrouter_api_key"
+```
+
+## Command-Line Overrides
+
+You can override configured settings for individual commands:
+
+```bash
+# Use a different model for one command
+giv changelog --api-model gpt-4o
+
+# Use a different provider temporarily
+giv summary --api-url "https://api.groq.com/openai/v1/chat/completions" \
+            --api-model "llama-3.1-70b-versatile" \
+            --api-key "your_groq_key"
+
+# Use local Ollama model temporarily
+giv message --api-url "http://localhost:11434/v1/chat/completions" \
+            --api-model "qwen2.5-coder"
+```
+
+## Environment Variables
+
+You can also set configuration via environment variables:
+
+```bash
+export GIV_API_URL="https://api.openai.com/v1/chat/completions"
+export GIV_API_MODEL="gpt-4o-mini"
+export GIV_API_KEY="your_api_key"
+
+giv changelog  # Uses environment variables
+```
+
+Configuration hierarchy (highest to lowest priority):
+1. Command-line arguments (`--api-model`, `--api-url`, etc.)
+2. Environment variables (`GIV_API_*`)
+3. `.giv/config` file
+4. Default values
+
+## Testing Your Configuration
+
+To verify your configuration is working:
+
+```bash
+# List current configuration
+giv config list
+
+# Test with a simple message generation
+giv message --dry-run --verbose
 ```
 
 Or to use a local Qwen or GPT model:
